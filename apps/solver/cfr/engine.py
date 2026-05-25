@@ -131,7 +131,7 @@ class CFREngine:
         
         for i, action_str in enumerate(valid_actions):
             # Apply action to get new state
-            new_state = self.game.apply_action(state, player, action_str)
+            new_state = self.game.apply_action(state.copy(), player, action_str)
             
             # Recursively compute utility
             child_utils = self._cfr_iteration(new_state, reach_p0, reach_p1)
@@ -144,13 +144,6 @@ class CFREngine:
             reach = reach_p0
         else:
             reach = reach_p1
-        
-        # Update regrets using counterfactual values
-        cf_values = np.zeros(len(valid_actions))
-        for i, action_str in enumerate(valid_actions):
-            new_state = self.game.apply_action(state.copy(), player, action_str)
-            child_utils = self._cfr_iteration(new_state, reach_p0, reach_p1)
-            cf_values[i] = child_utils[player]
         
         # Expected value under current strategy
         expected_value = np.dot(strategy, action_utils)
@@ -172,8 +165,10 @@ class CFREngine:
         """Resolve terminal state and return utilities."""
         if state.terminal_reason == "fold":
             # Fold: winner gets the pot
-            winner = 1 - state.action_history[-1].player if state.action_history else 0
-            payoffs = [-state.pot, state.pot] if winner == 0 else [state.pot, -state.pot]
+            # The player who folded loses, so winner is 1 - folder
+            folder = state.action_history[-1].player if state.action_history else 0
+            winner = 1 - folder
+            payoffs = [state.pot, -state.pot] if winner == 0 else [-state.pot, state.pot]
             return payoffs
         
         # Showdown

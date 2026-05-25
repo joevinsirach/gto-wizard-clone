@@ -95,6 +95,12 @@ class GameState:
     # Bet to call (amount needed to stay in)
     bet_to_call: float = 0.0
     
+    # Last player who bet (to track when betting round ends)
+    last_bettor: int = -1
+    
+    # Amount of the last bet (for showdown detection)
+    last_bet_amount: float = 0.0
+    
     # Whether the hand is over
     terminal: bool = False
     terminal_reason: str = ""
@@ -130,6 +136,8 @@ class GameState:
             action_history=list(self.action_history),
             street=self.street,
             bet_to_call=self.bet_to_call,
+            last_bettor=self.last_bettor,
+            last_bet_amount=self.last_bet_amount,
             terminal=self.terminal,
             terminal_reason=self.terminal_reason
         )
@@ -180,13 +188,12 @@ class TexasHoldEm:
         # Check if player can call
         amount_to_call = state.bet_to_call - state.contributions[player]
         
-        if amount_to_call <= 0:
-            # Player can check
-            actions.append("check")
-        else:
-            # Player can call
-            if amount_to_call <= state.stacks[player]:
-                actions.append("call")
+        # Determine if we're facing a bet or if it's the first action of a betting round
+        facing_bet = amount_to_call > 0
+        
+        if facing_bet:
+            # There's a bet to call - player must fold, call, or raise
+            actions.append("call")
             
             # Player can raise (if they have enough chips)
             for bet_mult in self.bet_sizes:
@@ -197,6 +204,22 @@ class TexasHoldEm:
             
             # All-in
             if state.stacks[player] > amount_to_call:
+                actions.append(f"raise:{state.stacks[player]}")
+        else:
+            # No bet to call - player can check or bet/raise
+            # Exception: if last_bettor is the OTHER player and this player already acted,
+            # then this player can't bet again (already got a chance to respond)
+            
+            actions.append("check")
+            
+            # Player can also bet/raise (initiate a bet)
+            for bet_mult in self.bet_sizes:
+                bet_size = state.pot * bet_mult
+                if bet_size <= state.stacks[player]:
+                    actions.append(f"raise:{bet_mult}")
+            
+            # All-in as a raise
+            if state.stacks[player] > 0:
                 actions.append(f"raise:{state.stacks[player]}")
         
         return actions
@@ -249,14 +272,15 @@ class TexasHoldEm:
             new_state.contributions[player] += call_amount
             new_state.stacks[player] -= call_amount
             new_state.pot += call_amount
-            # If all-in or matched bet exactly, reset bet_to_call
-            if state.stacks[player] - call_amount <= 0 or amount_to_call == call_amount:
-                new_state.bet_to_call = 0.0 if amount_to_call == call_amount else state.bet_to_call
-            # If both players have acted equally, proceed (this is simplified)
+            
+            # If player called a bet (not just checking when no bet), betting round ends
+            if amount_to_call > 0:
+                new_state.bet_to_call = 0.0
+                new_state.last_bettor = -1  # Betting round complete
             
         elif action_str.startswith("raise:"):
             raise_mult = float(action_str.split(":")[1])
-            bet_size = state.pot * raise_mult if raise_mult < 10 else raise_mult  # Support both mult and absolute
+            bet_size = state.pot * raise_mult if raise_mult < 10 else raise_mult
             
             # Total cost = amount_to_call + bet_size
             total_cost = min(amount_to_call + bet_size, state.stacks[player])
@@ -265,41 +289,44 @@ class TexasHoldEm:
             new_state.contributions[player] += total_cost
             new_state.stacks[player] -= total_cost
             new_state.pot += total_cost
-            new_state.bet_to_call = state.contributions[player]
+            # bet_to_call is the amount opponent needs to call
+            opponent = 1 - player
+            new_state.bet_to_call = new_state.contributions[player] - new_state.contributions[opponent]
+            new_state.last_bettor = player  # Current player is now the last bettor
             
         elif action_str == "check":
             # No change to pot or stacks
-            # If both players have now acted and no bet to call, go to showdown
-            # Check if we should transition to showdown
-            # For river: if both checked, it's showdown
-            if len(new_state.action_history) >= 2:
-                # Both players have acted - check if we're at showdown
-                # This is simplified - in real poker there are more streets
-                pass
+            # Player checked - if they were last bettor and opponent hasn't acted yet,
+            # this is fine, otherwise showdown check
+            pass
         
-        # If both players have acted (checked or called) and no pending bet, 
-        # and we're at river street, it's showdown
-        if not new_state.terminal:
-            # Showdown if:
-            # 1. Both players have acted AND
-            # 2. Either both checked OR the last action was a call
+        # Showdown detection for river
+        # Showdown when: betting round is over (no active bet) AND at least 2 actions
+        if not new_state.terminal and new_state.street >= 3:
             n_actions = len(new_state.action_history)
-            if (n_actions >= 2 and 
-                new_state.bet_to_call == 0 and
-                new_state.street >= 3):
-                # Check if it's a showdown situation
-                last_action = new_state.action_history[-1]
-                second_last = new_state.action_history[-2] if n_actions >= 2 else None
+            last_action = new_state.action_history[-1]
+            second_last = new_state.action_history[-2] if n_actions >= 2 else None
+            
+            # Check for showdown:
+            # Case 1: Both checked (first to act checked, then other player checked)
+            # Case 2: Bet was called (last action was a call with a previous bettor)
+            if n_actions >= 2:
+                both_checked = (
+                    last_action.action_type == ActionType.CHECK and 
+                    second_last and second_last.action_type == ActionType.CHECK
+                )
+                # Check if this call completed a betting round (there was a bet before)
+                opponent = 1 - player
+                call_completes_round = (
+                    last_action.action_type == ActionType.CALL and
+                    amount_to_call > 0 and  # Player called a bet (not just matched zero)
+                    new_state.bet_to_call == 0  # Call matched the bet (no remaining bet)
+                )
                 
-                # Both checked = showdown
-                if (last_action.action_type == ActionType.CHECK and 
-                    second_last and second_last.action_type == ActionType.CHECK):
+                if both_checked or call_completes_round:
                     new_state.terminal = True
                     new_state.terminal_reason = "showdown"
-                # Last action was a call = showdown (betting round complete)
-                elif last_action.action_type == ActionType.CALL:
-                    new_state.terminal = True
-                    new_state.terminal_reason = "showdown"
+                    new_state.last_bettor = -1
         
         return new_state
     
@@ -319,9 +346,9 @@ class TexasHoldEm:
         
         result = self.evaluator.compare(p0_cards, p1_cards)
         
-        if result == -1:  # P0 wins
+        if result == 1:  # P0 wins (compare returns 1 when first arg wins)
             return [state.pot, -state.pot]
-        elif result == 1:  # P1 wins
+        elif result == -1:  # P1 wins
             return [-state.pot, state.pot]
         else:  # Tie
             return [0.0, 0.0]
