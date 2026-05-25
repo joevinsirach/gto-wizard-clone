@@ -5,6 +5,7 @@ Integrates with:
 - Celery for async task queue
 - Redis pub/sub for progress streaming
 - PostgreSQL for strategy storage
+- ICM calculator for tournament equity
 """
 
 import grpc
@@ -12,12 +13,23 @@ from concurrent import futures
 import threading
 import time
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import solver_pb2
 import solver_pb2_grpc
 
 logger = logging.getLogger(__name__)
+
+# Add packages/poker-core to path for ICM and CFR engine
+import sys
+sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
+sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+
+from gto_poker.icm import (
+    icm_calculate,
+    icm_for_push_fold,
+    get_standard_prizes,
+)
 
 
 class SolverServicer(solver_pb2_grpc.SolverServicer):
@@ -25,6 +37,7 @@ class SolverServicer(solver_pb2_grpc.SolverServicer):
     gRPC service for GTO solver.
     
     Provides async solving via Celery with progress publishing to Redis.
+    Also provides ICM calculation for tournament scenarios.
     """
     
     def __init__(self):
@@ -80,6 +93,76 @@ class SolverServicer(solver_pb2_grpc.SolverServicer):
         except Exception as e:
             logger.error(f"Failed to publish progress for {job_id}: {e}")
     
+    def CalculateICM(self, request, context):
+        """
+        Calculate ICM equity for tournament players.
+        
+        Takes stacks, prize pool, and payout structure to compute:
+        - ICM equity for each player
+        - Bubble factors
+        - Chip equity vs ICM equity comparison
+        """
+        stacks = list(request.stacks)
+        prize_pool = request.prize_pool if request.prize_pool > 0 else 1.0
+        
+        # Build prize list from request or use standard structure
+        if request.prizes:
+            prizes = [p * prize_pool for p in request.prizes]
+        else:
+            prizes = get_standard_prizes(len(stacks), prize_pool)
+        
+        # Run ICM calculation
+        results = icm_calculate(
+            stacks=stacks,
+            prizes=prizes,
+            n_simulations=100_000,
+        )
+        
+        # Convert to response
+        icm_results = []
+        for r in results:
+            icm_results.append(solver_pb2.ICMResult(
+                player=r.player,
+                equity=r.equity,
+                chip_equity=r.chip_equity,
+                bubble_factor=r.bubble_factor,
+                ev=r.ev,
+            ))
+        
+        return solver_pb2.ICMResponse(
+            results=icm_results,
+            total_prize_pool=prize_pool,
+        )
+    
+    def GetICMForSpot(self, request, context):
+        """
+        Get ICM-adjusted recommendation for a push/fold spot.
+        
+        Returns bubble factors and ICM-adjusted equities to help
+        with push/fold decisions in tournament contexts.
+        """
+        stacks = list(request.stacks)
+        prize_pool = request.prize_pool if request.prize_pool > 0 else 1.0
+        
+        # Get standard prizes
+        prizes = get_standard_prizes(len(stacks), prize_pool)
+        
+        # Calculate ICM
+        icm_data = icm_for_push_fold(
+            stacks=stacks,
+            prizes=prizes,
+            n_simulations=50_000,
+        )
+        
+        return solver_pb2.ICMSpotResponse(
+            equities=icm_data['equities'],
+            bubble_factors=icm_data['bubble_factors'],
+            chip_equities=icm_data['chip_equities'],
+            stacks=stacks,
+            prizes=prizes,
+            is_icm_spot=any(bf > 1.05 for bf in icm_data['bubble_factors']),
+        )
+
     def SubmitSolve(self, request, context):
         """
         Submit a solve job asynchronously via Celery.

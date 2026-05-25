@@ -16,9 +16,9 @@ Build a full-featured poker training platform that rivals commercial tools like 
 | **GTO Solver** | 🔬 Planning | CFR-based Nash equilibrium solver for No-Limit Hold'em |
 | **Training Quizzes** | 🔬 Planning | Flop/turn/river quizzes with GTO answer comparison |
 | **Hand History Analyzer** | 🔬 Planning | Parse, store, and analyze HH files vs GTO baseline |
-| **ICM Calculator** | 🔬 Planning | Tournament ICM + push/fold charts |
-| **Range Builder** | 🔬 Planning | Visual range selector with equity visualization |
-| **Content Library** | 🔬 Planning | Pre-built courses and community spots |
+| **ICM Calculator** | ✅ Complete | Tournament ICM + push/fold charts |
+| **Range Builder** | ✅ Complete | Visual range selector with equity visualization |
+| **Content Library** | ✅ Complete | Pre-built courses and community spots |
 
 ### 🏗️ Architecture
 
@@ -95,10 +95,10 @@ gto-wizard-clone/
 - [ ] HH playback viewer
 
 ### Phase 6: ICM + Advanced (Weeks 13-14)
-- [ ] ICM calculator
-- [ ] Push/fold charts
-- [ ] Tournament scenarios
-- [ ] Content library
+- [x] ICM calculator
+- [x] Push/fold charts
+- [x] Tournament scenarios
+- [x] Content library
 
 ## License
 

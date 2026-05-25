@@ -8,7 +8,8 @@
 import Link from "next/link";
 import { ArrowLeft, TrendingDown, AlertTriangle, ArrowRight, Info } from "lucide-react";
 import { LeakChart, MOCK_LEAKS, type LeakEntry } from "@/components/hh";
-import { Button } from "@/nous-research/ui/ui/components/button";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 // Sorted by delta (leak size), worst first
 const SORTED_LEAKS = [...MOCK_LEAKS].sort((a, b) => b.delta - a.delta);

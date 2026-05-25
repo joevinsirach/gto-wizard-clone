@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Search, Eye } from "lucide-react";
 import { HandTable, type HandRecord } from "@/components/hh";
-import { Button } from "@/nous-research/ui/ui/components/button";
+import { Button } from "@/components/ui/button";
 
 // Mock hands for demonstration — in production these come from API params / context
 const MOCK_HANDS: HandRecord[] = [

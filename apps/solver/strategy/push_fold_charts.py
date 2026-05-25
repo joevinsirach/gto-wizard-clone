@@ -3,18 +3,23 @@ Pre-flop push/fold charts for No-Limit Hold'em.
 
 This module defines Nash-equilibrium push/fold charts for common stack sizes
 and positions. The charts are simplified all-in or fold decisions.
+ICM (Independent Chip Model) factors are integrated for tournament play.
 
 Chart format: 13x13 matrix for each position
 Rows and columns represent card ranks (2-A), suited hands on diagonal and above,
 offsuit hands below diagonal.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from enum import Enum
+import sys
 
 # RANKS for 13x13 grid ordering: 2, 3, 4, 5, 6, 7, 8, 9, T, J, Q, K, A
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
 RANK_INDICES = {r: i for i, r in enumerate(RANKS)}
+
+# Add poker-core path for ICM
+sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
 
 
 class Action(Enum):
@@ -22,6 +27,7 @@ class Action(Enum):
     PUSH = "push"           # All-in
     FOLD = "fold"           # Fold
     PUSH_OR_FOLD = "push_or_fold"  # When facing a push, either push or fold
+    CALL = "call"           # Call an all-in (for calling charts)
 
 
 class PushFoldCharts:
@@ -386,6 +392,161 @@ class PushFoldCharts:
             },
         }
         return ranges.get(position, {})
+
+    @classmethod
+    def get_icm_adjusted_push_range(
+        cls,
+        stack_bb: int,
+        position: str,
+        stacks: list[float],
+        prize_pool: float = 1.0,
+    ) -> Dict[Tuple[str, str], dict]:
+        """
+        Get ICM-adjusted push recommendations with bubble factor info.
+        
+        Unlike standard push charts, this method considers tournament context
+        using ICM to adjust recommendations based on relative stack sizes
+        and prize pool structure.
+        
+        Args:
+            stack_bb: Our stack size in big blinds
+            position: Position name (UTG, MP, CO, BTN, SB, BB)
+            stacks: List of all player stacks (for ICM calculation)
+            prize_pool: Total prize pool (default 1.0)
+        
+        Returns:
+            Dict mapping hand keys to {action, bubble_factor, icm_equity}
+        """
+        # Import ICM here to avoid circular imports
+        from gto_poker.icm import icm_for_push_fold, get_standard_prizes
+        
+        result = {}
+        
+        # Get standard push chart for baseline
+        base_chart = cls.generate_nash_chart(stack_bb, position)
+        
+        # Calculate ICM valuations for all stacks
+        n = len(stacks)
+        prizes = get_standard_prizes(n, prize_pool)
+        icm_data = icm_for_push_fold(stacks, prizes)
+        
+        # Calculate our bubble factor (assume we're at given position)
+        our_idx = cls.POSITIONS.index(position) if position in cls.POSITIONS else 0
+        our_bubble = icm_data['bubble_factors'][our_idx] if our_idx < len(icm_data['bubble_factors']) else 1.0
+        
+        # Hands to check - iterate through 13x13
+        for r1_idx, r1 in enumerate(RANKS):
+            for r2_idx, r2 in enumerate(RANKS):
+                key = (r1, r2) if r1_idx >= r2_idx else (r2, r1)
+                base_action = base_chart.get(key, "fold")
+                
+                # Adjust based on bubble factor
+                # High bubble factor = tighten up (chips worth more)
+                # Low bubble factor = loosen up (chips worth less)
+                if our_bubble > 1.2:
+                    # Tighten significantly on bubble
+                    adjusted_action = "fold"
+                elif our_bubble > 1.1:
+                    # Slight tightening
+                    if base_action == "push":
+                        # Keep push for premium hands only
+                        if r1 in ["A", "K", "Q", "J"] or r1 == r2:
+                            adjusted_action = "push"
+                        else:
+                            adjusted_action = "fold"
+                    else:
+                        adjusted_action = base_action
+                else:
+                    adjusted_action = base_action
+                
+                result[key] = {
+                    "action": adjusted_action,
+                    "bubble_factor": our_bubble,
+                    "icm_equity": icm_data['equities'][our_idx] if our_idx < len(icm_data['equities']) else 0.5,
+                    "chip_equity": icm_data['chip_equities'][our_idx] if our_idx < len(icm_data['chip_equities']) else 0.5,
+                }
+        
+        return result
+    
+    @classmethod
+    def get_spot_analysis(
+        cls,
+        stack_bb: int,
+        position: str,
+        opp_stack_bb: float,
+        hand: str,
+        stacks: list[float],
+        prize_pool: float = 1.0,
+    ) -> dict:
+        """
+        Analyze a specific push/fold spot with ICM adjustments.
+        
+        Args:
+            stack_bb: Our stack in big blinds
+            position: Our position
+            opp_stack_bb: Opponent stack in big blinds
+            hand: Our hand string like 'AKs', 'TT'
+            stacks: All stacks for ICM
+            prize_pool: Prize pool for ICM
+        
+        Returns:
+            Dict with analysis: recommended_action, ev_break_even, 
+            min_equity_needed, icm_adjacent
+        """
+        from gto_poker.icm import get_standard_prizes, icm_for_push_fold
+        
+        result = {
+            "hand": hand,
+            "stack_bb": stack_bb,
+            "position": position,
+            "opp_stack_bb": opp_stack_bb,
+        }
+        
+        # Parse hand
+        rank1, rank2, suited = parse_hand_string(hand)
+        
+        # Get push/fold action from standard chart
+        base_chart = cls.generate_nash_chart(stack_bb, position)
+        r1_idx = RANK_INDICES[rank1]
+        r2_idx = RANK_INDICES[rank2]
+        key = (rank1, rank2) if r1_idx >= r2_idx else (rank2, rank1)
+        base_action = base_chart.get(key, "fold")
+        result["base_push"] = (base_action == "push")
+        
+        # Get ICM data
+        n = len(stacks)
+        prizes = get_standard_prizes(n, prize_pool)
+        icm_data = icm_for_push_fold(stacks, prizes)
+        
+        our_idx = cls.POSITIONS.index(position) if position in cls.POSITIONS else 0
+        result["bubble_factor"] = icm_data['bubble_factors'][our_idx] if our_idx < len(icm_data['bubble_factors']) else 1.0
+        result["icm_equity"] = icm_data['equities'][our_idx] if our_idx < len(icm_data['equities']) else 0.5
+        result["chip_equity"] = icm_data['chip_equities'][our_idx] if our_idx < len(icm_data['chip_equities']) else 0.5
+        
+        # Estimate minimum equity needed to call
+        # Rough approximation: risk/reward based on stacks and bubble
+        pot_after_call = stacks[our_idx] + opp_stack_bb  # Simplified
+        risk = stack_bb
+        reward = pot_after_call / 2  # Assume win half the pot on average
+        
+        min_equity = risk / (risk + reward) if (risk + reward) > 0 else 0.5
+        
+        # Adjust for bubble factor - higher bubble means call needs more equity
+        result["min_equity_raw"] = min_equity
+        result["min_equity_icm_adjusted"] = min_equity * result["bubble_factor"]
+        
+        # Final recommendation
+        if result["bubble_factor"] > 1.3:
+            result["recommended_action"] = "fold" if stack_bb < 20 else "fold"
+            result["icm_note"] = "High bubble - play tight"
+        elif result["bubble_factor"] > 1.1:
+            result["recommended_action"] = base_action
+            result["icm_note"] = "Moderate bubble - standard play"
+        else:
+            result["recommended_action"] = base_action
+            result["icm_note"] = "Normal ICM - follow standard chart"
+        
+        return result
 
 
 def get_hand_string(rank1: str, rank2: str, suited: bool) -> str:

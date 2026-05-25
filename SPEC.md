@@ -5,7 +5,7 @@
 Open-source GTO poker training platform with equity calculator, CFR solver, training modes, hand history analysis, and ICM calculator.
 
 **Created:** 2026-05-25
-**Status:** Planning
+**Status:** In Development
 
 ---
 

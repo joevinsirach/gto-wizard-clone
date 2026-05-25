@@ -26,4 +26,4 @@ export type {
 } from "./HandViewer";
 export { HandViewer } from "./HandViewer";
 export type { LeakEntry } from "./LeakChart";
-export { LeakChart } from "./LeakChart";
+export { LeakChart, MOCK_LEAKS } from "./LeakChart";
