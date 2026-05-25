@@ -57,42 +57,61 @@ export function Card({ title, children, className = '' }: CardProps) {
 
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const
 
+function getHand(row: number, col: number): string {
+  const rank1 = RANKS[row]
+  const rank2 = RANKS[col]
+  if (row === col) return `${rank1}${rank2}`
+  if (col > row) return `${rank1}${rank2}s` // suited
+  return `${rank1}${rank2}o` // offsuit
+}
+
 interface RangeGridProps {
   selectedHands: Set<string>
   onToggle: (hand: string) => void
 }
 
 export function RangeGrid({ selectedHands, onToggle }: RangeGridProps) {
-  const getHand = (row: number, col: number) => {
-    const rank1 = RANKS[row]
-    const rank2 = RANKS[col]
-    if (row === col) return `${rank1}${rank2}`
-    return `${rank1}${rank2}o`
-  }
-
   const isSelected = (hand: string) => selectedHands.has(hand)
 
   return (
-    <div className="grid grid-cols-13 gap-0.5 bg-gray-800 p-2 rounded-lg">
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 2rem)', gap: '2px', background: '#1f2937', padding: '8px', borderRadius: '8px' }}>
+      {/* Empty top-left corner cell */}
+      <div className="w-8 h-8" />
+      {/* Column headers (second card) */}
+      {RANKS.map((rank) => (
+        <div key={`ch-${rank}`} className="w-8 h-8 flex items-center justify-center text-xs font-semibold text-gray-400">
+          {rank}
+        </div>
+      ))}
+      {/* Rows */}
       {RANKS.map((rank, row) => (
-        <div key={rank} className="contents">
+        <React.Fragment key={rank}>
+          {/* Row header (first card) */}
+          <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold text-gray-400">
+            {rank}
+          </div>
+          {/* Hand cells */}
           {RANKS.map((_, col) => {
             const hand = getHand(row, col)
+            const suited = col > row
+            const offsuit = col < row
+            const isPair = row === col
             return (
               <button
                 key={hand}
                 onClick={() => onToggle(hand)}
-                className={`w-8 h-8 text-xs font-medium rounded transition-colors ${
+                className={`w-8 h-8 text-xs font-medium rounded transition-colors flex items-center justify-center ${
                   isSelected(hand)
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                }`}
+                } ${suited ? 'text-green-400' : ''} ${offsuit ? 'text-orange-400' : ''} ${isPair ? 'text-yellow-400' : ''}`}
+                title={`${hand}${suited ? ' (suited)' : offsuit ? ' (offsuit)' : ' (pair)'}`}
               >
                 {hand}
               </button>
             )
           })}
-        </div>
+        </React.Fragment>
       ))}
     </div>
   )
