@@ -1,417 +1,344 @@
 """
-Strategy API router for push/fold charts.
+Strategy storage API router.
 
 Provides endpoints for:
-- Retrieving push/fold charts by stack depth and position
-- Looking up specific hand actions
-- Generating and storing new charts
+- Storing GTO strategies in Redis
+- Retrieving strategies by key
+- Looking up strategies by parameters
+
+Key format: nlh:2:{board}:{stack}:{bets}
+Example: nlh:2:preflop:100:
 """
+
+import json
+import logging
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Dict, List, Optional, Any
-import logging
 
-import sys
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
-
-from strategy.push_fold_charts import (
-    PushFoldCharts,
-    RANK_INDICES,
-)
-
-from strategy.chart_generator import (
-    generate_nash_push_chart,
-    chart_to_json_serializable,
-    lookup_hand,
-    parse_hand_string,
-)
+from apps.api.services.redis_service import RedisService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/strategy", tags=["strategy"])
 
 
-class ChartResponse(BaseModel):
-    """Response model for push/fold chart."""
-    stack_depth: int
-    position: str
-    chart: Dict[str, str]
-    key: str
-
-
-class HandLookupResponse(BaseModel):
-    """Response model for hand lookup."""
+class StrategyAction(BaseModel):
+    """Single action in a strategy."""
     hand: str
-    rank1: str
-    rank2: str
-    suited: bool
-    stack_depth: int
-    position: str
     action: str
+    frequency: float = 1.0
+    ev: float = 0.0
 
 
-class HealthResponse(BaseModel):
-    """Response model for health check."""
-    status: str
-    supported_stack_sizes: List[int]
-    supported_positions: List[str]
+class StrategyStoreRequest(BaseModel):
+    """Request model for storing a strategy."""
+    game_type: str = "nlh"
+    players: int = 2
+    board: str = "preflop"
+    stack_depth: int
+    bet_sizes: List[int] = []
+    strategy_data: List[Dict[str, Any]]
+    pot_size: int = 100
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Check which stack sizes and positions are supported."""
-    return HealthResponse(
-        status="ok",
-        supported_stack_sizes=PushFoldCharts.STACK_SIZES,
-        supported_positions=PushFoldCharts.POSITIONS,
-    )
+class StrategyResponse(BaseModel):
+    """Response model for strategy retrieval."""
+    key: str
+    game_type: str
+    players: int
+    board: str
+    stack_depth: int
+    bet_sizes: List[int]
+    pot_size: int
+    strategy_data: List[Dict[str, Any]]
+    status: str = "found"
 
 
-@router.get("/push-fold/{stack_depth}/{position}", response_model=ChartResponse)
-async def get_push_fold_chart(stack_depth: int, position: str):
+class StrategyKeyResponse(BaseModel):
+    """Response model for key generation."""
+    key: str
+    message: str
+
+
+class LookupQuery(BaseModel):
+    """Query parameters for strategy lookup."""
+    game_type: str = Query("nlh", description="Game type (nlh, plo)")
+    players: int = Query(2, description="Number of players")
+    board: str = Query("preflop", description="Board cards or 'preflop'")
+    stack_depth: int = Query(100, description="Stack depth in big blinds")
+    bet_sizes: List[int] = Query([], description="Bet sizes")
+
+
+def make_strategy_key(
+    game_type: str,
+    players: int,
+    board: str,
+    bet_sizes: List[int],
+    stack_depth: int,
+) -> str:
+    """Generate a strategy key."""
+    bet_sizes_str = ",".join(map(str, sorted(bet_sizes))) if bet_sizes else ""
+    return f"nlh:2:{board}:{stack_depth}:{bet_sizes_str}"
+
+
+def parse_strategy_key(key: str) -> Dict[str, Any]:
+    """Parse a strategy key into its components."""
+    parts = key.split(":")
+    if len(parts) < 5:
+        raise ValueError(f"Invalid strategy key format: {key}")
+    
+    game_type, players, board, stack_depth, bet_sizes_str = parts[:5]
+    bet_sizes = []
+    if bet_sizes_str:
+        bet_sizes = [int(x) for x in bet_sizes_str.split(",")]
+    
+    return {
+        "game_type": game_type,
+        "players": int(players),
+        "board": board,
+        "stack_depth": int(stack_depth),
+        "bet_sizes": bet_sizes,
+    }
+
+
+@router.post("", response_model=StrategyKeyResponse)
+async def store_strategy(request: StrategyStoreRequest):
     """
-    Get push/fold chart for a specific stack depth and position.
+    Store a GTO strategy in Redis.
     
-    Args:
-        stack_depth: Stack size in big blinds (10, 20, 40, 60, or 100)
-        position: Position name (UTG, MP, CO, BTN, SB, BB)
-        
-    Returns:
-        ChartResponse with the push/fold chart
-        
-    Raises:
-        HTTPException: If stack_depth or position is not supported
+    The strategy key format: {game_type}:{players}:{board}:{stack_depth}:{bet_sizes}
+    Example: nlh:2:preflop:100:
+    
+    Returns the generated key for the stored strategy.
     """
-    # Validate stack depth
-    if stack_depth not in PushFoldCharts.STACK_SIZES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported stack depth: {stack_depth}. "
-                   f"Supported: {PushFoldCharts.STACK_SIZES}"
-        )
-    
-    # Validate position
-    position = position.upper()
-    if position not in PushFoldCharts.POSITIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported position: {position}. "
-                   f"Supported: {PushFoldCharts.POSITIONS}"
-        )
-    
-    # Generate chart
-    chart = generate_nash_push_chart(stack_depth, position)
-    json_chart = chart_to_json_serializable(chart)
+    redis_service = RedisService.get_instance()
     
     # Generate strategy key
-    strategy_key = f"nlh:2:preflop:{stack_depth}:{position.lower()}"
-    
-    return ChartResponse(
-        stack_depth=stack_depth,
-        position=position,
-        chart=json_chart,
-        key=strategy_key,
+    key = make_strategy_key(
+        request.game_type,
+        request.players,
+        request.board,
+        request.bet_sizes,
+        request.stack_depth,
     )
-
-
-@router.get("/lookup/{hand}/{stack_depth}/{position}", response_model=HandLookupResponse)
-async def lookup_hand_action(
-    hand: str,
-    stack_depth: int,
-    position: str,
-):
-    """
-    Get the recommended action for a specific hand.
     
-    Args:
-        hand: Hand string like 'AKs', 'TT', '72o'
-        stack_depth: Stack size in big blinds
-        position: Position name
-        
-    Returns:
-        HandLookupResponse with action details
-        
-    Raises:
-        HTTPException: If hand format is invalid or stack/position unsupported
-    """
-    # Validate stack depth
-    if stack_depth not in PushFoldCharts.STACK_SIZES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported stack depth: {stack_depth}. "
-                   f"Supported: {PushFoldCharts.STACK_SIZES}"
-        )
+    # Prepare strategy data for storage
+    strategy_record = {
+        "key": key,
+        "game_type": request.game_type,
+        "players": request.players,
+        "board": request.board,
+        "stack_depth": request.stack_depth,
+        "bet_sizes": request.bet_sizes,
+        "pot_size": request.pot_size,
+        "strategy_data": request.strategy_data,
+    }
     
-    # Validate position
-    position = position.upper()
-    if position not in PushFoldCharts.POSITIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported position: {position}. "
-                   f"Supported: {PushFoldCharts.POSITIONS}"
-        )
-    
-    # Parse hand string
     try:
-        rank1, rank2, suited = parse_hand_string(hand)
+        # Store in Redis with 7 day TTL
+        redis_service.client.set(
+            f"strategy:{key}",
+            json.dumps(strategy_record),
+            ex=604800,  # 7 days
+        )
+        
+        # Also add to index for lookup queries
+        index_key = f"strategy:index:{request.game_type}:{request.players}:{request.board}"
+        redis_service.client.zadd(index_key, {key: request.stack_depth})
+        
+        logger.info(f"Stored strategy: {key} with {len(request.strategy_data)} actions")
+        
+        return StrategyKeyResponse(
+            key=key,
+            message=f"Strategy stored successfully with {len(request.strategy_data)} actions",
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to store strategy {key}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to store strategy: {str(e)}")
+
+
+@router.get("/{key}", response_model=StrategyResponse)
+async def get_strategy(key: str):
+    """
+    Retrieve a stored strategy by key.
+    
+    Key format: nlh:2:{board}:{stack_depth}:{bet_sizes}
+    Example: nlh:2:preflop:100:
+    """
+    redis_service = RedisService.get_instance()
+    
+    try:
+        # Parse key to validate format
+        parse_strategy_key(key)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-    # Get chart and lookup action
-    chart = generate_nash_push_chart(stack_depth, position)
-    action = lookup_hand(chart, hand)
-    
-    return HandLookupResponse(
-        hand=hand,
-        rank1=rank1,
-        rank2=rank2,
-        suited=suited,
-        stack_depth=stack_depth,
-        position=position,
-        action=action,
-    )
-
-
-@router.get("/lookup-matrix/{stack_depth}/{position}")
-async def get_lookup_matrix(
-    stack_depth: int,
-    position: str,
-) -> Dict[str, Any]:
-    """
-    Get a 13x13 lookup matrix for UI display.
-    
-    Returns a matrix format suitable for rendering a push/fold grid.
-    
-    Args:
-        stack_depth: Stack size in big blinds
-        position: Position name
+    try:
+        data = redis_service.client.get(f"strategy:{key}")
         
-    Returns:
-        Matrix data with actions for each cell
-    """
-    # Validate inputs
-    if stack_depth not in PushFoldCharts.STACK_SIZES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported stack depth: {stack_depth}"
+        if not data:
+            raise HTTPException(status_code=404, detail=f"Strategy not found: {key}")
+        
+        strategy = json.loads(data)
+        
+        return StrategyResponse(
+            key=strategy["key"],
+            game_type=strategy["game_type"],
+            players=strategy["players"],
+            board=strategy["board"],
+            stack_depth=strategy["stack_depth"],
+            bet_sizes=strategy["bet_sizes"],
+            pot_size=strategy["pot_size"],
+            strategy_data=strategy["strategy_data"],
+            status="found",
         )
-    
-    position = position.upper()
-    if position not in PushFoldCharts.POSITIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported position: {position}"
-        )
-    
-    chart = generate_nash_push_chart(stack_depth, position)
-    json_chart = chart_to_json_serializable(chart)
-    
-    # Build matrix
-    matrix = []
-    ranks = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"]
-    
-    for r1 in ranks:
-        row = []
-        for r2 in ranks:
-            # Determine suited status
-            if r1 == r2:
-                hand_str = f"{r1}{r2}"
-                suited = True  # Pocket pairs treated as suited for display
-            else:
-                r1_idx = RANK_INDICES[r1]
-                r2_idx = RANK_INDICES[r2]
-                if r1_idx > r2_idx:
-                    hi, lo = r1, r2
-                else:
-                    hi, lo = r2, r1
-                # Check if suited in original chart
-                suited = False
-                for hand_key, action in chart.items():
-                    if len(hand_key) == 2:
-                        k1, k2 = hand_key
-                        if (k1 == hi and k2 == lo) or (k1 == lo and k2 == hi):
-                            # Found the hand, need to determine suited
-                            # For now, assume offsuit unless explicitly suited
-                            suited = False
-                            break
-            
-            # Lookup action
-            if r1 == r2:
-                hand_str = f"{r1}{r2}"
-            else:
-                r1_idx = RANK_INDICES[r1]
-                r2_idx = RANK_INDICES[r2]
-                if r1_idx > r2_idx:
-                    hi, lo = r1, r2
-                    suited_flag = False
-                else:
-                    hi, lo = r2, r1
-                    suited_flag = True
-                suffix = 's' if suited_flag else 'o'
-                hand_str = f"{hi}{lo}{suffix}"
-            
-            action = json_chart.get(hand_str, "fold")
-            
-            row.append({
-                "hand": hand_str,
-                "action": action,
-                "suited": suited_flag if r1 != r2 else True,
-            })
-        matrix.append(row)
-    
-    return {
-        "stack_depth": stack_depth,
-        "position": position,
-        "ranks": ranks,
-        "matrix": matrix,
-    }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve strategy {key}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve strategy: {str(e)}")
 
 
-@router.get("/{spot_id}", response_model=Dict)
-async def get_strategy_by_spot_id(
-    spot_id: str,
-    board: Optional[str] = Query(None, description="Board cards (e.g., Kd7h2c)"),
-    stack_depth: Optional[int] = Query(None, description="Stack depth in big blinds"),
-    bet_size: Optional[int] = Query(None, description="Bet size in big blinds"),
-    players: Optional[int] = Query(2, description="Number of players"),
+@router.get("/lookup", response_model=StrategyResponse)
+async def lookup_strategy(
+    game_type: str = Query("nlh", description="Game type (nlh, plo)"),
+    players: int = Query(2, description="Number of players"),
+    board: str = Query("preflop", description="Board cards or 'preflop'"),
+    stack_depth: int = Query(100, description="Stack depth in big blinds"),
+    bet_sizes: str = Query("", description="Comma-separated bet sizes"),
 ):
     """
-    Retrieve a stored strategy by spot ID or parameters.
+    Look up a strategy by its parameters.
     
-    Query params are used to construct the strategy key if spot_id is not a direct lookup.
-    
-    Strategy key format: {game_type}:{players}:{board}:{bet_sizes}:{stack_depth}
-    Example: nlh:2:flop:Kd7h2c:100
+    Query parameters:
+    - game_type: Game type (nlh, plo)
+    - players: Number of players
+    - board: Board cards or 'preflop'
+    - stack_depth: Stack depth in big blinds
+    - bet_sizes: Comma-separated bet sizes (optional)
     """
-    from apps.api.services.strategy_storage import StrategyStorageService
+    redis_service = RedisService.get_instance()
     
-    storage = StrategyStorageService()
+    # Parse bet sizes
+    bet_sizes_list = []
+    if bet_sizes:
+        try:
+            bet_sizes_list = [int(x.strip()) for x in bet_sizes.split(",")]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid bet_sizes format")
     
-    # Try to find by spot_id directly first
-    strategy = storage.get_strategy(spot_id)
+    # Build strategy key
+    key = make_strategy_key(game_type, players, board, bet_sizes_list, stack_depth)
     
-    if strategy:
-        return {
-            "spot_id": spot_id,
-            "status": "found",
-            "strategy": storage.to_json(strategy),
-            "actions": strategy.strategy_data,
-        }
-    
-    # Build strategy key from parameters
-    if board is None:
-        board = "preflop"
-    if stack_depth is None:
-        stack_depth = 100
-    
-    bet_sizes = [bet_size] if bet_size else []
-    
-    strategy = storage.get_strategy_by_params(
-        game_type="nlh",
-        players=players,
-        board=board,
-        stack_depth=stack_depth,
-        bet_sizes=bet_sizes,
-    )
-    
-    if strategy:
-        return {
-            "spot_id": spot_id,
-            "status": "found",
-            "key": strategy.key,
-            "actions": strategy.strategy_data,
-            "game_type": strategy.game_type,
-            "players": strategy.players,
-            "board": strategy.board,
-            "stack_depth": strategy.stack_depth,
-        }
-    
-    # Generate on-demand if not found
-    chart = generate_nash_push_chart(stack_depth, "BTN")
-    json_chart = chart_to_json_serializable(chart)
-    
-    # Convert chart to action list format
-    actions = []
-    for hand, action in json_chart.items():
-        actions.append({
-            "hand": hand,
-            "action": action,
-            "frequency": 1.0 if action == "push" else 0.5,
-            "ev": 0.0,
-        })
-    
-    return {
-        "spot_id": spot_id,
-        "status": "generated",
-        "key": f"nlh:{players}:{board}::{stack_depth}",
-        "actions": actions,
-        "game_type": "nlh",
-        "players": players,
-        "board": board,
-        "stack_depth": stack_depth,
-        "message": "Strategy generated on-demand",
-    }
-
-
-@router.post("/store/{stack_depth}/{position}")
-async def store_chart(
-    stack_depth: int,
-    position: str,
-    chart_data: Dict[str, str],
-) -> Dict[str, str]:
-    """
-    Store a custom push/fold chart.
-    
-    Args:
-        stack_depth: Stack size in big blinds
-        position: Position name
-        chart_data: Chart dictionary
+    try:
+        data = redis_service.client.get(f"strategy:{key}")
         
-    Returns:
-        Confirmation with strategy key
-    """
-    if stack_depth not in PushFoldCharts.STACK_SIZES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported stack depth: {stack_depth}"
+        if not data:
+            # Try to find closest match in index
+            index_key = f"strategy:index:{game_type}:{players}:{board}"
+            candidates = redis_service.client.zrangebyscore(
+                index_key, stack_depth, stack_depth
+            )
+            
+            if candidates:
+                # Try first candidate
+                key = candidates[0].decode() if isinstance(candidates[0], bytes) else candidates[0]
+                data = redis_service.client.get(f"strategy:{key}")
+            
+            if not data:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Strategy not found for: game={game_type}, board={board}, stack={stack_depth}"
+                )
+        
+        strategy = json.loads(data)
+        
+        return StrategyResponse(
+            key=strategy["key"],
+            game_type=strategy["game_type"],
+            players=strategy["players"],
+            board=strategy["board"],
+            stack_depth=strategy["stack_depth"],
+            bet_sizes=strategy["bet_sizes"],
+            pot_size=strategy["pot_size"],
+            strategy_data=strategy["strategy_data"],
+            status="found",
         )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to lookup strategy: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to lookup strategy: {str(e)}")
+
+
+@router.delete("/{key}")
+async def delete_strategy(key: str):
+    """Delete a stored strategy by key."""
+    redis_service = RedisService.get_instance()
     
-    position = position.upper()
-    if position not in PushFoldCharts.POSITIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported position: {position}"
-        )
+    try:
+        parse_strategy_key(key)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
-    strategy_key = f"nlh:2:preflop:{stack_depth}:{position.lower()}"
+    try:
+        data = redis_service.client.get(f"strategy:{key}")
+        if not data:
+            raise HTTPException(status_code=404, detail=f"Strategy not found: {key}")
+        
+        strategy = json.loads(data)
+        
+        # Delete strategy
+        redis_service.client.delete(f"strategy:{key}")
+        
+        # Remove from index
+        index_key = f"strategy:index:{strategy['game_type']}:{strategy['players']}:{strategy['board']}"
+        redis_service.client.zrem(index_key, key)
+        
+        return {"status": "deleted", "key": key}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete strategy {key}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete strategy: {str(e)}")
+
+
+@router.get("")
+async def list_strategies(
+    game_type: str = Query("nlh", description="Game type"),
+    players: int = Query(2, description="Number of players"),
+    board: str = Query("preflop", description="Board cards or 'preflop'"),
+    limit: int = Query(10, description="Max results to return"),
+):
+    """List available strategies for given parameters."""
+    redis_service = RedisService.get_instance()
     
-    # Store via strategy storage service
-    from apps.api.services.strategy_storage import StrategyStorageService
-    storage = StrategyStorageService()
+    index_key = f"strategy:index:{game_type}:{players}:{board}"
     
-    # Convert chart_data to action format
-    strategy_data = []
-    for hand, action in chart_data.items():
-        strategy_data.append({
-            "hand": hand,
-            "action": action,
-            "frequency": 1.0,
-            "ev": 0.0,
-        })
-    
-    storage.store_strategy(
-        game_type="nlh",
-        players=2,
-        board="preflop",
-        stack_depth=stack_depth,
-        strategy_data=strategy_data,
-        bet_sizes=[],
-    )
-    
-    logger.info(f"Stored chart: {strategy_key}")
-    
-    return {
-        "status": "stored",
-        "key": strategy_key,
-        "message": "Chart stored successfully",
-    }
+    try:
+        # Get strategies sorted by stack depth
+        keys = redis_service.client.zrevrange(index_key, 0, limit - 1)
+        
+        strategies = []
+        for k in keys:
+            key = k.decode() if isinstance(k, bytes) else k
+            data = redis_service.client.get(f"strategy:{key}")
+            if data:
+                strategies.append(json.loads(data))
+        
+        return {
+            "game_type": game_type,
+            "players": players,
+            "board": board,
+            "count": len(strategies),
+            "strategies": strategies,
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to list strategies: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list strategies: {str(e)}")
