@@ -8,7 +8,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from routers import equity, solver, auth
+from routers import equity, solver, auth, hh
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(equity.router)
 app.include_router(solver.router)
 app.include_router(auth.router)
+app.include_router(hh.router)
 
 @app.get("/")
 async def root():
