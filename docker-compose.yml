@@ -67,6 +67,27 @@ services:
       - gto-network
     volumes:
       - ./apps/solver:/app
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - gto-network
+    volumes:
+      - ./apps/worker:/app
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
+    command: celery -A apps.worker.celery_app worker --loglevel=info --concurrency=4
 
   web:
     build:

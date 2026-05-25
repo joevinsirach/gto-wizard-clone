@@ -11,7 +11,7 @@ from datetime import datetime
 
 import redis
 
-from routers import equity, solver, auth, hh
+from routers import equity, solver, auth, hh, strategy
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -55,6 +55,7 @@ app.include_router(equity.router)
 app.include_router(solver.router)
 app.include_router(auth.router)
 app.include_router(hh.router)
+app.include_router(strategy.router)
 
 @app.get("/")
 async def root():
