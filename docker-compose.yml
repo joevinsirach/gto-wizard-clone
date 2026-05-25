@@ -37,39 +37,17 @@ services:
       dockerfile: apps/api/Dockerfile
     ports:
       - "8000:8000"
+    networks:
+      - gto-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
       REDIS_URL: redis://redis:6379/0
-      NODE_ENV: development
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - gto-network
-    volumes:
-      - ./apps/api:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
-  solver:
-    build:
-      context: .
-      dockerfile: apps/solver/Dockerfile
-    ports:
-      - "50051:50051"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - gto-network
-    volumes:
-      - ./apps/solver:/app
-    environment:
-      REDIS_URL: redis://redis:6379/0
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
 
   worker:
     build:
@@ -82,12 +60,22 @@ services:
         condition: service_healthy
     networks:
       - gto-network
-    volumes:
-      - ./apps/worker:/app
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A apps.worker.celery_app worker --loglevel=info --concurrency=4
+
+  solver:
+    build:
+      context: .
+      dockerfile: apps/solver/Dockerfile
+    networks:
+      - gto-network
+    depends_on:
+      - redis
     environment:
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
-    command: celery -A apps.worker.celery_app worker --loglevel=info --concurrency=4
 
   web:
     build:
@@ -97,6 +85,7 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://api:8000
     depends_on:
       - api
     networks:

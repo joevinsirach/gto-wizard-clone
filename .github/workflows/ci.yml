@@ -1,22 +1,99 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
-  python:
+  # Detect which paths changed
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      api: ${{ steps.filter.outputs.api }}
+      solver: ${{ steps.filter.outputs.solver }}
+      poker-core: ${{ steps.filter.outputs.poker-core }}
+      ui-components: ${{ steps.filter.outputs.ui-components }}
+      types: ${{ steps.filter.outputs.types }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'packages/ui-components/**'
+              - 'packages/types/**'
+            api:
+              - 'apps/api/**'
+            solver:
+              - 'apps/solver/**'
+            poker-core:
+              - 'packages/poker-core/**'
+            ui-components:
+              - 'packages/ui-components/**'
+            types:
+              - 'packages/types/**'
+
+  # Python lint (always runs)
+  lint-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: pip install -e apps/solver/
-      - run: python -m pytest apps/solver/tests/ -v || true
+        with:
+          python-version: '3.12'
+      - run: pip install ruff
+      - run: ruff check apps/api apps/solver packages/poker-core
 
-  node:
+  # Core package tests
+  test-core:
     runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.poker-core == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e packages/poker-core pytest pytest-cov
+      - run: python -m pytest packages/poker-core/tests/ -v --cov=gto_poker --cov-report=term-missing
+
+  # API tests
+  test-api:
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.api == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r apps/api/requirements.txt pytest pytest-asyncio
+      - run: python -m pytest apps/api/tests/ -v
+
+  # Solver tests
+  test-solver:
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.solver == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e packages/poker-core pytest numpy numba
+      - run: python -m pytest apps/solver/tests/ -v
+
+  # Web build
+  build-web:
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.web == 'true' || needs.detect-changes.outputs.ui-components == 'true' || needs.detect-changes.outputs.types == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with:
+          node-version: '20'
+          cache: 'npm'
       - run: npm install
-      - run: npm run build --workspace=apps/web || true
+      - run: npm run build
+        working-directory: apps/web
