@@ -4,9 +4,12 @@ REST API + WebSocket server for poker training platform
 """
 
 import logging
+import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+
+import redis
 
 from routers import equity, solver, auth, hh
 
@@ -19,6 +22,24 @@ app = FastAPI(
     version="0.1.0",
     description="Backend API for GTO poker training platform"
 )
+
+
+def init_redis(app: FastAPI):
+    """Initialize Redis connection on startup."""
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    try:
+        client = redis.from_url(redis_url, decode_responses=True)
+        client.ping()
+        app.state.redis = client
+        logger.info(f"Redis connected: {redis_url}")
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e}. Caching disabled.")
+        app.state.redis = None
+
+
+@app.on_event("startup")
+async def startup_event():
+    init_redis(app)
 
 # CORS middleware
 app.add_middleware(
