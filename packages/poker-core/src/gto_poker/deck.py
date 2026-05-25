@@ -6,8 +6,8 @@ import random
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
 SUITS = ["h", "d", "c", "s"]  # hearts, diamonds, clubs, spades
 
-# Rank indices for comparison
-RANK_ORDER = {r: i for i, r in enumerate(reversed(RANKS))}  # 2=0, 3=1, ..., A=12
+# Rank indices for comparison — A is high (12), 2 is low (0)
+RANK_ORDER = {r: i for i, r in enumerate(RANKS)}  # 2=0, 3=1, ..., A=12
 
 
 class Card:

@@ -95,7 +95,8 @@ class RangeParser:
     def _expand_hand(self, hand_str: str) -> Set[str]:
         """Expand a single hand into all suit combinations"""
         hands = set()
-        
+        hand_str = hand_str.upper()  # Normalize input
+
         if len(hand_str) == 2:
             # Pair: 'QQ' -> QhQd, QhQc, QhQs, QdQc, QdQs, QcQs
             rank = hand_str[0]
@@ -108,14 +109,18 @@ class RangeParser:
                 for s in SUITS:
                     hands.add(f"{r1}{s}{r2}{s}")
             elif suit_type == 'O':  # Offsuit
-                for s1, s2 in combinations(SUITS, 2):
-                    hands.add(f"{r1}{s1}{r2}{s2}")
+                for s1 in SUITS:
+                    for s2 in SUITS:
+                        if s1 != s2:  # Different suits for offsuit
+                            hands.add(f"{r1}{s1}{r2}{s2}")
             else:
                 hands.add(hand_str)
         elif len(hand_str) == 4:
-            # Specific combo: 'AhKd'
-            hands.add(hand_str)
-        
+            # Specific combo: 'AhKd' or 'AHKH' -> normalize to 'AhKd'
+            # Try to parse as rank1, suit1, rank2, suit2
+            r1, s1, r2, s2 = hand_str[0], hand_str[1].lower(), hand_str[2], hand_str[3].lower()
+            hands.add(f"{r1}{s1}{r2}{s2}")
+
         return hands
     
     def range_to_combos(self, range_str: str) -> List[List[Card]]:

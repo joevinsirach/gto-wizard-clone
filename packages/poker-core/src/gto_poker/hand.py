@@ -101,24 +101,30 @@ class Hand:
         is_flush = all(s == suits[0] for s in suits)
         
         # Check straight
-        unique_sorted = sorted(set(ranks))
+        # Sort ranks descending so we can check consecutive descending
+        unique_sorted_desc = sorted(set(ranks), reverse=True)
         is_straight = False
         straight_high = None
-        
-        # Normal straight
-        if len(unique_sorted) >= 5:
-            for i in range(len(unique_sorted) - 4):
-                if unique_sorted[i] - unique_sorted[i+4] == 4:
+
+        # Normal straight — consecutive ranks descending (e.g., 11,10,9,8,7 = K,Q,J,T,9)
+        if len(unique_sorted_desc) >= 5:
+            for i in range(len(unique_sorted_desc) - 4):
+                # Check if each consecutive pair differs by 1 (descending order: 11→10→9→8→7)
+                consecutive = all(
+                    unique_sorted_desc[j] - unique_sorted_desc[j + 1] == 1
+                    for j in range(i, i + 4)
+                )
+                if consecutive:
                     is_straight = True
-                    straight_high = unique_sorted[i]
+                    straight_high = unique_sorted_desc[i]  # highest card in the straight
                     break
-        
-        # Ace-low straight (A-2-3-4-5)
-        if 12 in unique_sorted and 0 in unique_sorted:
-            possible = [12, 0, 1, 2, 3]
-            if all(r in unique_sorted for r in possible):
+
+        # Ace-low straight (A-2-3-4-5): ranks 12, 0, 1, 2, 3
+        if 12 in unique_sorted_desc and 0 in unique_sorted_desc:
+            wheel_cards = {12, 0, 1, 2, 3}
+            if wheel_cards.issubset(set(unique_sorted_desc)):
                 is_straight = True
-                straight_high = 3  # 5-high straight
+                straight_high = 3  # 5-high straight (Ace plays low)
         
         # Determine hand type
         if is_flush and is_straight:
