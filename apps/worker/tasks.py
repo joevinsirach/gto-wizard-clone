@@ -23,12 +23,13 @@ logger = logging.getLogger(__name__)
 # Redis connection pool for pub/sub
 _redis_pool = redis.ConnectionPool.from_url(
     celery_app.conf.broker_url or "redis://localhost:6379/0",
-    decode_responses=True
+    max_connections=50,
+    decode_responses=True,
 )
 
 
 def get_redis_client() -> redis.Redis:
-    """Get a Redis client from the connection pool."""
+    """Get Redis client from connection pool."""
     return redis.Redis(connection_pool=_redis_pool)
 
 
@@ -82,6 +83,8 @@ def solve_spot(self, params: Dict[str, Any]) -> Dict[str, Any]:
             - bet_sizes: List[int] or None
             - iterations: int (CFR iterations)
             - job_id: str (optional, generated if not provided)
+            - p0_cards: List[str] - Player 0 hole cards like ["Ac", "Kd"]
+            - p1_cards: List[str] - Player 1 hole cards like ["Qs", "Js"]
     
     Returns:
         Dictionary with job_id, status, progress, and strategy data
@@ -96,6 +99,8 @@ def solve_spot(self, params: Dict[str, Any]) -> Dict[str, Any]:
     stack_depth = params.get("stack_depth", 100)
     bet_sizes = params.get("bet_sizes")
     iterations = params.get("iterations", 1000)
+    p0_cards = params.get("p0_cards", ["Ac", "Kd"])
+    p1_cards = params.get("p1_cards", ["Qs", "Js"])
     
     logger.info(f"Starting solve task {job_id}: game={game_type}, players={players}, "
                 f"board={board}, stack={stack_depth}, iterations={iterations}")
@@ -104,53 +109,84 @@ def solve_spot(self, params: Dict[str, Any]) -> Dict[str, Any]:
     publish_progress(job_id, 0, "running", {"stage": "initializing"})
     
     try:
-        # Import solver components here to avoid circular imports
+        # Import CFR components
         import sys
         sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
         
-        from solver.service import SolverServicer
-        from solver_pb2 import SolveRequest, SolveResponse
+        from cfr.engine import solve_river, CFREngine
+        from games.texas_hold_em import TexasHoldEm, create_river_state
         
-        # Create solver instance
-        solver = SolverServicer()
+        # Default bet sizes if not provided
+        if bet_sizes is None:
+            bet_sizes = [0.5, 1.0]
         
-        # Build gRPC request
-        request = SolveRequest(
-            game_type=game_type,
-            players=players,
-            board=board or "",
-            pot_size=pot_size,
-            stack_depth=stack_depth,
-            iterations=iterations,
+        # Parse board cards if provided as string
+        board_cards = []
+        if board:
+            if isinstance(board, str):
+                board_cards = board.split(",")
+            else:
+                board_cards = board
+        
+        # Create progress callback for CFR iterations
+        def progress_callback(iteration: int, infoset_manager):
+            """Callback to publish progress during CFR solving."""
+            if iteration % max(1, iterations // 20) == 0:
+                progress = min(int(iteration / iterations * 100), 99)
+                publish_progress(
+                    job_id, 
+                    progress, 
+                    "running", 
+                    {
+                        "stage": "solving",
+                        "iteration": iteration,
+                        "total_iterations": iterations,
+                        "infosets": len(infoset_manager.all_infosets()) if infoset_manager else 0
+                    }
+                )
+        
+        publish_progress(job_id, 5, "running", {"stage": "building_state"})
+        
+        # Build initial game state for river solver
+        stacks = [float(stack_depth), float(stack_depth)]
+        
+        # Create the river state
+        state = create_river_state(
+            p0_cards=p0_cards,
+            p1_cards=p1_cards,
+            board=board_cards if board_cards else ["Kh", "8c", "3d", "2s", "Ks"],
+            pot=float(pot_size),
+            stacks=stacks,
         )
         
-        # For now, simulate progress since the actual solver runs in a thread
-        # In production, this would integrate with the actual CFR engine
-        total_steps = 10
-        for i in range(total_steps):
-            time.sleep(0.5)  # Simulate work
-            progress = int((i + 1) / total_steps * 100)
-            stage = "solving" if progress < 90 else "finalizing"
-            publish_progress(job_id, progress, "running", {
-                "stage": stage,
-                "iteration": i + 1,
-                "total_iterations": total_steps
-            })
+        # Create game
+        game = TexasHoldEm(stack_sizes=stacks, bet_sizes=bet_sizes)
         
-        # Generate strategy data (placeholder)
-        # In production, this would come from the actual solver
-        strategy = generate_mock_strategy(params)
+        publish_progress(job_id, 10, "running", {"stage": "solving"})
+        
+        # Create CFR engine and run with progress callback
+        engine = CFREngine(game)
+        strategies = engine.solve(state, iterations=iterations, callback=progress_callback)
+        
+        publish_progress(job_id, 90, "running", {"stage": "finalizing"})
+        
+        # Convert strategies to serializable format
+        strategy_data = convert_strategies_to_output(strategies, game, state)
         
         # Build result
         result = {
             "job_id": job_id,
             "status": "complete",
             "progress": 100,
-            "strategy": strategy,
+            "strategy": strategy_data,
             "game_type": game_type,
             "players": players,
-            "board": board or "preflop",
+            "board": board or "river",
             "stack_depth": stack_depth,
+            "iterations": iterations,
+            "p0_cards": p0_cards,
+            "p1_cards": p1_cards,
+            "infosets_solved": len(strategies),
         }
         
         # Cache final result
@@ -160,13 +196,67 @@ def solve_spot(self, params: Dict[str, Any]) -> Dict[str, Any]:
         # Publish completion
         publish_progress(job_id, 100, "complete", {"stage": "complete"})
         
-        logger.info(f"Solve task {job_id} completed successfully")
+        logger.info(f"Solve task {job_id} completed successfully with {len(strategies)} infosets")
         return result
         
     except Exception as e:
         logger.error(f"Solve task {job_id} failed: {e}")
         publish_progress(job_id, 0, "error", {"error": str(e), "stage": "failed"})
         raise
+
+
+def convert_strategies_to_output(
+    strategies: Dict[str, Any], 
+    game: TexasHoldEm, 
+    state
+) -> Dict[str, Any]:
+    """
+    Convert CFR strategies to serializable output format.
+    
+    Args:
+        strategies: Dict mapping infoset keys to strategy arrays
+        game: TexasHoldEm game instance
+        state: Current game state
+    
+    Returns:
+        Dictionary with strategy actions and metadata
+    """
+    actions_list = []
+    
+    for infoset_key, strat in strategies.items():
+        # Parse the infoset key to extract hand info
+        # Format: "p{player}:{hole_str}:{board_str}:{pot}:{stacks}:{bet_to_call}:{actions}"
+        parts = infoset_key.split(":")
+        
+        if len(parts) >= 7:
+            player = parts[0]  # e.g., "p0"
+            hole_str = parts[1]  # e.g., "AcKd"
+            board_str = parts[2]  # e.g., "Kh8c3d2sKs"
+            
+            # Get valid actions for this state
+            try:
+                player_idx = 0 if player == "p0" else 1
+                valid_actions = game.get_valid_actions(state, player_idx)
+                
+                if len(valid_actions) == len(strat):
+                    for action, freq in zip(valid_actions, strat):
+                        actions_list.append({
+                            "player": player,
+                            "hand": hole_str,
+                            "board": board_str,
+                            "action": action,
+                            "frequency": float(freq),
+                        })
+            except Exception:
+                # Skip if we can't parse the strategy
+                continue
+    
+    return {
+        "infosets": len(strategies),
+        "actions": actions_list[:500],  # Limit to first 500 for response size
+        "total_actions": len(actions_list),
+        "solved_at": time.time(),
+    }
 
 
 @shared_task(name="solver.submit_solve")
@@ -197,62 +287,6 @@ def submit_solve(params: Dict[str, Any]) -> Dict[str, Any]:
         "job_id": job_id,
         "status": "queued",
         "progress": 0,
-    }
-
-
-def generate_mock_strategy(params: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generate mock strategy data for testing.
-    
-    In production, this would be replaced with actual CFR output.
-    """
-    import random
-    
-    game_type = params.get("game_type", "nlh")
-    players = params.get("players", 2)
-    board = params.get("board") or "preflop"
-    stack_depth = params.get("stack_depth", 100)
-    
-    # Generate some mock actions
-    actions = []
-    ranks = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"]
-    
-    for r1 in ranks:
-        for r2 in ranks:
-            if r1 >= r2:  # Skip duplicates
-                continue
-                
-            # Generate random but weighted action
-            roll = random.random()
-            if roll < 0.4:
-                action = "fold"
-                freq = round(random.uniform(0.5, 1.0), 2)
-            elif roll < 0.8:
-                action = "call"
-                freq = round(random.uniform(0.3, 0.7), 2)
-            else:
-                action = "raise"
-                freq = round(random.uniform(0.1, 0.4), 2)
-            
-            ev = round(random.uniform(-2, 10), 2)
-            
-            # Determine if suited
-            suited = random.choice([True, False])
-            suffix = "s" if suited else "o"
-            hand = f"{r1}{r2}{suffix}" if r1 != r2 else f"{r1}{r2}"
-            
-            actions.append({
-                "hand": hand,
-                "action": action,
-                "frequency": freq,
-                "ev": ev,
-            })
-    
-    return {
-        "key": f"{game_type}:{players}:{board}:{stack_depth}",
-        "actions": actions,
-        "total_hands": len(actions),
-        "solved_at": time.time(),
     }
 
 
