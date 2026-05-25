@@ -1,0 +1,42 @@
+{
+  "$schema": "./nx.json",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "production": ["!{projectRoot}/**/*.spec.ts"]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false
+    }
+  },
+  "plugins": [],
+  "projects": {
+    "web": {
+      "root": "apps/web",
+      "targets": {
+        "dev": {
+          "executor": "@nx/js:node",
+          "options": {
+            "buildPath": "apps/web/.next"
+          }
+        }
+      }
+    },
+    "api": {
+      "root": "apps/api"
+    },
+    "solver": {
+      "root": "apps/solver"
+    },
+    "types": {
+      "root": "packages/types"
+    },
+    "ui-components": {
+      "root": "packages/ui-components"
+    }
+  }
+}
