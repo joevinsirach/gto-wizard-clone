@@ -61,7 +61,8 @@ class TestDeckAndHand:
         # P0 has trip Kings + Ace kicker
         # P1 has trip Kings + Queen kicker
         # Ace > Queen, so P0 wins
-        assert result == -1  # P0 wins
+        # HandEvaluator.compare returns 1 when p0 wins (first arg wins)
+        assert result == 1  # P0 wins
 
 
 class TestGameState:
@@ -203,13 +204,15 @@ def test_integration():
     p0_hand = Hand(p0_cards)
     p1_hand = Hand(p1_cards)
     
-    # P0 has trip Kings with Ace kicker (Kh on board)
-    # P1 has trip Kings with Queen kicker
+# P0 has trip Kings (Kh, Kd, Ks) + Ace kicker
+    # P1 has pair of Kings (Kh, Ks) + Qs Js kickers - only ONE PAIR on this board!
+    # Note: board has Kh 8c 3d 2s Ks - P0 uses Kd for trip Kings, P1 only has 2 Kings
     assert p0_hand.hand_type == 4  # Three of a kind
-    assert p1_hand.hand_type == 4  # Three of a kind
+    assert p1_hand.hand_type == 2  # One pair
     
     result_cmp = HandEvaluator.compare(p0_cards, p1_cards)
-    assert result_cmp == -1  # P0 wins
+    # P0 wins (has trips vs pair)
+    assert result_cmp == 1  # P0 wins
     
     print("Integration test passed!")
 
