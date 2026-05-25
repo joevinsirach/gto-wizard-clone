@@ -1,201 +1,231 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { RangeSelector, EquityChart, EquityHeatmap, EquityEntry } from "@/components/equity";
+import { RANKS, SUITS } from "@/lib/utils";
 
-const MOCK_EQUITY_HEATMAP_DATA: { hand: string; equity: number }[] = [
-  { hand: "AA", equity: 85.2 },
-  { hand: "KK", equity: 82.1 },
-  { hand: "QQ", equity: 79.5 },
-  { hand: "JJ", equity: 77.2 },
-  { hand: "TT", equity: 75.0 },
-  { hand: "99", equity: 72.1 },
-  { hand: "88", equity: 69.3 },
-  { hand: "77", equity: 66.5 },
-  { hand: "66", equity: 63.7 },
-  { hand: "55", equity: 60.8 },
-  { hand: "44", equity: 57.9 },
-  { hand: "33", equity: 54.8 },
-  { hand: "22", equity: 51.5 },
-  { hand: "AKs", equity: 67.4 },
-  { hand: "AQs", equity: 66.1 },
-  { hand: "AJs", equity: 65.0 },
-  { hand: "ATs", equity: 64.1 },
-  { hand: "A9s", equity: 62.8 },
-  { hand: "A8s", equity: 61.6 },
-  { hand: "A7s", equity: 60.4 },
-  { hand: "A6s", equity: 59.1 },
-  { hand: "A5s", equity: 58.5 },
-  { hand: "A4s", equity: 57.2 },
-  { hand: "A3s", equity: 55.9 },
-  { hand: "A2s", equity: 54.5 },
-  { hand: "AKo", equity: 65.3 },
-  { hand: "AQo", equity: 63.8 },
-  { hand: "AJo", equity: 62.5 },
-  { hand: "ATo", equity: 61.3 },
-  { hand: "A9o", equity: 59.8 },
-  { hand: "A8o", equity: 58.3 },
-  { hand: "A7o", equity: 56.8 },
-  { hand: "A6o", equity: 55.2 },
-  { hand: "A5o", equity: 54.3 },
-  { hand: "A4o", equity: 52.8 },
-  { hand: "A3o", equity: 51.2 },
-  { hand: "A2o", equity: 49.5 },
-  { hand: "KQs", equity: 64.8 },
-  { hand: "KJs", equity: 63.6 },
-  { hand: "KTs", equity: 62.7 },
-  { hand: "K9s", equity: 61.3 },
-  { hand: "K8s", equity: 59.9 },
-  { hand: "K7s", equity: 58.5 },
-  { hand: "K6s", equity: 57.1 },
-  { hand: "K5s", equity: 55.9 },
-  { hand: "K4s", equity: 54.5 },
-  { hand: "K3s", equity: 53.1 },
-  { hand: "K2s", equity: 51.6 },
-  { hand: "KQo", equity: 62.5 },
-  { hand: "KJo", equity: 61.1 },
-  { hand: "KTo", equity: 60.0 },
-  { hand: "K9o", equity: 58.4 },
-  { hand: "K8o", equity: 56.7 },
-  { hand: "K7o", equity: 55.1 },
-  { hand: "K6o", equity: 53.4 },
-  { hand: "K5o", equity: 52.3 },
-  { hand: "K4o", equity: 50.8 },
-  { hand: "K3o", equity: 49.1 },
-  { hand: "K2o", equity: 47.4 },
-  { hand: "QQ", equity: 79.5 },
-  { hand: "QJs", equity: 62.9 },
-  { hand: "QTs", equity: 62.0 },
-  { hand: "Q9s", equity: 60.5 },
-  { hand: "Q8s", equity: 59.0 },
-  { hand: "Q7s", equity: 57.4 },
-  { hand: "Q6s", equity: 55.8 },
-  { hand: "Q5s", equity: 54.6 },
-  { hand: "Q4s", equity: 53.0 },
-  { hand: "Q3s", equity: 51.3 },
-  { hand: "Q2s", equity: 49.5 },
-  { hand: "QJo", equity: 60.5 },
-  { hand: "QTo", equity: 59.2 },
-  { hand: "Q9o", equity: 57.4 },
-  { hand: "Q8o", equity: 55.5 },
-  { hand: "Q7o", equity: 53.7 },
-  { hand: "Q6o", equity: 51.9 },
-  { hand: "Q5o", equity: 50.8 },
-  { hand: "Q4o", equity: 49.0 },
-  { hand: "Q3o", equity: 47.1 },
-  { hand: "Q2o", equity: 45.2 },
-  { hand: "JJ", equity: 77.2 },
-  { hand: "JTs", equity: 61.4 },
-  { hand: "J9s", equity: 59.8 },
-  { hand: "J8s", equity: 58.1 },
-  { hand: "J7s", equity: 56.4 },
-  { hand: "J6s", equity: 54.6 },
-  { hand: "J5s", equity: 53.3 },
-  { hand: "J4s", equity: 51.5 },
-  { hand: "J3s", equity: 49.6 },
-  { hand: "J2s", equity: 47.6 },
-  { hand: "JTo", equity: 58.8 },
-  { hand: "J9o", equity: 56.8 },
-  { hand: "J8o", equity: 54.8 },
-  { hand: "J7o", equity: 52.8 },
-  { hand: "J6o", equity: 50.8 },
-  { hand: "J5o", equity: 49.6 },
-  { hand: "J4o", equity: 47.6 },
-  { hand: "J3o", equity: 45.5 },
-  { hand: "J2o", equity: 43.4 },
-  { hand: "TT", equity: 75.0 },
-  { hand: "T9s", equity: 59.5 },
-  { hand: "T8s", equity: 57.8 },
-  { hand: "T7s", equity: 56.0 },
-  { hand: "T6s", equity: 54.1 },
-  { hand: "T5s", equity: 52.7 },
-  { hand: "T4s", equity: 50.8 },
-  { hand: "T3s", equity: 48.8 },
-  { hand: "T2s", equity: 46.7 },
-  { hand: "T9o", equity: 56.6 },
-  { hand: "T8o", equity: 54.5 },
-  { hand: "T7o", equity: 52.4 },
-  { hand: "T6o", equity: 50.2 },
-  { hand: "T5o", equity: 48.9 },
-  { hand: "T4o", equity: 46.7 },
-  { hand: "T3o", equity: 44.5 },
-  { hand: "T2o", equity: 42.2 },
-  { hand: "99", equity: 72.1 },
-  { hand: "98s", equity: 57.3 },
-  { hand: "97s", equity: 55.5 },
-  { hand: "96s", equity: 53.5 },
-  { hand: "95s", equity: 52.0 },
-  { hand: "94s", equity: 50.0 },
-  { hand: "93s", equity: 47.9 },
-  { hand: "92s", equity: 45.7 },
-  { hand: "98o", equity: 54.3 },
-  { hand: "97o", equity: 52.2 },
-  { hand: "96o", equity: 50.0 },
-  { hand: "95o", equity: 48.6 },
-  { hand: "94o", equity: 46.4 },
-  { hand: "93o", equity: 44.1 },
-  { hand: "92o", equity: 41.8 },
-  { hand: "88", equity: 69.3 },
-  { hand: "87s", equity: 55.2 },
-  { hand: "86s", equity: 53.4 },
-  { hand: "85s", equity: 51.5 },
-  { hand: "84s", equity: 49.5 },
-  { hand: "83s", equity: 47.4 },
-  { hand: "82s", equity: 45.2 },
-  { hand: "87o", equity: 52.2 },
-  { hand: "86o", equity: 50.1 },
-  { hand: "85o", equity: 48.1 },
-  { hand: "84o", equity: 45.9 },
-  { hand: "83o", equity: 43.6 },
-  { hand: "82o", equity: 41.3 },
-  { hand: "77", equity: 66.5 },
-  { hand: "76s", equity: 53.2 },
-  { hand: "75s", equity: 51.3 },
-  { hand: "74s", equity: 49.3 },
-  { hand: "73s", equity: 47.2 },
-  { hand: "72s", equity: 45.0 },
-  { hand: "76o", equity: 50.1 },
-  { hand: "75o", equity: 48.1 },
-  { hand: "74o", equity: 45.9 },
-  { hand: "73o", equity: 43.6 },
-  { hand: "72o", equity: 41.2 },
-  { hand: "66", equity: 63.7 },
-  { hand: "65s", equity: 51.2 },
-  { hand: "64s", equity: 49.2 },
-  { hand: "63s", equity: 47.1 },
-  { hand: "62s", equity: 44.9 },
-  { hand: "65o", equity: 48.1 },
-  { hand: "64o", equity: 45.9 },
-  { hand: "63o", equity: 43.7 },
-  { hand: "62o", equity: 41.3 },
-  { hand: "55", equity: 60.8 },
-  { hand: "54s", equity: 49.2 },
-  { hand: "53s", equity: 47.2 },
-  { hand: "52s", equity: 45.1 },
-  { hand: "54o", equity: 46.1 },
-  { hand: "53o", equity: 44.0 },
-  { hand: "52o", equity: 41.7 },
-  { hand: "44", equity: 57.9 },
-  { hand: "43s", equity: 47.2 },
-  { hand: "42s", equity: 45.1 },
-  { hand: "43o", equity: 44.0 },
-  { hand: "42o", equity: 41.7 },
-  { hand: "33", equity: 54.8 },
-  { hand: "32s", equity: 45.1 },
-  { hand: "32o", equity: 41.7 },
-  { hand: "22", equity: 51.5 },
+interface EquityResult {
+  equity: number;
+  wins: number;
+  ties: number;
+  total: number;
+  ev_per_hand: number;
+}
+
+interface HeatmapData {
+  hand: string;
+  equity: number;
+}
+
+const ITERATION_OPTIONS = [
+  { value: 10000, label: "10,000" },
+  { value: 50000, label: "50,000" },
+  { value: 100000, label: "100,000" },
+  { value: 500000, label: "500,000" },
 ];
+
+const RANK_DISPLAY: Record<string, string> = {
+  A: "A",
+  K: "K",
+  Q: "Q",
+  J: "J",
+  T: "T",
+  "9": "9",
+  "8": "8",
+  "7": "7",
+  "6": "6",
+  "5": "5",
+  "4": "4",
+  "3": "3",
+  "2": "2",
+};
+
+const SUIT_DISPLAY: Record<string, string> = {
+  h: "♥",
+  d: "♦",
+  c: "♣",
+  s: "♠",
+};
+
+interface CardInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  disabled?: boolean;
+}
+
+function CardInput({ value, onChange, label, disabled }: CardInputProps) {
+  const rank = value[0] || "";
+  const suit = value[1] || "";
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs text-muted-foreground">{label}</label>
+      <div className="flex gap-1">
+        <select
+          value={rank}
+          onChange={(e) => onChange(e.target.value + suit)}
+          disabled={disabled}
+          className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm w-16 appearance-none cursor-pointer disabled:opacity-50"
+        >
+          <option value="">--</option>
+          {RANKS.map((r) => (
+            <option key={r} value={r}>
+              {RANK_DISPLAY[r]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={suit}
+          onChange={(e) => onChange(rank + e.target.value)}
+          disabled={disabled}
+          className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm w-16 appearance-none cursor-pointer disabled:opacity-50"
+        >
+          <option value="">--</option>
+          {SUITS.map((s) => (
+            <option key={s} value={s}>
+              {SUIT_DISPLAY[s]}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 export default function EquityPage() {
   const [heroRange, setHeroRange] = useState<Set<string>>(new Set());
   const [villainRange, setVillainRange] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"chart" | "heatmap">("chart");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Calculate state
+  const [heroHand, setHeroHand] = useState("");
+  const [boardCards, setBoardCards] = useState(["", "", "", "", ""]);
+  const [iterations, setIterations] = useState(100000);
+
+  // Results state
+  const [equityResult, setEquityResult] = useState<EquityResult | null>(null);
+  const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
+  const [chartData, setChartData] = useState<EquityEntry[]>([]);
+
+  const updateBoardCard = useCallback((index: number, value: string) => {
+    setBoardCards((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }, []);
+
+  const buildBoardString = useCallback(
+    (cards: string[]) => cards.filter((c) => c.length === 2).join(""),
+    []
+  );
+
+  const handleCalculate = useCallback(async () => {
+    setError(null);
+    setEquityResult(null);
+    setHeatmapData([]);
+    setChartData([]);
+
+    // Validate hero hand
+    if (!heroHand || heroHand.length < 2) {
+      setError("Please enter a valid hero hand (e.g., AKs, AhKh)");
+      return;
+    }
+
+    if (villainRange.size === 0) {
+      setError("Please select at least one villain hand");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const villainStr = Array.from(villainRange).join(",");
+      const boardStr = buildBoardString(boardCards);
+
+      const requestBody: {
+        hero: string;
+        villain: string;
+        board?: string;
+        iterations: number;
+      } = {
+        hero: heroHand,
+        villain: villainStr,
+        iterations,
+      };
+
+      if (boardStr.length > 0) {
+        requestBody.board = boardStr;
+      }
+
+      // Call equity heatmap for range data
+      const response = await fetch("/api/v1/equity/heatmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          villain: villainStr,
+          board: boardStr || undefined,
+          iterations,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const heatmapResult = await response.json();
+      setHeatmapData(heatmapResult.hands || []);
+
+      // Also get specific hand calculation for hero hand
+      const equityRes = await fetch("/api/v1/equity/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!equityRes.ok) {
+        throw new Error(`API error: ${equityRes.status}`);
+      }
+
+      const equityData = await equityRes.json();
+      setEquityResult(equityData);
+
+      // Build chart data for the hero hand vs villain range
+      if (heatmapResult.hands) {
+        const heroHandEquity = heatmapResult.hands.find(
+          (h: { hand: string; equity: number }) => h.hand.toLowerCase() === heroHand.toLowerCase()
+        )?.equity;
+
+        const entry: EquityEntry = {
+          hand: heroHand,
+          heroEquity: (equityData.equity ?? heroHandEquity ?? 0) * 100,
+          heroWin: ((equityData.wins ?? 0) / (equityData.total || 1)) * 100,
+          heroTie: ((equityData.ties ?? 0) / (equityData.total || 1)) * 100,
+          villainEquity: (1 - (equityData.equity ?? heroHandEquity ?? 0)) * 100,
+          villainWin: (((equityData.total || 1) - (equityData.wins ?? 0)) / (equityData.total || 1)) * 100,
+          villainTie: ((equityData.ties ?? 0) / (equityData.total || 1)) * 100,
+        };
+        setChartData([entry]);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Calculation failed";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [heroHand, villainRange, boardCards, iterations, buildBoardString, heatmapData]);
+
+  const hasResults = equityResult !== null || heatmapData.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-8">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-poker-gold">Equity Calculator</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+      {/* Ranges Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
         <div className="border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Hero Range</h2>
           <RangeSelector value={heroRange} onChange={setHeroRange} />
@@ -207,13 +237,97 @@ export default function EquityPage() {
         </div>
       </div>
 
-      <div className="mt-4 sm:mt-6 lg:mt-8 border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Board Cards</h2>
-        <div className="bg-gray-800 rounded-lg p-3 sm:p-4 h-24 sm:h-32 flex items-center justify-center text-gray-500">
-          Board Display - EquityChart Component
+      {/* Hand Input, Board & Controls */}
+      <div className="border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* Hero Hand Input */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Hero Hand</label>
+            <input
+              type="text"
+              value={heroHand}
+              onChange={(e) => setHeroHand(e.target.value.toUpperCase())}
+              placeholder="e.g., AKs, AA, AhKh"
+              className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Specific hand to calculate</p>
+          </div>
+
+          {/* Iteration Selector */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Iterations</label>
+            <select
+              value={iterations}
+              onChange={(e) => setIterations(Number(e.target.value))}
+              className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm w-full appearance-none cursor-pointer"
+            >
+              {ITERATION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">Monte Carlo simulations</p>
+          </div>
+
+          {/* Board Cards */}
+          <div className="lg:col-span-2">
+            <label className="text-sm text-muted-foreground mb-1 block">Board Cards (optional)</label>
+            <div className="flex gap-2 flex-wrap">
+              {boardCards.map((card, idx) => (
+                <CardInput
+                  key={idx}
+                  value={card}
+                  onChange={(val) => updateBoardCard(idx, val)}
+                  label={idx === 0 ? "Flop 1" : idx === 1 ? "Flop 2" : idx === 2 ? "Flop 3" : idx === 3 ? "Turn" : "River"}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Calculate Button */}
+        <div className="mt-4 flex items-center gap-4">
+          <button
+            onClick={handleCalculate}
+            disabled={loading}
+            className="px-6 py-2.5 bg-poker-gold text-gray-900 font-semibold rounded-lg hover:bg-poker-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Calculating...
+              </span>
+            ) : (
+              "Calculate Equity"
+            )}
+          </button>
+
+          {error && (
+            <div className="text-red-500 text-sm flex items-center gap-1">
+              <span>⚠</span>
+              {error}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Results Section */}
       <div className="mt-4 sm:mt-6 lg:mt-8 border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <h2 className="text-lg sm:text-xl font-semibold">Results</h2>
@@ -240,30 +354,86 @@ export default function EquityPage() {
             </button>
           </div>
         </div>
-        {viewMode === "chart" ? (
-          <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-            <EquityChart data={MOCK_EQUITY_DATA} />
+
+        {/* Equity Summary */}
+        {equityResult && !loading && chartData.length > 0 && viewMode === "chart" && (
+          <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-800/50 rounded-lg">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">
+                {(equityResult.equity * 100).toFixed(1)}%
+              </div>
+              <div className="text-xs text-muted-foreground">Hero Equity</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-400">
+                {((1 - equityResult.equity) * 100).toFixed(1)}%
+              </div>
+              <div className="text-xs text-muted-foreground">Villain Equity</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">
+                {equityResult.wins.toLocaleString()}
+              </div>
+              <div className="text-xs text-muted-foreground">Wins</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">
+                {equityResult.ties.toLocaleString()}
+              </div>
+              <div className="text-xs text-muted-foreground">Ties</div>
+            </div>
           </div>
-        ) : (
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center gap-3">
+              <svg className="animate-spin h-8 w-8 text-poker-gold" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span className="text-muted-foreground">Calculating equity...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Chart View */}
+        {!loading && viewMode === "chart" && chartData.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+            <EquityChart data={chartData} />
+          </div>
+        )}
+
+        {/* Heatmap View */}
+        {!loading && viewMode === "heatmap" && heatmapData.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-3 sm:p-4 flex justify-center">
             <EquityHeatmap
-              data={MOCK_EQUITY_HEATMAP_DATA}
+              data={heatmapData}
               onCellClick={(hand, equity) => console.log(`Clicked ${hand}: ${equity}%`)}
             />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !hasResults && (
+          <div className="flex items-center justify-center h-32 text-muted-foreground">
+            Select ranges and click Calculate to see equity results
           </div>
         )}
       </div>
     </div>
   );
 }
-
-const MOCK_EQUITY_DATA: EquityEntry[] = [
-  { hand: "AA", heroEquity: 81.2, heroWin: 79.1, heroTie: 2.1, villainEquity: 18.8, villainWin: 17.2, villainTie: 1.6 },
-  { hand: "KK", heroEquity: 79.8, heroWin: 77.5, heroTie: 2.3, villainEquity: 20.2, villainWin: 18.4, villainTie: 1.8 },
-  { hand: "QQ", heroEquity: 77.1, heroWin: 74.2, heroTie: 2.9, villainEquity: 22.9, villainWin: 20.8, villainTie: 2.1 },
-  { hand: "AKs", heroEquity: 65.4, heroWin: 62.1, heroTie: 3.3, villainEquity: 34.6, villainWin: 31.9, villainTie: 2.7 },
-  { hand: "AKo", heroEquity: 63.2, heroWin: 59.8, heroTie: 3.4, villainEquity: 36.8, villainWin: 34.1, villainTie: 2.7 },
-  { hand: "JJ", heroEquity: 71.5, heroWin: 68.3, heroTie: 3.2, villainEquity: 28.5, villainWin: 25.9, villainTie: 2.6 },
-  { hand: "TT", heroEquity: 69.2, heroWin: 65.7, heroTie: 3.5, villainEquity: 30.8, villainWin: 28.1, villainTie: 2.7 },
-  { hand: "99", heroEquity: 66.8, heroWin: 62.9, heroTie: 3.9, villainEquity: 33.2, villainWin: 30.4, villainTie: 2.8 },
-];
