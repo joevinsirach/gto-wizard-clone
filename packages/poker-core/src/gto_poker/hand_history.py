@@ -109,6 +109,10 @@ class ParsedHand:
     raw_text: str = ''
 
 
+# Backward compatibility alias - PlayerInfo is the same as Player
+PlayerInfo = Player
+
+
 # Winamax uses € symbol
 CURRENCY_SYMBOLS = ['€', '€']
 

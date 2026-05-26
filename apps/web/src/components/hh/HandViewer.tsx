@@ -1,16 +1,30 @@
+/**
+ * Enhanced HandViewer — step-through playback for hand histories with GTO comparison.
+ * Shows each street action with EV analysis, pot tracking, and GTO recommendations.
+ */
+
 import { useCallback, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, SkipBack, SkipForward } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  SkipBack,
+  SkipForward,
+  TrendingUp,
+  TrendingDown,
+  Scale,
+  HelpCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Shared HH types
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export type StreetName = "preflop" | "flop" | "turn" | "river";
 
-export interface Card {
+export interface HHCard {
   rank: string; // "A", "K", "Q", "J", "T", "9", … "2"
   suit: string; // "h" | "d" | "c" | "s"
 }
@@ -18,8 +32,8 @@ export interface Card {
 export interface Player {
   name: string;
   seat: number;
-  stack: number;       // big blinds
-  cards?: [Card, Card];
+  stack: number; // big blinds
+  cards?: [HHCard, HHCard];
   isHero?: boolean;
 }
 
@@ -39,29 +53,28 @@ export interface Action {
   amount?: number; // big blinds, undefined for fold/check
   street: StreetName;
   potAfter?: number; // pot size after this action
+  ev?: number;      // expected value at this decision point (bb)
+  gtoAction?: ActionType;
+  gtoEvDiff?: number; // EV difference vs GTO at this point (bb)
 }
-
-// -----------------------------------------------------------------------
-// Hand data
-// -----------------------------------------------------------------------
 
 export interface HandState {
   players: Player[];
-  board: Card[];           // 0-3 cards (empty preflop, 3 flop, 4 turn, 5 river)
-  pot: number;             // big blinds
+  board: HHCard[];
+  pot: number;
   street: StreetName;
-  actionOn?: string;      // player whose turn it is
+  actionOn?: string;
 }
 
 export interface HandHistory {
   id: string;
-  gameType: string;        // "No Limit Hold'em"
-  limit: string;           // "$1/$2"
+  gameType: string;
+  limit: string;
   date: string;
   hero: string;
   buttonSeat: number;
-  players: Player[];       // all players in the hand
-  actions: Action[];       // chronological
+  players: Player[];
+  actions: Action[];
   result?: {
     showdown: boolean;
     pot: number;
@@ -71,15 +84,31 @@ export interface HandHistory {
   gtoComparison?: {
     [player: string]: {
       action: ActionType;
-      evDiff: number;   // expected value difference vs GTO (bb)
-      equity: number;   // hand equity %
+      evDiff: number;
+      equity: number;
+    };
+  };
+  // Full decision analysis for hero
+  decisions?: {
+    [actionIndex: number]: {
+      potBefore: number;
+      potAfter: number;
+      userAction: ActionType;
+      gtoAction: ActionType;
+      gtoEv: number;          // GTO expected value (bb)
+      userEv: number;        // User's actual expected value (bb)
+      evDiff: number;        // gtoEv - userEv (positive = user lost EV)
+      userEquity: number;    // user's hand equity at this point
+      gtoEquity: number;     // GTO's equity requirement for this action
+      potOdds?: number;      // pot odds if calling
+      recommendedAction?: ActionType;
     };
   };
 }
 
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Helpers
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 function suitColor(suit: string): string {
   return ["h", "d"].includes(suit) ? "text-red-500" : "text-zinc-800 dark:text-zinc-200";
@@ -91,12 +120,20 @@ function rankDisplay(r: string): string {
 
 const STREET_ORDER: StreetName[] = ["preflop", "flop", "turn", "river"];
 
+function getBoardAtAction(actions: Action[], actionIdx: number): HHCard[] {
+  let board: HHCard[] = [];
+  for (let i = 0; i <= actionIdx; i++) {
+    const a = actions[i];
+    if (a.street === "flop" && a.type === "bet") board = board.slice(0, 3);
+    if (a.street === "turn" && a.type === "bet") board = board.slice(0, 4);
+    if (a.street === "river" && a.type === "bet") board = board.slice(0, 5);
+  }
+  return board;
+}
+
 function buildInitialState(hh: HandHistory): HandState[] {
   const frames: HandState[] = [];
-  const playerMap = new Map<string, Player>();
-  hh.players.forEach((p) => playerMap.set(p.name, p));
 
-  // Preflop snapshot
   frames.push({
     players: hh.players,
     board: [],
@@ -109,9 +146,11 @@ function buildInitialState(hh: HandHistory): HandState[] {
     const a = hh.actions[i];
     const streetIdx = STREET_ORDER.indexOf(a.street);
     if (streetIdx !== prevStreetIdx) {
-      // snapshot at street start (before first action of street)
       const prev = frames[frames.length - 1];
-      const newBoard = a.street === "flop" ? [prev.board[0], prev.board[1], prev.board[2]] : prev.board;
+      const newBoard =
+        a.street === "flop"
+          ? [prev.board[0], prev.board[1], prev.board[2]]
+          : prev.board;
       frames.push({ ...prev, board: newBoard, street: a.street });
       prevStreetIdx = streetIdx;
     }
@@ -126,22 +165,11 @@ function buildInitialState(hh: HandHistory): HandState[] {
   return frames;
 }
 
-function getBoardAtAction(actions: Action[], actionIdx: number): Card[] {
-  let board: Card[] = [];
-  for (let i = 0; i <= actionIdx; i++) {
-    const a = actions[i];
-    if (a.street === "flop" && a.type === "bet") board = board.slice(0, 3);
-    if (a.street === "turn" && a.type === "bet") board = board.slice(0, 4);
-    if (a.street === "river" && a.type === "bet") board = board.slice(0, 5);
-  }
-  return board;
-}
-
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Sub-components
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
-function CardPip({ card }: { card: Card }) {
+function CardPip({ card }: { card: HHCard }) {
   return (
     <span className={cn("font-mondwest font-bold text-lg", suitColor(card.suit))}>
       {rankDisplay(card.rank)}
@@ -150,7 +178,7 @@ function CardPip({ card }: { card: Card }) {
   );
 }
 
-function CardSlot({ card }: { card?: Card }) {
+function CardSlot({ card }: { card?: HHCard }) {
   return (
     <div
       className={cn(
@@ -165,15 +193,17 @@ function CardSlot({ card }: { card?: Card }) {
   );
 }
 
-function BoardDisplay({ cards }: { cards: Card[] }) {
+function BoardRow({ cards }: { cards: HHCard[] }) {
   return (
     <div className="flex gap-2">
       {cards.length === 0 && (
-        <span className="text-muted-foreground text-xs font-mondwest italic">no community cards</span>
+        <span className="text-muted-foreground text-xs font-mondwest italic">
+          no community cards
+        </span>
       )}
       {cards.map((c, i) => (
         <CardSlot key={i} card={c} />
-      ))}
+))}
       {Array.from({ length: 5 - cards.length }).map((_, i) => (
         <CardSlot key={`empty-${i}`} card={undefined} />
       ))}
@@ -184,13 +214,13 @@ function BoardDisplay({ cards }: { cards: Card[] }) {
 function PlayerRow({
   player,
   isActionOn,
-  gto,
   lastAction,
+  evDiff,
 }: {
   player: Player;
   isActionOn: boolean;
-  gto?: { action: ActionType; evDiff: number; equity: number };
   lastAction?: Action;
+  evDiff?: number;
 }) {
   return (
     <div
@@ -218,15 +248,15 @@ function PlayerRow({
           {player.stack.toFixed(1)}
           <span className="text-muted-foreground text-xs ml-1">bb</span>
         </div>
-        {gto && (
+        {evDiff !== undefined && (
           <div
             className={cn(
               "text-xs font-mondwest tabular-nums",
-              gto.evDiff > 0 ? "text-green-500" : "text-red-500",
+              evDiff > 0 ? "text-red-500" : "text-green-500",
             )}
           >
-            {gto.evDiff >= 0 ? "+" : ""}
-            {gto.evDiff.toFixed(2)} bb vs GTO
+            {evDiff >= 0 ? "+" : ""}
+            {evDiff.toFixed(2)} bb vs GTO
           </div>
         )}
         {lastAction && (
@@ -241,9 +271,97 @@ function PlayerRow({
   );
 }
 
-// -----------------------------------------------------------------------
+// Decision panel — shown when viewing a hero decision point
+function DecisionPanel({
+  decision,
+  action,
+}: {
+  decision: NonNullable<HandHistory["decisions"]>[number];
+  action: Action;
+}) {
+  const { userAction, gtoAction, evDiff, gtoEv, potOdds } = decision;
+  const isOptimal = Math.abs(evDiff ?? 0) < 0.1;
+
+  return (
+    <div className="rounded border border-border bg-card p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Scale className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">Decision Analysis</span>
+        {isOptimal && (
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-medium">
+            GTO
+          </span>
+        )}
+        {!isOptimal && (
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 font-medium">
+            LEAK
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        {/* Your action */}
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Your Play</span>
+          <span
+            className={cn(
+              "font-mono font-semibold text-sm capitalize",
+              userAction !== gtoAction ? "text-red-400" : "text-foreground",
+            )}
+          >
+            {userAction}
+            {action.amount != null && action.amount > 0 && ` ${action.amount}`}
+          </span>
+          <span className="text-muted-foreground font-mono">EV: —</span>
+        </div>
+
+        {/* GTO action */}
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground uppercase tracking-wider text-[10px]">GTO</span>
+          <span className="font-mono font-semibold text-sm text-emerald-400 capitalize">
+            {gtoAction}
+          </span>
+          <span className="text-emerald-400 font-mono">
+            {gtoEv != null ? `${gtoEv.toFixed(2)} bb` : "—"}
+          </span>
+        </div>
+      </div>
+
+      {/* EV diff highlight */}
+      {evDiff != null && (
+        <div
+          className={cn(
+            "flex items-center justify-between rounded px-2 py-1.5 text-xs",
+            evDiff > 0 ? "bg-red-950/30" : "bg-emerald-950/30",
+          )}
+        >
+          <span className="text-muted-foreground">EV Loss</span>
+          <span
+            className={cn(
+              "font-mono font-bold tabular-nums",
+              evDiff > 0 ? "text-red-400" : "text-emerald-400",
+            )}
+          >
+            {evDiff > 0 ? "+" : ""}
+            {evDiff.toFixed(2)} bb
+          </span>
+        </div>
+      )}
+
+      {/* Pot odds if applicable */}
+      {potOdds != null && (
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Pot Odds</span>
+          <span className="font-mono text-primary">{(potOdds * 100).toFixed(1)}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // HandViewer
-// -----------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export interface HandViewerProps {
   hand: HandHistory;
@@ -269,7 +387,11 @@ export function HandViewer({ hand }: HandViewerProps) {
   const currentActionIdx = frameIdx > 0 ? frameIdx - 1 : -1;
   const currentAction = currentActionIdx >= 0 ? hand.actions[currentActionIdx] : undefined;
 
-  const gto = currentAction?.player && hand.gtoComparison?.[currentAction.player];
+  // Get decision analysis if this is a hero decision
+  const heroDecision =
+    currentActionIdx >= 0 && hand.decisions
+      ? hand.decisions[currentActionIdx]
+      : undefined;
 
   const goToStreet = useCallback(
     (street: StreetName) => {
@@ -284,35 +406,17 @@ export function HandViewer({ hand }: HandViewerProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-base">
-              Hand #{hand.id}
-            </CardTitle>
+            <CardTitle className="text-base">Hand #{hand.id}</CardTitle>
             <p className="text-xs text-muted-foreground font-mondwest mt-0.5">
-              {hand.gameType} {hand.limit} &middot; {hand.date}
+              {hand.gameType} {hand.limit} · {hand.date}
             </p>
           </div>
           <div className="text-right">
             <div className="font-mondwest text-sm">
               Pot&nbsp;
-              <span className="text-amber-400 tabular-nums">
-                {current.pot.toFixed(1)}
-              </span>
+              <span className="text-amber-400 tabular-nums">{current.pot.toFixed(1)}</span>
               <span className="text-muted-foreground text-xs ml-1">bb</span>
             </div>
-            {gto && (
-              <div className="text-xs text-muted-foreground font-mondwest">
-                EV&nbsp;
-                <span
-                  className={cn(
-                    "tabular-nums",
-                    gto.evDiff >= 0 ? "text-green-500" : "text-red-500",
-                  )}
-                >
-                  {gto.evDiff >= 0 ? "+" : ""}
-                  {gto.evDiff.toFixed(2)}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -341,32 +445,39 @@ export function HandViewer({ hand }: HandViewerProps) {
           <p className="text-xs text-muted-foreground font-mondwest mb-1.5 uppercase tracking-wider">
             Board
           </p>
-          <BoardDisplay cards={current.board} />
+          <BoardRow cards={current.board} />
         </div>
+
+        {/* Decision analysis for current hero action */}
+        {heroDecision && currentAction && (
+          <DecisionPanel decision={heroDecision} action={currentAction} />
+        )}
 
         <div className="border-t border-border/40 pt-3">
           <p className="text-xs text-muted-foreground font-mondwest mb-1.5 uppercase tracking-wider">
             Players
           </p>
           <div className="space-y-1.5">
-            {current.players.map((p) => (
-              <PlayerRow
-                key={p.name}
-                player={p}
-                isActionOn={p.name === current.actionOn}
-                gto={
-                  p.name === hand.hero && gto
-                    ? gto
-                    : undefined
-                }
-                lastAction={
-                  currentActionIdx >= 0 &&
-                  hand.actions[currentActionIdx]?.player === p.name
-                    ? currentAction
-                    : undefined
-                }
-              />
-            ))}
+            {current.players.map((p) => {
+              const playerAction =
+                currentActionIdx >= 0 && hand.actions[currentActionIdx]?.player === p.name
+                  ? currentAction
+                  : undefined;
+              const evDiff: number | undefined =
+                p.isHero && hand.gtoComparison?.[p.name]
+                  ? hand.gtoComparison[p.name].evDiff
+                  : undefined;
+
+              return (
+                <PlayerRow
+                  key={p.name}
+                  player={p}
+                  isActionOn={p.name === current.actionOn}
+                  lastAction={playerAction}
+                  evDiff={evDiff}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -393,7 +504,7 @@ export function HandViewer({ hand }: HandViewerProps) {
         {/* Navigation controls */}
         <div className="flex items-center gap-2">
           <Button
-            ghost
+            variant="ghost"
             size="sm"
             onClick={() => setFrameIdx(0)}
             disabled={frameIdx === 0}
@@ -401,7 +512,7 @@ export function HandViewer({ hand }: HandViewerProps) {
             <SkipBack className="w-4 h-4" />
           </Button>
           <Button
-            ghost
+            variant="ghost"
             size="sm"
             onClick={() => setFrameIdx((f) => Math.max(0, f - 1))}
             disabled={frameIdx === 0}
@@ -411,12 +522,14 @@ export function HandViewer({ hand }: HandViewerProps) {
 
           <div className="flex-1 text-center text-xs font-mondwest text-muted-foreground">
             {currentAction
-              ? `${currentAction.player} ${currentAction.type}${currentAction.amount != null ? ` ${currentAction.amount}` : ""}`
+              ? `${currentAction.player} ${currentAction.type}${
+                  currentAction.amount != null ? ` ${currentAction.amount}` : ""
+                }`
               : "Start of hand"}
           </div>
 
           <Button
-            ghost
+            variant="ghost"
             size="sm"
             onClick={() => setFrameIdx((f) => Math.min(totalFrames - 1, f + 1))}
             disabled={frameIdx === totalFrames - 1}
@@ -424,7 +537,7 @@ export function HandViewer({ hand }: HandViewerProps) {
             <ChevronRight className="w-4 h-4" />
           </Button>
           <Button
-            ghost
+            variant="ghost"
             size="sm"
             onClick={() => setFrameIdx(totalFrames - 1)}
             disabled={frameIdx === totalFrames - 1}

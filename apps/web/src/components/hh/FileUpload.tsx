@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type HHFormat = "pokerstars" | "ggpoker" | " ignition" | "unknown";
+export type HHFormat = "pokerstars" | "ggpoker" | "ignition" | "unknown";
 
 export interface LoadedFile {
   name: string;
