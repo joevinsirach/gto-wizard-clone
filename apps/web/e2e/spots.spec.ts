@@ -309,7 +309,7 @@ test.describe("Spots Page Navigation", () => {
     const spotsLink = page.locator("a[href='/spots']").first();
     if (await spotsLink.count() > 0) {
       await spotsLink.click();
-      await expect(page).toHaveURL(/\\/spots/);
+      await expect(page).toHaveURL(/\/spots/);
       await expect(page.locator("h1:has-text('Community Spots')")).toBeVisible();
     } else {
       await page.goto("/spots");
