@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { PrizePoolPanel } from "@/components/icm/PrizePoolPanel";
 import { ChipStackPanel } from "@/components/icm/ChipStackPanel";
 import { ICMResults } from "@/components/icm/ICMResults";
+import { BubblePressure } from "@/components/icm/BubblePressure";
+import { SMPZone } from "@/components/icm/SMPZone";
 import { useICMCalculator } from "@/hooks/useICMCalculator";
 
 interface PrizePoolEntry {
@@ -132,6 +134,29 @@ export default function ICMPage() {
             players={players}
             onPlayersChange={setPlayers}
             totalChips={totalChips}
+          />
+        </div>
+
+        {/* Bubble Pressure Panel */}
+        <div className="md:col-span-1 xl:col-span-1">
+          <BubblePressure
+            bubbleData={results?.map((r) => ({
+              player: r.player,
+              bubbleFactor: r.bubble_factor,
+              chips: playerChips.find((pc) => pc.name === r.player)?.chips ?? 0,
+            }))}
+          />
+        </div>
+
+        {/* SMP Zone Panel */}
+        <div className="md:col-span-1 xl:col-span-1">
+          <SMPZone
+            zoneData={playerChips.map((pc, index) => ({
+              player: pc.name,
+              stackSize: pc.chips,
+              zone: "caution" as const,
+            }))}
+            averageStack={totalChips / players.length}
           />
         </div>
 
