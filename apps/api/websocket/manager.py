@@ -26,7 +26,7 @@ class ConnectionState:
         self.websocket = websocket
         self.job_id = job_id
         self.user_id = user_id
-        self.connected_at = datetime.utcnow()
+        self.connected_at = datetime.now(timezone.utc)
         self.quiz_session_id: Optional[str] = None
 
 
@@ -84,7 +84,7 @@ class WebSocketManager:
             await websocket.send_json({
                 "type": "connected",
                 "job_id": job_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             })
             
             return True
@@ -318,7 +318,7 @@ class WebSocketManager:
             "type": "solve:progress",
             "job_id": job_id,
             **progress_data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.broadcast_to_job(job_id, message)
@@ -335,7 +335,7 @@ class WebSocketManager:
             "type": "solve:complete",
             "job_id": job_id,
             **result_data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.broadcast_to_job(job_id, message)
@@ -375,7 +375,7 @@ class WebSocketManager:
             "is_correct": is_correct,
             "ev_loss": ev_loss,
             "time_taken": time_taken,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.broadcast_to_quiz_session(quiz_session_id, message)
@@ -404,7 +404,7 @@ class WebSocketManager:
             "question_index": question_index,
             "total_questions": total_questions,
             "time_remaining": time_remaining,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.broadcast_to_quiz_session(quiz_session_id, message)
@@ -427,7 +427,7 @@ class WebSocketManager:
             "type": "quiz:leaderboard_update",
             "quiz_session_id": quiz_session_id,
             "leaderboard": leaderboard,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.broadcast_to_quiz_session(quiz_session_id, message)
@@ -453,7 +453,7 @@ class WebSocketManager:
             "quiz_session_id": quiz_session_id,
             "final_leaderboard": final_leaderboard,
             "session_stats": session_stats,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.broadcast_to_quiz_session(quiz_session_id, message)

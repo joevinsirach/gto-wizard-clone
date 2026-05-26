@@ -190,7 +190,7 @@ class QuizBroadcaster:
         stats = session_stats or {
             "total_participants": len(final_leaderboard),
             "quiz_session_id": quiz_session_id,
-            "completed_at": datetime.utcnow().isoformat()
+            "completed_at": datetime.now(timezone.utc).isoformat()
         }
         
         logger.info(f"Broadcasting quiz complete: session={quiz_session_id}")

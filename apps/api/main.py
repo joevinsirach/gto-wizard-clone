@@ -71,7 +71,7 @@ async def root():
 
 @app.get("/api/v1/health")
 async def health():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @app.websocket("/ws/solver/{job_id}")

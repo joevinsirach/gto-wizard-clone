@@ -363,7 +363,7 @@ class StrategyStorageService:
             street, board_hash, bet_size, stack_depth, game_type, players
         )
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         strategy = StoredStrategy(
             key=key,
             game_type=game_type,
@@ -751,8 +751,8 @@ class StrategyStorageService:
             bet_size=data.get("bet_size", 0.0),
             stack_depth=data["stack_depth"],
             strategy_data=data["strategy_data"],
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.utcnow(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.utcnow(),
+            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(timezone.utc),
+            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.now(timezone.utc),
         )
 
 

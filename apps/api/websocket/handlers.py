@@ -89,7 +89,7 @@ class QuizEventHandler:
             "user_id": user_id,
             "question_id": question_id,
             "is_correct": is_correct,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     async def on_quiz_progress(
@@ -129,7 +129,7 @@ class QuizEventHandler:
             "quiz_session_id": quiz_session_id,
             "question_index": question_index,
             "total_questions": total_questions,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     async def on_leaderboard_update(
@@ -160,7 +160,7 @@ class QuizEventHandler:
             "type": "quiz:leaderboard_update",
             "quiz_session_id": quiz_session_id,
             "leaderboard": leaderboard,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     async def on_quiz_complete(
@@ -195,7 +195,7 @@ class QuizEventHandler:
             "quiz_session_id": quiz_session_id,
             "final_leaderboard": final_leaderboard,
             "session_stats": session_stats,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     async def on_user_joined(
@@ -224,7 +224,7 @@ class QuizEventHandler:
             "quiz_session_id": quiz_session_id,
             "user_id": user_id,
             "user_name": user_name,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.manager.broadcast_to_quiz_session(quiz_session_id, message)
@@ -237,7 +237,7 @@ class QuizEventHandler:
                     "type": "quiz:sync_state",
                     "quiz_session_id": quiz_session_id,
                     "leaderboard": current_leaderboard,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             )
         
@@ -270,7 +270,7 @@ class QuizEventHandler:
             "question_id": question_id,
             "question": question_data,
             "time_limit": time_limit,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         
         await self.manager.broadcast_to_quiz_session(quiz_session_id, message)

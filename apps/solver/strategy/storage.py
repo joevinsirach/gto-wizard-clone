@@ -15,7 +15,7 @@ import os
 import time
 from typing import Dict, Optional, List, Any, Union
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 
 from .chart_generator import (
@@ -100,8 +100,8 @@ class StoredStrategy:
     bet_size: float  # Bet size as fraction of pot (e.g., 0.5 for half-pot)
     stack_depth: int  # Stack depth in big blinds
     strategy_data: Dict[str, Any]  # JSON-serializable strategy data
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class StrategyStorage:
@@ -453,7 +453,7 @@ class StrategyStorage:
             street, board_hash, bet_size, stack_depth, game_type, players
         )
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         strategy = StoredStrategy(
             key=key,
             game_type=game_type,
@@ -729,8 +729,8 @@ class StrategyStorage:
             bet_size=data.get("bet_size", 0.0),
             stack_depth=data["stack_depth"],
             strategy_data=data["strategy_data"],
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.utcnow(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.utcnow(),
+            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(timezone.utc),
+            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.now(timezone.utc),
         )
 
 
