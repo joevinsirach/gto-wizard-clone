@@ -113,8 +113,8 @@ export function ICMResults({
         </div>
       </div>
 
-      {/* Equity Chart */}
-      <div className="h-64 mb-6">
+      {/* Equity Chart - Responsive height */}
+      <div className="h-48 sm:h-64 mb-4 sm:mb-6">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
@@ -124,16 +124,16 @@ export function ICMResults({
             <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+              tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+              tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
               tickLine={false}
               axisLine={false}
               domain={[0, 100]}
-              label={{ value: "%", angle: -90, position: "insideLeft", fontSize: 10, fill: "var(--color-muted-foreground)" }}
+              label={{ value: "%", angle: -90, position: "insideLeft", fontSize: 9, fill: "var(--color-muted-foreground)" }}
             />
             <Tooltip
               contentStyle={{
@@ -170,26 +170,26 @@ export function ICMResults({
         </ResponsiveContainer>
       </div>
 
-      {/* Results Table */}
-      <div className="overflow-hidden rounded-lg border border-gray-800">
-        <table className="w-full text-sm">
+      {/* Results Table - Horizontal scroll on mobile */}
+      <div className="overflow-x-auto rounded-lg border border-gray-800 -mx-2 sm:mx-0">
+        <table className="w-full text-sm min-w-[500px]">
           <thead className="bg-gray-800/50">
             <tr>
-              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Rank</th>
-              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Player</th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground">Chips</th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground">ICM %</th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground">Prize $</th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground">Cash%</th>
+              <th className="px-2 sm:px-3 py-2 text-left font-medium text-muted-foreground">Rank</th>
+              <th className="px-2 sm:px-3 py-2 text-left font-medium text-muted-foreground">Player</th>
+              <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Chips</th>
+              <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">ICM %</th>
+              <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Prize $</th>
+              <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Cash%</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
             {sortedByEquity.map((player, index) => (
               <tr key={player.id} className="hover:bg-gray-800/30 transition-colors">
-                <td className="px-3 py-2">
+                <td className="px-2 sm:px-3 py-2">
                   <span
                     className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
+                      "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-semibold",
                       index === 0
                         ? "bg-poker-gold/20 text-poker-gold"
                         : index === sortedByEquity.length - 1
@@ -200,29 +200,29 @@ export function ICMResults({
                     {index + 1}
                   </span>
                 </td>
-                <td className="px-3 py-2 font-medium">
+                <td className="px-2 sm:px-3 py-2 font-medium truncate max-w-[100px] sm:max-w-none">
                   {player.name}
                   {index === 0 && (
-                    <span className="ml-2 text-xs text-poker-gold">★</span>
+                    <span className="ml-1 sm:ml-2 text-xs text-poker-gold">★</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                <td className="px-2 sm:px-3 py-2 text-right font-mono text-muted-foreground text-xs sm:text-sm">
                   {player.chips.toLocaleString()}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-2 sm:px-3 py-2 text-right">
                   <span className={cn(
-                    "font-mono font-semibold",
+                    "font-mono font-semibold text-xs sm:text-sm",
                     index === 0 ? "text-poker-gold" : index === sortedByEquity.length - 1 ? "text-red-400" : "text-blue-400"
                   )}>
                     {player.equity.toFixed(1)}%
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-green-400">
+                <td className="px-2 sm:px-3 py-2 text-right font-mono text-green-400 text-xs sm:text-sm">
                   ${player.prizeEquity.toLocaleString()}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <div className="w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <td className="px-2 sm:px-3 py-2 text-right">
+                  <div className="flex items-center justify-end gap-1 sm:gap-2">
+                    <div className="w-12 sm:w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                       <div
                         className={cn(
                           "h-full",
@@ -235,7 +235,7 @@ export function ICMResults({
                         style={{ width: `${player.cashProbability}%` }}
                       />
                     </div>
-                    <span className="font-mono text-muted-foreground w-10 text-right">
+                    <span className="font-mono text-muted-foreground w-8 sm:w-10 text-right text-xs sm:text-sm">
                       {player.cashProbability}%
                     </span>
                   </div>
@@ -246,23 +246,23 @@ export function ICMResults({
         </table>
       </div>
 
-      {/* Summary Stats */}
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <div className="text-center p-3 rounded bg-gray-800/30">
+      {/* Summary Stats - Mobile responsive grid */}
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="text-center p-2 sm:p-3 rounded bg-gray-800/30">
           <div className="text-xs text-muted-foreground mb-1">Total Prize Pool</div>
-          <div className="text-xl font-bold text-poker-gold">
+          <div className="text-lg sm:text-xl font-bold text-poker-gold">
             ${sortedByEquity.reduce((sum, p) => sum + p.prizeEquity, 0).toLocaleString()}
           </div>
         </div>
-        <div className="text-center p-3 rounded bg-gray-800/30">
+        <div className="text-center p-2 sm:p-3 rounded bg-gray-800/30">
           <div className="text-xs text-muted-foreground mb-1">Avg Stack Value</div>
-          <div className="text-xl font-bold text-blue-400">
+          <div className="text-lg sm:text-xl font-bold text-blue-400">
             ${(sortedByEquity.reduce((sum, p) => sum + p.prizeEquity, 0) / sortedByEquity.length || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
         </div>
-        <div className="text-center p-3 rounded bg-gray-800/30">
-          <div className="text-xs text-muted-foreground mb-1">Chip Leader Advantage</div>
-          <div className="text-xl font-bold text-green-400">
+        <div className="text-center p-2 sm:p-3 rounded bg-gray-800/30">
+          <div className="text-xs text-muted-foreground mb-1">Chip Leader Adv</div>
+          <div className="text-lg sm:text-xl font-bold text-green-400">
             +{((sortedByEquity[0]?.equity || 0) - (100 / (sortedByEquity.length || 1))).toFixed(1)}%
           </div>
         </div>
