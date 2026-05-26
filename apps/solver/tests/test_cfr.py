@@ -217,5 +217,66 @@ def test_integration():
     print("Integration test passed!")
 
 
+class TestMultiWayCFR:
+    """Test multi-way pot CFR support (3-6 players)."""
+    
+    def test_create_3way_state(self):
+        """Test creating a 3-way river state."""
+        from games.texas_hold_em import create_multiway_river_state
+        
+        state = create_multiway_river_state(
+            all_hole_cards=['Ac', 'Kd', 'Qs', 'Js', '2h', '2d'],
+            board=['Kh', '8c', '3d', '2s', 'Ks'],
+            pot=30.0,
+            stacks=[100.0, 100.0, 100.0],
+            current_player=0
+        )
+        
+        assert state.n_players == 3
+        assert len(state.hole_cards) == 6
+        assert len(state.board) == 5
+        assert state.street == 3
+    
+    def test_3way_valid_actions(self):
+        """Test valid actions for 3-way pot."""
+        from games.texas_hold_em import TexasHoldEm, create_multiway_river_state
+        
+        game = TexasHoldEm(n_players=3)
+        state = create_multiway_river_state(
+            all_hole_cards=['Ac', 'Kd', 'Qs', 'Js', '2h', '2d'],
+            board=['Kh', '8c', '3d', '2s', 'Ks'],
+            pot=30.0,
+            stacks=[100.0, 100.0, 100.0],
+            current_player=0
+        )
+        
+        actions = game.get_valid_actions(state, 0)
+        assert 'fold' in actions
+        assert 'check' in actions
+        assert 'bet:0.5' in actions
+    
+    def test_3way_river_solve(self):
+        """Test solving a 3-way river spot."""
+        from games.texas_hold_em import TexasHoldEm, create_multiway_river_state
+        from cfr.engine import CFREngine
+        
+        game = TexasHoldEm(n_players=3, bet_sizes=[0.5])
+        state = create_multiway_river_state(
+            all_hole_cards=['Ac', 'Kd', 'Qs', 'Js', '2h', '2d'],
+            board=['Kh', '8c', '3d', '2s', 'Ks'],
+            pot=30.0,
+            stacks=[100.0, 100.0, 100.0],
+            current_player=0
+        )
+        
+        engine = CFREngine(game)
+        strategies = engine.solve(state, iterations=50, sample_chance=False)
+        
+        assert len(strategies) >= 2  # At least P0 and P1 infosets
+        # Check that strategies are valid probability distributions
+        for key, strat in strategies.items():
+            assert np.isclose(strat.sum(), 1.0), f"Strategy {key} doesn't sum to 1"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
