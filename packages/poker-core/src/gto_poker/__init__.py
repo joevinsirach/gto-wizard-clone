@@ -17,6 +17,20 @@ from .icm import (
 )
 from .plo4 import PLO4Evaluator, PLO4Equity, plo4_hand_rank_to_percentage
 from .plo4_range import PLO4RangeParser, expand_range_to_hands
+from .bomb_pot import (
+    Phase,
+    ActionType,
+    Position,
+    BombPotAction,
+    BombPotGameState,
+    BombPotGameModel,
+    BombPotEquity,
+)
+from .double_board import (
+    DoubleBoardEvaluator,
+    DoubleBoardEquity,
+    ScoopTracker,
+)
 
 __all__ = [
     "Deck", "Hand", "HandEvaluator", "EquityCalculator", "RangeParser",
@@ -33,4 +47,16 @@ __all__ = [
     "plo4_hand_rank_to_percentage",
     "PLO4RangeParser",
     "expand_range_to_hands",
+    # Bomb Pot
+    "Phase",
+    "ActionType",
+    "Position",
+    "BombPotAction",
+    "BombPotGameState",
+    "BombPotGameModel",
+    "BombPotEquity",
+    # Double Board
+    "DoubleBoardEvaluator",
+    "DoubleBoardEquity",
+    "ScoopTracker",
 ]

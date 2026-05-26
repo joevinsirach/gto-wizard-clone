@@ -258,28 +258,15 @@ class CFREngine:
         # Check if betting round is complete and we need to advance to next street
         if self._betting_round_complete(state):
             if state.street >= 3:
-                # River or later - betting round complete means showdown
-                # Return terminal utilities directly without another recursion
-                new_state = state.copy()
-                new_state.terminal = True
-                new_state.terminal_reason = "showdown"
-                # Use terminal cache for the showdown state
-                cache_key = (
-                    new_state.street,
-                    new_state.pot,
-                    tuple(new_state.stacks),
-                    tuple(sorted(str(c) for c in new_state.hole_cards)),
-                    tuple(sorted(str(c) for c in new_state.board)),
-                    new_state.terminal_reason
-                )
-                if cache_key in self._terminal_cache:
-                    return self._terminal_cache[cache_key]
-                result = self._resolve_terminal(new_state)
-                self._terminal_cache[cache_key] = result
-                return result
+                # River (street 3) or later - betting round complete means showdown
+                # Mark state as terminal and resolve immediately WITHOUT recursion
+                state.terminal = True
+                state.terminal_reason = "showdown"
+                return self._resolve_terminal(state)
             elif state.street < 3:
+                # Pre-river streets: advance to next street and continue
                 new_state = self._advance_street(state)
-                new_state.current_player = 0  # P0 acts first on new street
+                new_state.current_player = self._get_first_responder(new_state)
                 return self._cfr_iteration(new_state, reach_probs)
 
         # Get current player
@@ -345,23 +332,41 @@ class CFREngine:
 
         return utilities
     
+    def _get_first_responder(self, state: GameState) -> int:
+        """Get the first active player to act on a new street."""
+        for i in range(state.n_players):
+            if state.stacks[i] > 0:
+                return i
+        return 0
+    
+    def _get_next_responder(self, state: GameState, current: int) -> int:
+        """Get the next active player after current."""
+        n = state.n_players
+        for offset in range(1, n + 1):
+            next_p = (current + offset) % n
+            if state.stacks[next_p] > 0:
+                return next_p
+        return -1
+
     def _betting_round_complete(self, state: GameState) -> bool:
         """
         Check if the current betting round is complete.
 
-        A betting round is complete when there is no active bet to call
-        (bet_to_call == 0) AND at least two actions have been taken.
-        This works for both the initial check-check case (no bets made)
-        and the bet-call case (bet was made and matched).
+        A betting round is complete when either:
+        1. There's no active bet to call (bet_to_call == 0)
+        2. Only one player remains (all others folded)
+
+        We also need at least 1 action to have occurred.
         """
         if len(state.action_history) == 0:
             return False
 
-        # Must have at least 2 actions for a complete betting round
-        if len(state.action_history) < 2:
-            return False
+        # Check if only one player remains
+        remaining = [i for i in range(state.n_players) if state.stacks[i] > 0]
+        if len(remaining) <= 1:
+            return True
 
-        # Betting round is complete only when there's no active bet to call
+        # Betting round is complete when there's no active bet to call
         return state.bet_to_call == 0
     
     def _handle_showdown(self, state: GameState) -> List[float]:

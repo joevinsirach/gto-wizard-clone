@@ -1,5 +1,7 @@
 # Generated gRPC message classes
 # proto syntax = "proto3"
+import json
+from typing import Dict, Any, List, Optional
 
 class Strategy:
     def __init__(self, action: str = "", frequency: float = 0.0, ev: float = 0.0):
@@ -83,6 +85,103 @@ class ICMSpotResponse:
         self.is_icm_spot = is_icm_spot
 
 
+# Strategy-related message classes
+
+class GetStrategyRequest:
+    """Request message for retrieving a GTO strategy"""
+    def __init__(self, game_type: str = "nlh", board: str = "", stack_depth: int = 100,
+                 bet_sizes: list = None, street: str = "preflop", players: int = 2,
+                 position: str = ""):
+        self.game_type = game_type
+        self.board = board
+        self.stack_depth = stack_depth
+        self.bet_sizes = bet_sizes or []
+        self.street = street
+        self.players = players
+        self.position = position
+
+class GetStrategyResponse:
+    """Response message for strategy retrieval"""
+    def __init__(self, strategy_data: str = "{}", status: str = "not_found",
+                 key: str = "", created_at: str = ""):
+        self.strategy_data = strategy_data  # JSON string
+        self.status = status  # "found", "not_found", "generating", "error"
+        self.key = key
+        self.created_at = created_at
+
+class ListStrategiesRequest:
+    """Request message for listing strategies"""
+    def __init__(self, game_type: str = "nlh", players: int = 0, board: str = "",
+                 street: str = "", limit: int = 100):
+        self.game_type = game_type
+        self.players = players
+        self.board = board
+        self.street = street
+        self.limit = limit
+
+class StrategySummary:
+    """Summary of a stored strategy"""
+    def __init__(self, key: str = "", game_type: str = "nlh", players: int = 2,
+                 street: str = "", board_hash: str = "", bet_size: float = 0.0,
+                 stack_depth: int = 100, created_at: str = "", updated_at: str = ""):
+        self.key = key
+        self.game_type = game_type
+        self.players = players
+        self.street = street
+        self.board_hash = board_hash
+        self.bet_size = bet_size
+        self.stack_depth = stack_depth
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+class ListStrategiesResponse:
+    """Response message for listing strategies"""
+    def __init__(self, strategies: list = None, total: int = 0):
+        self.strategies = strategies or []  # List of StrategySummary
+        self.total = total
+
+class ProgressUpdate:
+    """Progress update message for streaming"""
+    def __init__(self, job_id: str = "", progress: int = 0, status: str = "",
+                 stage: str = "", iteration: int = 0, total_iterations: int = 0,
+                 timestamp: float = 0.0, error: str = ""):
+        self.job_id = job_id
+        self.progress = progress
+        self.status = status
+        self.stage = stage
+        self.iteration = iteration
+        self.total_iterations = total_iterations
+        self.timestamp = timestamp
+        self.error = error
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization"""
+        return {
+            "job_id": self.job_id,
+            "progress": self.progress,
+            "status": self.status,
+            "stage": self.stage,
+            "iteration": self.iteration,
+            "total_iterations": self.total_iterations,
+            "timestamp": self.timestamp,
+            "error": self.error,
+        }
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ProgressUpdate":
+        """Create from dictionary"""
+        return ProgressUpdate(
+            job_id=d.get("job_id", ""),
+            progress=d.get("progress", 0),
+            status=d.get("status", ""),
+            stage=d.get("stage", ""),
+            iteration=d.get("iteration", 0),
+            total_iterations=d.get("total_iterations", 0),
+            timestamp=d.get("timestamp", 0.0),
+            error=d.get("error", ""),
+        )
+
+
 # Convenience factories for backward compatibility
 
 def SolveRequestFromDict(d):
@@ -104,4 +203,40 @@ def ICMRequestFromDict(d):
         prizes=d.get('prizes', []),
         prize_pool=d.get('prize_pool', 1.0),
         n_simulations=d.get('n_simulations', 100_000),
+    )
+
+def GetStrategyRequestFromDict(d) -> GetStrategyRequest:
+    """Create GetStrategyRequest from dict"""
+    return GetStrategyRequest(
+        game_type=d.get('game_type', 'nlh'),
+        board=d.get('board', ''),
+        stack_depth=d.get('stack_depth', 100),
+        bet_sizes=d.get('bet_sizes', []),
+        street=d.get('street', 'preflop'),
+        players=d.get('players', 2),
+        position=d.get('position', ''),
+    )
+
+def ListStrategiesRequestFromDict(d) -> ListStrategiesRequest:
+    """Create ListStrategiesRequest from dict"""
+    return ListStrategiesRequest(
+        game_type=d.get('game_type', 'nlh'),
+        players=d.get('players', 0),
+        board=d.get('board', ''),
+        street=d.get('street', ''),
+        limit=d.get('limit', 100),
+    )
+
+def StrategySummaryFromDict(d: Dict[str, Any]) -> StrategySummary:
+    """Create StrategySummary from dict"""
+    return StrategySummary(
+        key=d.get('key', ''),
+        game_type=d.get('game_type', 'nlh'),
+        players=d.get('players', 2),
+        street=d.get('street', ''),
+        board_hash=d.get('board_hash', ''),
+        bet_size=d.get('bet_size', 0.0),
+        stack_depth=d.get('stack_depth', 100),
+        created_at=d.get('created_at', ''),
+        updated_at=d.get('updated_at', ''),
     )

@@ -109,6 +109,32 @@ adjusted_equity = (scoop_wins × 1.0 + chop_wins × 0.5) / total_sims
 
 **Key challenge:** Standard hand evaluators are built for single-board. Double board requires two independent evaluations and a scoop accumulator.
 
+### Double Board PLO Architecture
+
+```
+double_board.py
+├── DoubleBoardEvaluator
+│   ├── evaluate(hole, board1, board2) -> (rank1, rank2)
+│   └── evaluate_showdown(holes, board1, board2) -> scoop_results
+├── DoubleBoardEquity
+│   ├── calculate(hand1, hand2, board1, board2) -> (eq1, eq2)
+│   ├── _monte_carlo() -> simulates remaining cards
+│   └── _exact_equity() -> complete board enumeration
+└── ScoopTracker
+    ├── scoop_wins, chop_wins, total_sims
+    └── adjusted_equity property
+```
+
+**Core logic:**
+- For each simulation: evaluate player hand on board1 AND board2 independently
+- Player 1 scoops: wins 1.0 (both boards better)
+- Player 1 chops: wins 0.5 (one board better, one worse — tie)
+- Neither scoops nor chops: 0.0
+
+**API Endpoints:**
+- `POST /api/v1/double-board/equity` — calculate double board equity
+- `POST /api/v1/double-board/hand-rank` — evaluate hand on both boards
+
 ---
 
 ## Bomb Pot (Phase 2d — Novel)
@@ -123,6 +149,41 @@ adjusted_equity = (scoop_wins × 1.0 + chop_wins × 0.5) / total_sims
 **Frontend page:** `/bomb-pot` — player count, straddle map (which positions straddle and how much), junk blind amounts.
 
 **Key challenge:** Game theory for bomb pots is non-standard — theInfoset model changes because the initial state includes a straddle-round rather than a fold-round.
+
+### Bomb Pot Architecture
+
+```
+bomb_pot.py
+├── BombPotGameState
+│   ├── straddle_map: Dict[Position, int]  # which positions straddle and amounts
+│   ├── junk_blinds: List[int]              # extra blinds from bomb pot rules
+│   ├── betting_order: List[Position]       # who acts next
+│   └── phase: Phase (STRADDLE_ROUND, FLOP, TURN, RIVER)
+├── BombPotAction
+│   ├── action_type: ActionType (STRADDLE, CALL, RAISE, CHECK)
+│   ├── amount: int (for raises)
+│   └── player: Position
+├── BombPotGameModel
+│   ├── create_straddle_map(positions, amounts) -> Dict
+│   ├── next_bettor(state) -> Position
+│   ├── resolve_preflop(state) -> (pot, betting_complete)
+│   └── is_betting_complete(state) -> bool
+```
+
+**Game model properties:**
+- `straddle_map`: Maps position -> straddle amount. E.g., `{1: 20, 3: 40}` means UTG+1 straddle $20, CO straddle $40
+- `junk_blinds`: Additional dead money from bomb pot rules (ante, straddle adds to pot)
+- `betting_order`: Order of players who act in straddle round
+
+**Key difference from standard poker:**
+- Round 0 = straddle round (no fold option)
+- Players who straddle are automatically in the hand
+- Straddle is a raise option, not mandatory (unless "mandatory straddle" rule)
+
+**API Endpoints:**
+- `POST /api/v1/bomb-pot/game-state` — create new bomb pot game state
+- `POST /api/v1/bomb-pot/action` — submit an action
+- `GET /api/v1/bomb-pot/equity` — calculate bomb pot equity given state
 
 ---
 
