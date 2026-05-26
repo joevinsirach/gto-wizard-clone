@@ -232,12 +232,12 @@ export function ICMAwareStrategy({
 
           <div className="text-xs text-muted-foreground">
             <p className="mb-2">
-              Bubble factor > 1.0 means your chips are worth more than their
+              Bubble factor &gt; 1.0 means your chips are worth more than their
               face value due to prize pool structure. Higher bubble factor = more
               valuable chips = tighter ranges recommended.
             </p>
             <p>
-              When bubble factor < 1.0, chips are worth less than face value
+              When bubble factor &lt; 1.0, chips are worth less than face value
               (rare, usually in satellite situations), allowing for looser play.
             </p>
           </div>
