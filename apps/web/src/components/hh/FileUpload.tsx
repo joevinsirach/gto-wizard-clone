@@ -1,76 +1,160 @@
 /**
- * FileUpload — drag-and-drop hand history file upload.
- * Supports single and multi-file upload with preview of loaded hands.
+ * FileUpload — enhanced drag-and-drop hand history file upload.
+ * Supports progress tracking for large files, format detection, and size validation.
  */
 
 import { useCallback, useState } from "react";
-import { Upload, FileText, X, CheckCircle2 } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type HHFormat = "pokerstars" | "ggpoker" | " ignition" | "unknown";
 
 export interface LoadedFile {
   name: string;
   content: string;
   size: number;
   hands: string[];
+  format: HHFormat;
+}
+
+export interface FileUploadProgress {
+  fileName: string;
+  progress: number;      // 0-100
+  status: "reading" | "parsing" | "done" | "error";
+  error?: string;
 }
 
 interface FileUploadProps {
   onFilesLoaded: (files: LoadedFile[]) => void;
   accept?: string;
   multiple?: boolean;
+  maxSizeMB?: number;
   className?: string;
 }
 
-const HAND_SEPARATOR_RE = /(?:PokerStars Hand #|GGPoker Hand #|Hand #)/i;
+const HAND_SEPARATOR_RE = /(?:PokerStars Hand #|GGPoker Hand #|Hand #|Ignition Hand #)/i;
+
+function detectFormat(text: string): HHFormat {
+  if (/PokerStars/i.test(text)) return "pokerstars";
+  if (/GGPoker/i.test(text)) return "ggpoker";
+  if (/Ignition/i.test(text)) return "ignition";
+  return "unknown";
+}
 
 function extractHands(text: string): string[] {
-  const parts = text.split(HAND_SEPARATOR_RE);
+  const separatorMatch = text.match(HAND_SEPARATOR_RE);
+  if (!separatorMatch) return [];
+  const separator = separatorMatch[0];
+  const parts = text.split(separator);
   const hands: string[] = [];
   for (let i = 1; i < parts.length; i += 2) {
     const prev = parts[i - 1];
     const match = prev.match(/\n\n([\s\S]*)$/);
     const body = match ? match[1] : "";
     const header = parts[i].split("\n")[0];
-    hands.push(`PokerStars Hand #${header}\n${body}`);
+    hands.push(`${separator}${header}\n${body}`);
   }
   return hands;
 }
+
+const FORMAT_LABELS: Record<HHFormat, string> = {
+  pokerstars: "PokerStars",
+  ggpoker: "GGPoker",
+  ignition: "Ignition",
+  unknown: "Unknown",
+};
+
+const FORMAT_COLORS: Record<HHFormat, string> = {
+  pokerstars: "text-red-400",
+  ggpoker: "text-yellow-400",
+  ignition: "text-orange-400",
+  unknown: "text-muted-foreground",
+};
 
 export function FileUpload({
   onFilesLoaded,
   accept = ".txt,.hh,.hhc",
   multiple = true,
+  maxSizeMB = 50,
   className,
 }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [loadedFiles, setLoadedFiles] = useState<LoadedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<FileUploadProgress[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const processFiles = useCallback(
     async (fileList: FileList) => {
       setError(null);
-      const files: LoadedFile[] = [];
+      setIsProcessing(true);
+      setProgress([]);
 
-      for (const file of Array.from(fileList)) {
+      const files: LoadedFile[] = [];
+      const fileArray = Array.from(fileList);
+
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+
+        // Size validation
+        if (file.size > maxSizeMB * 1024 * 1024) {
+          setError(`File "${file.name}" exceeds max size of ${maxSizeMB}MB`);
+          setIsProcessing(false);
+          return;
+        }
+
+        const fileProgress: FileUploadProgress = {
+          fileName: file.name,
+          progress: 0,
+          status: "reading",
+        };
+        setProgress((prev) => [...prev, fileProgress]);
+
         try {
+          // Simulate chunked reading with progress (browsers don't give read progress,
+          // but we can simulate parsing progress for UX)
+          const progressUpdater = (pct: number, status: FileUploadProgress["status"]) => {
+            setProgress((prev) =>
+              prev.map((fp) =>
+                fp.fileName === file.name ? { ...fp, progress: pct, status } : fp
+              )
+            );
+          };
+
+          progressUpdater(10, "reading");
           const content = await file.text();
+          progressUpdater(40, "parsing");
+
           const hands = extractHands(content);
+          const format = detectFormat(content);
+          progressUpdater(90, "done");
+
           files.push({
             name: file.name,
             content,
             size: file.size,
             hands,
+            format,
           });
+
+          progressUpdater(100, "done");
         } catch {
+          setProgress((prev) =>
+            prev.map((fp) =>
+              fp.fileName === file.name
+                ? { ...fp, progress: 0, status: "error", error: "Failed to read file" }
+                : fp
+            )
+          );
           setError(`Failed to read file: ${file.name}`);
-          return;
         }
       }
 
+      setIsProcessing(false);
       setLoadedFiles((prev) => [...prev, ...files]);
       onFilesLoaded(files);
     },
-    [onFilesLoaded],
+    [maxSizeMB, onFilesLoaded],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -107,6 +191,12 @@ export function FileUpload({
     setLoadedFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const clearAll = useCallback(() => {
+    setLoadedFiles([]);
+    setProgress([]);
+    onFilesLoaded([]);
+  }, [onFilesLoaded]);
+
   const totalHands = loadedFiles.reduce((sum, f) => sum + f.hands.length, 0);
 
   return (
@@ -122,6 +212,7 @@ export function FileUpload({
             ? "border-primary bg-primary/5"
             : "border-border hover:border-primary/50 hover:bg-primary/5",
           error && "border-destructive",
+          isProcessing && "opacity-60 pointer-events-none",
         )}
       >
         <input
@@ -143,12 +234,43 @@ export function FileUpload({
             : "Drag & drop hand history files or click to browse"}
         </span>
         <span className="text-xs text-muted-foreground/70">
-          Supports .txt, .hh, .hhc (PokerStars, GGPoker)
+          Supports .txt, .hh, .hhc (PokerStars, GGPoker, Ignition) · Max {maxSizeMB}MB per file
         </span>
       </label>
 
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <div className="flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Progress indicators for files being processed */}
+      {progress.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {progress.map((fp, i) => (
+            <div key={`${fp.fileName}-${i}`} className="flex items-center gap-2">
+              {fp.status === "error" ? (
+                <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+              ) : fp.status === "done" ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+              ) : (
+                <Loader2 className="h-3.5 w-3.5 text-primary animate-spin flex-shrink-0" />
+              )}
+              <span className="text-xs text-muted-foreground flex-1 truncate">{fp.fileName}</span>
+              <span className="text-xs text-muted-foreground">{fp.progress}%</span>
+              <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    fp.status === "error" ? "bg-destructive" : fp.status === "done" ? "bg-emerald-500" : "bg-primary",
+                  )}
+                  style={{ width: `${fp.progress}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Loaded files */}
@@ -156,13 +278,11 @@ export function FileUpload({
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">
-              {loadedFiles.length} file{loadedFiles.length !== 1 ? "s" : ""} loaded ({totalHands} hands)
+              {loadedFiles.length} file{loadedFiles.length !== 1 ? "s" : ""} loaded (
+              {totalHands} hands)
             </span>
             <button
-              onClick={() => {
-                setLoadedFiles([]);
-                onFilesLoaded([]);
-              }}
+              onClick={clearAll}
               className="text-xs text-muted-foreground hover:text-destructive transition-colors"
             >
               Clear all
@@ -175,8 +295,17 @@ export function FileUpload({
                 key={`${file.name}-${i}`}
                 className="flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded bg-secondary/50 text-xs"
               >
-                <FileText className="h-3 w-3 text-muted-foreground" />
-                <span className="max-w-[120px] truncate">{file.name}</span>
+                <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span className="max-w-[100px] truncate">{file.name}</span>
+                <span
+                  className={cn(
+                    "text-[10px] font-medium",
+                    FORMAT_COLORS[file.format],
+                  )}
+                  title={`Detected: ${FORMAT_LABELS[file.format]}`}
+                >
+                  {FORMAT_LABELS[file.format]}
+                </span>
                 <span className="text-muted-foreground/70">({file.hands.length}h)</span>
                 <button
                   onClick={() => removeFile(i)}
@@ -194,7 +323,9 @@ export function FileUpload({
       {loadedFiles.length > 0 && (
         <div className="flex items-center gap-1.5 text-xs text-emerald-500">
           <CheckCircle2 className="h-3 w-3" />
-          <span>Files ready for analysis</span>
+          <span>
+            {loadedFiles.length} file{loadedFiles.length !== 1 ? "s" : ""} ready for analysis · {totalHands} total hands
+          </span>
         </div>
       )}
     </div>

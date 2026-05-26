@@ -7,9 +7,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, Eye } from "lucide-react";
+import { ArrowLeft, Search, Eye, Download } from "lucide-react";
 import { HandTable, type HandRecord } from "@/components/hh";
 import { Button } from "@/components/ui/button";
+import { exportHandsToCSV, generateExportFilename } from "@/components/hh";
 
 // Mock hands for demonstration — in production these come from API params / context
 const MOCK_HANDS: HandRecord[] = [
@@ -120,9 +121,18 @@ export default function HandsPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-poker-gold">Hands</h1>
           <p className="text-sm text-muted-foreground">
-            {MOCK_HANDS.length} hands analyzed &middot; sorted by EV loss
+            {MOCK_HANDS.length} hands analyzed · sorted by EV loss
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportHandsToCSV(filtered, undefined, generateExportFilename("hands_export"))}
+          className="gap-1.5 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/10"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
