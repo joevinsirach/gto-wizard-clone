@@ -12,6 +12,7 @@ from datetime import datetime
 import redis
 
 from routers import equity, solver, auth, hh, strategy, quiz
+from routers import plo4_equity, plo4_ranges
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -28,18 +29,17 @@ def init_redis(app: FastAPI):
     """Initialize Redis connection on startup."""
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
     try:
-        client = redis.from_url(redis_url, decode_responses=True)
-        client.ping()
-        app.state.redis = client
-        logger.info(f"Redis connected: {redis_url}")
+        app.state.redis = redis.from_url(redis_url)
+        logger.info("Redis connection initialized")
     except Exception as e:
-        logger.warning(f"Redis connection failed: {e}. Caching disabled.")
+        logger.warning(f"Redis connection failed: {e}")
         app.state.redis = None
 
 
 @app.on_event("startup")
 async def startup_event():
     init_redis(app)
+
 
 # CORS middleware
 app.add_middleware(
@@ -57,14 +57,19 @@ app.include_router(auth.router)
 app.include_router(hh.router)
 app.include_router(strategy.router)
 app.include_router(quiz.router)
+app.include_router(plo4_equity.router)
+app.include_router(plo4_ranges.router)
+
 
 @app.get("/")
 async def root():
     return {"message": "GTO Wizard Clone API", "version": "0.1.0", "status": "running"}
 
+
 @app.get("/api/v1/health")
 async def health():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
 
 @app.websocket("/ws/solver/{job_id}")
 async def solver_ws(ws: WebSocket, job_id: str):
@@ -76,6 +81,7 @@ async def solver_ws(ws: WebSocket, job_id: str):
                 await ws.send_json({"type": "pong"})
     except WebSocketDisconnect:
         pass
+
 
 if __name__ == "__main__":
     import uvicorn

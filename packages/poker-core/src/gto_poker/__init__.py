@@ -15,6 +15,8 @@ from .icm import (
     malmoud_harville,
     calculate_bubble_factor,
 )
+from .plo4 import PLO4Evaluator, PLO4Equity, plo4_hand_rank_to_percentage
+from .plo4_range import PLO4RangeParser, expand_range_to_hands
 
 __all__ = [
     "Deck", "Hand", "HandEvaluator", "EquityCalculator", "RangeParser",
@@ -25,4 +27,10 @@ __all__ = [
     "icm_equity_chips",
     "malmoud_harville",
     "calculate_bubble_factor",
+    # PLO4
+    "PLO4Evaluator",
+    "PLO4Equity", 
+    "plo4_hand_rank_to_percentage",
+    "PLO4RangeParser",
+    "expand_range_to_hands",
 ]
