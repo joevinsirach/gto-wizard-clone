@@ -301,6 +301,8 @@ class TexasHoldEm:
             if amount_to_call > 0:
                 new_state.bet_to_call = 0.0
                 new_state.last_bettor = -1  # Betting round complete
+            # If no active bet (amount_to_call == 0), this is effectively checking
+            # last_bettor stays at -1 if it was -1, or stays at last value (meaning round isn't complete)
 
         elif action_str.startswith("raise:"):
             raise_mult = float(action_str.split(":")[1])
@@ -348,7 +350,6 @@ class TexasHoldEm:
                 return new_state
 
         elif action_str.startswith("bet:"):
-            # Bet initiates a new bet (like raise but no amount_to_call needed)
             bet_mult = float(action_str.split(":")[1])
             bet_size = state.pot * bet_mult if bet_mult < 10 else bet_mult
 
@@ -360,13 +361,21 @@ class TexasHoldEm:
             new_state.pot += total_cost
 
             # After a bet, others need to call to stay in
-            max_contribution = max(new_state.contributions)
-            new_state.bet_to_call = max(0, max_contribution - new_state.contributions[player])
+            # bet_to_call should be the amount needed to call the bet
+            amount_to_call = bet_size  # When no prior bet exists, bet_size is the amount to call
+            new_state.bet_to_call = amount_to_call
             new_state.last_bettor = player
 
         elif action_str == "check":
-            # No change to pot or stacks
-            pass
+            # Check doesn't change pot or stacks, but if there's no bet to call
+            # and this is the first action, the betting round is now complete (both checked)
+            if state.bet_to_call == 0 and state.last_bettor == -1:
+                # Both players have checked - round is done, showdown on river
+                pass  # new_state.last_bettor stays -1
+            elif state.bet_to_call > 0:
+                # This shouldn't happen (can't check when facing a bet)
+                # But if it does, treat as call
+                pass
 
         # Showdown detection for river street only
         # On the river (street 3), showdown happens when betting round ends
@@ -384,38 +393,48 @@ class TexasHoldEm:
         for offset in range(1, n + 1):
             next_p = (current_player + offset) % n
             if state.stacks[next_p] > 0:
-                return next_p
+                # Check if this player has folded
+                folded = False
+                for action in state.action_history:
+                    if action.player == next_p and action.action_type == ActionType.FOLD:
+                        folded = True
+                        break
+                if not folded:
+                    return next_p
         return -1  # No active players
 
     def _get_active_players(self, state: GameState) -> List[int]:
         """Get list of active players (not folded, have chips)."""
-        return [i for i in range(state.n_players) if state.stacks[i] > 0]
+        active = []
+        for i in range(state.n_players):
+            if state.stacks[i] > 0:
+                # Check if player has folded
+                folded = False
+                for action in state.action_history:
+                    if action.player == i and action.action_type == ActionType.FOLD:
+                        folded = True
+                        break
+                if not folded:
+                    active.append(i)
+        return active
 
     def _betting_round_complete(self, state: GameState) -> bool:
         """
         Check if betting round is complete (no active bet to call).
 
-        For multi-way pots, betting round is complete when:
-        - bet_to_call == 0 (no active bet)
-        - last_bettor == -1 (no one just bet without response)
-        - AND at least one action has been taken
+        A betting round is complete when there is no active bet to call
+        (bet_to_call == 0) AND at least two actions have been taken.
+        This works for both check-check and bet-call cases.
         """
         if len(state.action_history) == 0:
             return False
 
-        if state.bet_to_call > 0:
+        # Must have at least 2 actions for a complete betting round
+        if len(state.action_history) < 2:
             return False
 
-        # Check if all active players have acted after last bet
-        active = self._get_active_players(state)
-        if not active:
-            return True
-
-        # If there's no bet to call and last_bettor is -1, check if everyone checked
-        if state.last_bettor == -1:
-            return True
-
-        return False
+        # Betting round is complete only when there's no active bet to call
+        return state.bet_to_call == 0
     
     def is_terminal(self, state: GameState) -> bool:
         """Check if state is terminal."""

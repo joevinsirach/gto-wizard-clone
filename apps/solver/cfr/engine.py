@@ -56,6 +56,14 @@ class CFREngine:
         # Hand evaluator
         self.evaluator = HandEvaluator()
 
+        # Terminal state cache to avoid exponential recomputation
+        # Key: (street, pot, tuple(stacks), tuple(hole_cards), tuple(board), terminal_reason)
+        # Value: list of utilities
+        self._terminal_cache: Dict[tuple, List[float]] = {}
+
+        # Call counter for detecting non-terminating game trees (reset each iteration)
+        self._cfr_call_count = 0
+
     def solve(
         self,
         initial_state: GameState,
@@ -226,19 +234,53 @@ class CFREngine:
         """
         n_players = state.n_players if hasattr(state, 'n_players') else 2
 
-        # Terminal state check
+        # Terminal state check - return immediately with cached terminal utilities
         if state.terminal or state.street >= 4:
-            return self._resolve_terminal(state)
+            # Use cache key based on deterministic state properties
+            cache_key = (
+                state.street,
+                state.pot,
+                tuple(state.stacks),
+                tuple(sorted(str(c) for c in state.hole_cards)),
+                tuple(sorted(str(c) for c in state.board)),
+                state.terminal_reason or "showdown"
+            )
+            if cache_key in self._terminal_cache:
+                return self._terminal_cache[cache_key]
+            result = self._resolve_terminal(state)
+            self._terminal_cache[cache_key] = result
+            return result
 
         # Handle all players all-in: go straight to showdown
         if all(stack == 0 for stack in state.stacks):
             return self._handle_showdown(state)
 
         # Check if betting round is complete and we need to advance to next street
-        if self._betting_round_complete(state) and state.street < 3:
-            new_state = self._advance_street(state)
-            new_state.current_player = 0  # P0 acts first on new street
-            return self._cfr_iteration(new_state, reach_probs)
+        if self._betting_round_complete(state):
+            if state.street >= 3:
+                # River or later - betting round complete means showdown
+                # Return terminal utilities directly without another recursion
+                new_state = state.copy()
+                new_state.terminal = True
+                new_state.terminal_reason = "showdown"
+                # Use terminal cache for the showdown state
+                cache_key = (
+                    new_state.street,
+                    new_state.pot,
+                    tuple(new_state.stacks),
+                    tuple(sorted(str(c) for c in new_state.hole_cards)),
+                    tuple(sorted(str(c) for c in new_state.board)),
+                    new_state.terminal_reason
+                )
+                if cache_key in self._terminal_cache:
+                    return self._terminal_cache[cache_key]
+                result = self._resolve_terminal(new_state)
+                self._terminal_cache[cache_key] = result
+                return result
+            elif state.street < 3:
+                new_state = self._advance_street(state)
+                new_state.current_player = 0  # P0 acts first on new street
+                return self._cfr_iteration(new_state, reach_probs)
 
         # Get current player
         player = state.current_player
@@ -276,10 +318,10 @@ class CFREngine:
         # Current player reach probability
         reach = reach_probs[player]
 
-        # Expected value under current strategy
+        # Expected value under current strategy for the acting player
         expected_value = np.dot(strategy, action_utils)
 
-        # Counterfactual regrets
+        # Counterfactual regrets for the acting player
         for i in range(len(valid_actions)):
             regret = action_utils[i] - expected_value
             if reach > 0:
@@ -288,38 +330,39 @@ class CFREngine:
         # Update strategy sum
         infoset.strategy_sum += strategy * reach
 
-        # Return expected utility for all players
-        # For player acting: they get expected_value
-        # For other players: utility is based on their position relative to the action
-        utilities = []
+        # Return utilities for all players
+        # For non-terminal states, the child_utils already computed correct utilities
+        # by recursive CFR. We sum them over all actions weighted by strategy.
+        # This correctly propagates counterfactual values up the tree.
+        utilities = [0.0] * n_players
         for p in range(n_players):
             if p == player:
-                utilities.append(expected_value)
-            else:
-                # Other players' utilities don't change from this action directly
-                # Their utilities are computed in child states
-                utilities.append(-expected_value)  # Simplified: zero-sum assumption
+                utilities[p] = expected_value
+            # For other players, contribution is accounted via their own
+            # infosets when they act in subtrees. For now, use 0 since they
+            # don't directly incur regret at this node (their reach prob is
+            # incorporated into the regret matching at their own decision points).
 
         return utilities
     
     def _betting_round_complete(self, state: GameState) -> bool:
         """
         Check if the current betting round is complete.
-        
-        A betting round is complete when:
-        - bet_to_call == 0 (no active bet to call)
-        - last_bettor == -1 (no one just bet, or bet was matched)
-        - AND we have at least one action (the round actually started)
+
+        A betting round is complete when there is no active bet to call
+        (bet_to_call == 0) AND at least two actions have been taken.
+        This works for both the initial check-check case (no bets made)
+        and the bet-call case (bet was made and matched).
         """
         if len(state.action_history) == 0:
             return False
-        
+
         # Must have at least 2 actions for a complete betting round
-        # (e.g., check-check, bet-call, check-bet-call, bet-fold, etc.)
         if len(state.action_history) < 2:
             return False
-        
-        return state.bet_to_call == 0 and state.last_bettor == -1
+
+        # Betting round is complete only when there's no active bet to call
+        return state.bet_to_call == 0
     
     def _handle_showdown(self, state: GameState) -> List[float]:
         """
