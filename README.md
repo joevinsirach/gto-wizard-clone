@@ -1,104 +1,82 @@
 # GTO Wizard Clone
 
-**Open-source GTO poker training platform** — equity calculator, CFR solver, training modes, hand history analysis, and ICM calculator.
+**Open-source GTO poker training platform** — equity calculator, CFR solver, PLO4 tools, double board / bomb pot solver, training modes, hand history analysis, and ICM calculator.
 
-## Mission
+## Supported Game Variants
 
-Build a full-featured poker training platform that rivals commercial tools like GTO Wizard, PokerSnowie, and PioSolver — completely open source, self-hostable, and extensible.
+| Variant | Status | Notes |
+|---------|--------|-------|
+| No-Limit Hold'em (NLH) | ✅ Equity ready | OMPEval (C++) |
+| Pot-Limit Omaha 4 (PLO4) | 🔬 Phase 2b | PokerHandEvaluator (C++/Python) |
+| PLO5 (5-card Omaha) | 🔬 Phase 2c | 4-card from 5 eval |
+| Omaha Hi/Lo (8-or-better) | 🔬 Phase 2c | Split pot, 8-qualifier |
+| Shortdeck (6+ Hold'em) | 🔬 Phase 2c | Flush > full house |
+| **Double Board PLO** | 🔬 Phase 2d (novel) | Two boards, scoop/chop scoring |
+| **Bomb Pot** | 🔬 Phase 2d (novel) | Action-first betting, straddle games |
 
-## Feature Overview
+## Key Libraries
 
-### 🎯 Core Features
+| Library | Stars | Use |
+|---------|-------|-----|
+| [HenryRLee/PokerHandEvaluator](https://github.com/HenryRLee/PokerHandEvaluator) | 501 | PLO4/PLO5/Hi-Lo hand evaluation |
+| [zekyll/OMPEval](https://github.com/zekyll/OMPEval) | 224 | NLH hand evaluator (C++) |
+| [siavashg87/poker-odds-calc](https://github.com/siavashg87/poker-odds-calc) | 99 | Multi-variant equity (Hold'em, Omaha, Shortdeck) |
+| [ksoeze/OmahaRangeExplorer](https://github.com/ksoeze/OmahaRangeExplorer) | 4 | Python PLO4 range builder |
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Equity Calculator** | 🔬 Planning | Hand vs range, range vs range equity with Monte Carlo + exact enumeration |
-| **GTO Solver** | 🔬 Planning | CFR-based Nash equilibrium solver for No-Limit Hold'em |
-| **Training Quizzes** | 🔬 Planning | Flop/turn/river quizzes with GTO answer comparison |
-| **Hand History Analyzer** | 🔬 Planning | Parse, store, and analyze HH files vs GTO baseline |
-| **ICM Calculator** | ✅ Complete | Tournament ICM + push/fold charts |
-| **Range Builder** | ✅ Complete | Visual range selector with equity visualization |
-| **Content Library** | ✅ Complete | Pre-built courses and community spots |
-
-### 🏗️ Architecture
+## Architecture
 
 ```
-gto-wizard-clone/
-├── apps/
-│   ├── web/            # Next.js 15 + TypeScript frontend
-│   ├── api/            # FastAPI + WebSocket backend
-│   └── solver/         # Python CFR engine (gRPC service)
-├── packages/
-│   ├── poker-core/     # Shared: hand evaluation, equity calc (TS + Python)
-│   ├── ui-components/  # Shared component library
-│   └── types/          # Shared TypeScript types
-├── infra/docker/       # Docker + docker-compose
-└── scripts/            # HH parsing + data tools
+apps/web/        Next.js 15 frontend
+apps/api/        FastAPI backend
+apps/solver/     Python MCCFR engine (gRPC)
+packages/
+  poker-core/    Shared poker math (Python + TypeScript)
+  types/         Shared TypeScript types
+  ui-components/ React component library
 ```
 
-### 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI |
-| Backend | FastAPI (Python 3.12+), Pydantic v2, WebSockets |
-| Solver Engine | Python 3.12, NumPy, Numba JIT, MCCFR algorithm |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind v4 |
+| Backend | FastAPI, Pydantic v2, WebSockets, Celery |
+| Solver | Python 3.12, NumPy, Numba, MCCFR |
+| PLO4/Omaha | PokerHandEvaluator (C++/Python) |
 | Database | PostgreSQL (Neon serverless) |
 | Cache | Redis |
-| Container | Docker, Docker Compose |
 
-## Open-Source Libraries Used
+## Quick Start
 
-### Poker Engine
-- [zekyll/OMPEval](https://github.com/zekyll/OMPEval) — Fast C++ hand evaluator
-- [siavashg87/poker-odds-calc](https://github.com/siavashg87/poker-odds-calc) — Fast Node equity calc
-- [thotbreakerr/Texas-Holdem-AI](https://github.com/thotbreakerr/Texas-Holdem-AI) — MCCFR + GTO + ICM reference
-
-### ICM & Training
-- [apcode/poker-mtt-icm](https://github.com/apcode/poker-mtt-icm) — Python ICM calculator
-- [battermann/equiweb](https://github.com/battermann/equiweb) — In-browser range equity
-
-### Hand History
-- [aneopsy/PokerStats](https://github.com/aneopsy/PokerStats) — PokerStars HH parser (Python)
+```bash
+git clone https://github.com/ChonSong/gto-wizard-clone.git
+cd gto-wizard-clone
+docker compose up
+```
 
 ## Development Phases
 
-### Phase 1: Foundation (Weeks 1-2)
-- [ ] Repo setup (monorepo, Docker, CI/CD)
-- [ ] Poker core library (deck, hand evaluation, equity)
-- [ ] Basic API + WebSocket infrastructure
-- [ ] Basic UI (Next.js + Tailwind)
+| Phase | Focus | Status |
+|-------|-------|--------|
+| Phase 1 | Foundation (monorepo, Docker, CI/CD) | ✅ Complete |
+| Phase 2a | NLH Equity Calculator | 🔄 In progress |
+| Phase 2b | PLO4 Support | 🔬 Planned |
+| Phase 2c | Omaha Variants + Shortdeck | 🔬 Planned |
+| Phase 2d | Double Board + Bomb Pot (novel) | 🔬 Planned |
+| Phase 3 | GTO Solver (MCCFR) | 🔬 Planned |
+| Phase 4 | Training Mode | 🔬 Planned |
+| Phase 5 | Hand History Analysis | 🔬 Planned |
+| Phase 6 | ICM + Polish | 🔬 Planned |
 
-### Phase 2: Equity Calculator (Weeks 3-4)
-- [ ] Monte Carlo equity engine
-- [ ] Range input UI (grid selector)
-- [ ] Equity visualization (charts, heatmaps)
-- [ ] Redis caching layer
+## Skills Integration
 
-### Phase 3: GTO Solver (Weeks 5-8)
-- [ ] MCCFR implementation
-- [ ] Pre-flop strategy tables
-- [ ] Flop/river solve jobs (background)
-- [ ] Strategy storage + retrieval
-- [ ] WebSocket progress streaming
-
-### Phase 4: Training Mode (Weeks 9-10)
-- [ ] Quiz engine
-- [ ] Spot randomization
-- [ ] GTO answer comparison
-- [ ] Progress tracking + leaderboards
-
-### Phase 5: Hand History (Weeks 11-12)
-- [ ] HH file upload + parsing (PokerStars, GGPoker, Winamax)
-- [ ] HH database
-- [ ] Leak analysis vs GTO
-- [ ] HH playback viewer
-
-### Phase 6: ICM + Advanced (Weeks 13-14)
-- [x] ICM calculator
-- [x] Push/fold charts
-- [x] Tournament scenarios
-- [x] Content library
+| Skill | Phase | Purpose |
+|-------|-------|---------|
+| `repo-transmute` | 2b, 2c | Adapt external poker lib code into codebase |
+| `test-driven-development` | 2b, 2c, 2d | Tests before each evaluator implementation |
+| `blueprint` | 2d | Plan novel double-board + bomb-pot architecture |
+| `docker-patterns` | 1, 2b | Docker Compose for solver service |
+| `e2e-testing` | all | Playwright E2E tests per feature |
 
 ## License
 
