@@ -47,6 +47,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
       REDIS_URL: redis://redis:6379/0
+      SOLVER_SERVICE_URL: http://solver:50051
     command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
 
   worker:
@@ -86,6 +87,7 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: http://api:8000
+      NEXT_PUBLIC_GRPC_URL: grpc://solver:50051
     depends_on:
       - api
     networks:
