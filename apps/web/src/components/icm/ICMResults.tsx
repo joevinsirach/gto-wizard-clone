@@ -12,7 +12,17 @@ import {
   Cell,
 } from "recharts";
 
-interface PlayerICM {
+// API response format
+export interface ICMApiPlayer {
+  player: string;
+  equity: number;
+  chip_equity: number;
+  bubble_factor: number;
+  ev: number;
+}
+
+// Internal format for display
+export interface PlayerICM {
   id: string;
   name: string;
   chips: number;
@@ -21,9 +31,11 @@ interface PlayerICM {
   cashProbability: number;
 }
 
-interface ICMResultsProps {
-  results?: PlayerICM[];
+export interface ICMResultsProps {
+  results?: ICMApiPlayer[];
+  playerChips?: { name: string; chips: number }[];
   prizes?: { place: number; percentage: number }[];
+  totalPrizePool?: number;
   className?: string;
 }
 
@@ -36,16 +48,52 @@ const MOCK_ICM_RESULTS: PlayerICM[] = [
   { id: "6", name: "Player 6", chips: 800, equity: 8.6, prizeEquity: 86, cashProbability: 22 },
 ];
 
+function convertApiToPlayerICM(
+  apiResults: ICMApiPlayer[] | undefined,
+  playerChips: { name: string; chips: number }[] | undefined,
+  prizes: { place: number; percentage: number }[],
+  totalPrizePool: number
+): PlayerICM[] {
+  if (!apiResults || apiResults.length === 0) {
+    return MOCK_ICM_RESULTS;
+  }
+
+  return apiResults.map((r, index) => {
+    const chipsEntry = playerChips?.find((pc) => pc.name === r.player);
+    const chips = chipsEntry?.chips ?? 0;
+
+    // Find prize percentage for this player's "rank" based on equity ranking
+    const prizePercentage = (index < prizes.length ? prizes[index].percentage : 0) / 100;
+    const prizeEquity = totalPrizePool > 0 ? (r.equity / totalPrizePool) * 100 : 0;
+
+    // Calculate cash probability based on chip equity relative to total
+    // This is simplified - actual cash probability depends on ICM distribution
+    const cashProbability = Math.min(99, Math.round(prizeEquity));
+
+    return {
+      id: String(index + 1),
+      name: r.player,
+      chips,
+      equity: prizeEquity,
+      prizeEquity: r.equity,
+      cashProbability,
+    };
+  });
+}
+
 export function ICMResults({
-  results = MOCK_ICM_RESULTS,
+  results,
+  playerChips,
   prizes = [
     { place: 1, percentage: 50 },
     { place: 2, percentage: 30 },
     { place: 3, percentage: 20 },
   ],
+  totalPrizePool = 1000,
   className,
 }: ICMResultsProps) {
-  const sortedByEquity = [...results].sort((a, b) => b.equity - a.equity);
+  const playerData = convertApiToPlayerICM(results, playerChips, prizes, totalPrizePool);
+  const sortedByEquity = [...playerData].sort((a, b) => b.equity - a.equity);
 
   const chartData = sortedByEquity.map((player, index) => ({
     name: player.name.length > 8 ? player.name.substring(0, 8) + "..." : player.name,
@@ -203,19 +251,19 @@ export function ICMResults({
         <div className="text-center p-3 rounded bg-gray-800/30">
           <div className="text-xs text-muted-foreground mb-1">Total Prize Pool</div>
           <div className="text-xl font-bold text-poker-gold">
-            ${results.reduce((sum, p) => sum + p.prizeEquity, 0).toLocaleString()}
+            ${sortedByEquity.reduce((sum, p) => sum + p.prizeEquity, 0).toLocaleString()}
           </div>
         </div>
         <div className="text-center p-3 rounded bg-gray-800/30">
           <div className="text-xs text-muted-foreground mb-1">Avg Stack Value</div>
           <div className="text-xl font-bold text-blue-400">
-            ${(results.reduce((sum, p) => sum + p.prizeEquity, 0) / results.length).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            ${(sortedByEquity.reduce((sum, p) => sum + p.prizeEquity, 0) / sortedByEquity.length || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
         </div>
         <div className="text-center p-3 rounded bg-gray-800/30">
           <div className="text-xs text-muted-foreground mb-1">Chip Leader Advantage</div>
           <div className="text-xl font-bold text-green-400">
-            +{(results[0]?.equity - (100 / results.length)).toFixed(1)}%
+            +{((sortedByEquity[0]?.equity || 0) - (100 / (sortedByEquity.length || 1))).toFixed(1)}%
           </div>
         </div>
       </div>

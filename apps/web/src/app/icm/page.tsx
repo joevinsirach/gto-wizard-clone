@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PrizePoolPanel } from "@/components/icm/PrizePoolPanel";
 import { ChipStackPanel } from "@/components/icm/ChipStackPanel";
 import { ICMResults } from "@/components/icm/ICMResults";
+import { useICMCalculator } from "@/hooks/useICMCalculator";
 
 interface PrizePoolEntry {
   place: number;
@@ -32,6 +33,33 @@ export default function ICMPage() {
 
   const [totalPrize, setTotalPrize] = useState<number>(1000);
   const [totalChips, setTotalChips] = useState<number>(5800);
+
+  const { calculateICM, results, totalPrizePool, totalChips: apiTotalChips, loading, error, clearError } = useICMCalculator();
+
+  const performCalculation = useCallback(async () => {
+    const stacks = players.map((p) => p.chips);
+    const prizesList = prizes.map((p) => (p.percentage / 100) * totalPrize);
+    const playersList = players.map((p) => p.name);
+
+    await calculateICM({
+      stacks,
+      prizes: prizesList,
+      players: playersList,
+      n_simulations: 100000,
+    });
+  }, [players, prizes, totalPrize, calculateICM]);
+
+  const handleCalculate = useCallback(async () => {
+    clearError();
+    await performCalculation();
+  }, [clearError, performCalculation]);
+
+  // Auto-calculate on initial load
+  useEffect(() => {
+    performCalculation();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const playerChips = players.map((p) => ({ name: p.name, chips: p.chips }));
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -62,7 +90,29 @@ export default function ICMPage() {
             className="w-28 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-center"
           />
         </div>
+        <button
+          onClick={handleCalculate}
+          disabled={loading}
+          className="px-4 py-1.5 bg-poker-gold text-black font-semibold rounded text-sm hover:bg-poker-gold/90 transition-colors disabled:opacity-50"
+        >
+          {loading ? "Calculating..." : "Calculate"}
+        </button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 p-4 border border-red-800 rounded bg-red-900/20 text-red-400">
+          <div className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="text-sm hover:text-red-300"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Prize Pool */}
@@ -85,13 +135,42 @@ export default function ICMPage() {
 
         {/* Right Column - Results */}
         <div className="lg:col-span-1 space-y-6">
-          <ICMResults />
+          {loading ? (
+            <div className="border border-gray-800 rounded-lg p-8 bg-gray-900/50 flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
+                <div className="text-muted-foreground">Calculating ICM...</div>
+              </div>
+            </div>
+          ) : (
+            <ICMResults
+              results={results ?? undefined}
+              playerChips={playerChips}
+              prizes={prizes}
+              totalPrizePool={totalPrizePool ?? totalPrize}
+            />
+          )}
         </div>
       </div>
 
       {/* Full Width Results for larger screens */}
       <div className="mt-8 grid grid-cols-1 gap-6">
-        <ICMResults className="w-full" />
+        {loading ? (
+          <div className="border border-gray-800 rounded-lg p-8 bg-gray-900/50 flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
+              <div className="text-muted-foreground">Calculating ICM...</div>
+            </div>
+          </div>
+        ) : (
+          <ICMResults
+            results={results ?? undefined}
+            playerChips={playerChips}
+            prizes={prizes}
+            totalPrizePool={totalPrizePool ?? totalPrize}
+            className="w-full"
+          />
+        )}
       </div>
 
       {/* Info Section */}
@@ -102,7 +181,7 @@ export default function ICMPage() {
             <h3 className="font-medium text-white mb-2">What is ICM?</h3>
             <p>
               The Independent Chip Model (ICM) is a mathematical model used in poker 
-              tournaments to calculate the equity of a player&apos;s stack based on 
+              tournaments to calculate the equity of a player's stack based on 
               their probability of finishing in each prize position.
             </p>
           </div>
