@@ -422,7 +422,7 @@ export default function SpotsPage() {
                 <div className="border border-gray-800 rounded-lg bg-gray-900/50 p-4 overflow-x-auto">
                   <StrategyHeatmap
                     strategy={selectedSpot.strategy}
-                    board={selectedSpot.board}
+                    boardCards={selectedSpot.board}
                   />
                 </div>
               </div>

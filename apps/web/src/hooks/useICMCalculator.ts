@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 
 export interface ICMApiResult {
   player: string;
@@ -39,12 +39,21 @@ export function useICMCalculator(): UseICMCalculatorResult {
   const [totalChips, setTotalChips] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use ref to track request for abort handling
+  const requestRef = useRef<AbortController | null>(null);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
   const calculateICM = useCallback(async (request: ICMCalculationRequest) => {
+    // Abort any pending request
+    if (requestRef.current) {
+      requestRef.current.abort();
+    }
+    requestRef.current = new AbortController();
+
     setLoading(true);
     setError(null);
 
@@ -55,6 +64,7 @@ export function useICMCalculator(): UseICMCalculatorResult {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(request),
+        signal: requestRef.current.signal,
       });
 
       if (!response.ok) {
@@ -67,6 +77,9 @@ export function useICMCalculator(): UseICMCalculatorResult {
       setTotalPrizePool(data.total_prize_pool);
       setTotalChips(data.total_chips);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return; // Silently ignore aborted requests
+      }
       const message = err instanceof Error ? err.message : "ICM calculation failed";
       setError(message);
     } finally {
@@ -74,7 +87,7 @@ export function useICMCalculator(): UseICMCalculatorResult {
     }
   }, []);
 
-  return {
+  return useMemo(() => ({
     calculateICM,
     results,
     totalPrizePool,
@@ -82,5 +95,5 @@ export function useICMCalculator(): UseICMCalculatorResult {
     loading,
     error,
     clearError,
-  };
+  }), [calculateICM, results, totalPrizePool, totalChips, loading, error, clearError]);
 }

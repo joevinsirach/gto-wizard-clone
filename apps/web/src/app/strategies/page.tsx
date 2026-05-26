@@ -1,9 +1,39 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { StrategyHeatmap, StrategyCell } from "@/components/ui/StrategyHeatmap";
 import { ICMAwareStrategy } from "@/components/strategy/ICMAwareStrategy";
 import { cn } from "@/lib/utils";
+import type { StrategyCell, Street } from "@/components/ui/StrategyHeatmap";
+import dynamic from "next/dynamic";
+
+// Define StrategyCell locally to avoid TS issues with dynamic import
+interface StrategyCellLocal {
+  action: string;
+  frequency: number;
+  ev: number;
+}
+
+// Dynamic import for heavy StrategyHeatmap component
+const StrategyHeatmap = dynamic(
+  () => import("@/components/ui/StrategyHeatmap").then((mod) => mod.StrategyHeatmap) as React.ComponentType<{
+    strategy: Record<string, StrategyCellLocal>;
+    boardCards?: string;
+    position?: string;
+    street?: Street;
+    actionType?: "push_fold" | "bet_call_check" | "raise_call_fold" | "bet_raise_call_check";
+  }>,
+  {
+    loading: () => (
+      <div className="border border-gray-800 rounded-lg p-8 bg-gray-900/50 flex items-center justify-center min-h-[12rem]">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
+          <div className="text-muted-foreground text-sm">Loading heatmap...</div>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 // ============================================================================
 // Types

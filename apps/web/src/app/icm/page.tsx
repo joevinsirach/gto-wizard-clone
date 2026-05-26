@@ -3,10 +3,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { PrizePoolPanel } from "@/components/icm/PrizePoolPanel";
 import { ChipStackPanel } from "@/components/icm/ChipStackPanel";
-import { ICMResults } from "@/components/icm/ICMResults";
 import { BubblePressure } from "@/components/icm/BubblePressure";
 import { SMPZone } from "@/components/icm/SMPZone";
 import { useICMCalculator } from "@/hooks/useICMCalculator";
+import dynamic from "next/dynamic";
+
+// Dynamic import for heavy ICMResults component (uses Recharts)
+const ICMResults = dynamic(
+  () => import("@/components/icm/ICMResults").then((mod) => mod.ICMResults),
+  {
+    loading: () => (
+      <div className="border border-gray-800 rounded-lg p-6 sm:p-8 bg-gray-900/50 flex items-center justify-center min-h-[16rem]">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
+          <div className="text-muted-foreground text-sm">Loading chart...</div>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 interface PrizePoolEntry {
   place: number;

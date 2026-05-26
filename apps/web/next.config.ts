@@ -71,6 +71,34 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
+  // Bundle optimization
+  webpack: (config, { isServer }) => {
+    // Optimize chunk splitting
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        ...config.optimization.splitChunks,
+        cacheGroups: {
+          ...config.optimization.splitChunks?.cacheGroups,
+          // Separate vendor chunks for heavy libraries
+          recharts: {
+            test: /[\\/]node_modules[\\/]recharts[\\/]/,
+            name: 'recharts',
+            chunks: 'all',
+            priority: 10,
+          },
+          // Group UI components
+          ui: {
+            test: /[\\/]node_modules[\\/](lucide-react|clsx|class-variance-authority)[\\/]/,
+            name: 'ui-vendor',
+            chunks: 'all',
+            priority: 5,
+          },
+        },
+      },
+    };
+    return config;
+  },
 }
 
 export default withPWA(nextConfig)
