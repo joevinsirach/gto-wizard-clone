@@ -10,6 +10,13 @@ interface HandResult {
   samples: number;
   rank1?: number;
   rank2?: number;
+  // Hi/Lo specific
+  high_equity1?: number;
+  high_equity2?: number;
+  low_equity1?: number;
+  low_equity2?: number;
+  scoop_equity1?: number;
+  scoop_equity2?: number;
 }
 
 const TAB_CONFIGS = {
@@ -91,13 +98,28 @@ export default function OmahaPage() {
       }
 
       const data = await response.json();
-      setResult({
-        equity1: data.equity1,
-        equity2: data.equity2,
-        samples: data.samples,
-        rank1: data.hand1_rank,
-        rank2: data.hand2_rank,
-      });
+      if (activeTab === "hilo") {
+        // Hi/Lo response has high/low/scoop instead of single equity
+        setResult({
+          equity1: data.high_equity1 || 0,
+          equity2: data.high_equity2 || 0,
+          samples: data.samples || samples,
+          high_equity1: data.high_equity1,
+          high_equity2: data.high_equity2,
+          low_equity1: data.low_equity1,
+          low_equity2: data.low_equity2,
+          scoop_equity1: data.scoop_equity1,
+          scoop_equity2: data.scoop_equity2,
+        });
+      } else {
+        setResult({
+          equity1: data.equity1,
+          equity2: data.equity2,
+          samples: data.samples,
+          rank1: data.hand1_rank,
+          rank2: data.hand2_rank,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -227,30 +249,93 @@ export default function OmahaPage() {
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">Results</h2>
             
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="text-center">
-                <p className="text-gray-400 mb-1">Hand 1 Equity</p>
-                <p className="text-4xl font-bold text-green-400">
-                  {result.equity1.toFixed(1)}%
-                </p>
-                {result.rank1 && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Rank: {result.rank1} ({getHandStrength(result.rank1)})
-                  </p>
-                )}
+            {activeTab === "hilo" ? (
+              // Hi/Lo display: high, low, and scoop equities
+              <div className="space-y-6">
+                {/* High equity */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2">High Hand Equity</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 mb-1">Hand 1</p>
+                      <p className="text-3xl font-bold text-green-400">
+                        {result.high_equity1?.toFixed(1) || 0}%
+                      </p>
+                    </div>
+                    <div className="text-center bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 mb-1">Hand 2</p>
+                      <p className="text-3xl font-bold text-blue-400">
+                        {result.high_equity2?.toFixed(1) || 0}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Low equity */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Low Hand Equity (8-or-better)</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 mb-1">Hand 1</p>
+                      <p className="text-3xl font-bold text-yellow-400">
+                        {result.low_equity1?.toFixed(1) || 0}%
+                      </p>
+                    </div>
+                    <div className="text-center bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 mb-1">Hand 2</p>
+                      <p className="text-3xl font-bold text-yellow-400">
+                        {result.low_equity2?.toFixed(1) || 0}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Scoop equity */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Scoop Equity (Both Halves)</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 mb-1">Hand 1</p>
+                      <p className="text-3xl font-bold text-purple-400">
+                        {result.scoop_equity1?.toFixed(1) || 0}%
+                      </p>
+                    </div>
+                    <div className="text-center bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 mb-1">Hand 2</p>
+                      <p className="text-3xl font-bold text-purple-400">
+                        {result.scoop_equity2?.toFixed(1) || 0}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-gray-400 mb-1">Hand 2 Equity</p>
-                <p className="text-4xl font-bold text-blue-400">
-                  {result.equity2.toFixed(1)}%
-                </p>
-                {result.rank2 && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Rank: {result.rank2} ({getHandStrength(result.rank2)})
+            ) : (
+              // PLO5 and Shortdeck display: simple equity
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="text-center">
+                  <p className="text-gray-400 mb-1">Hand 1 Equity</p>
+                  <p className="text-4xl font-bold text-green-400">
+                    {result.equity1.toFixed(1)}%
                   </p>
-                )}
+                  {result.rank1 && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Rank: {result.rank1} ({getHandStrength(result.rank1)})
+                    </p>
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-400 mb-1">Hand 2 Equity</p>
+                  <p className="text-4xl font-bold text-blue-400">
+                    {result.equity2.toFixed(1)}%
+                  </p>
+                  {result.rank2 && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Rank: {result.rank2} ({getHandStrength(result.rank2)})
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-between text-sm text-gray-500">
               <span>Samples: {result.samples.toLocaleString()}</span>
@@ -262,26 +347,28 @@ export default function OmahaPage() {
             </div>
 
             {/* Equity bar visualization */}
-            <div className="mt-6">
-              <div className="h-8 rounded-full overflow-hidden flex">
-                <div 
-                  className="bg-green-500 flex items-center justify-center"
-                  style={{ width: `${result.equity1}%` }}
-                >
-                  {result.equity1 > 15 && (
-                    <span className="text-sm font-bold">{result.equity1.toFixed(0)}%</span>
-                  )}
-                </div>
-                <div 
-                  className="bg-blue-500 flex items-center justify-center"
-                  style={{ width: `${result.equity2}%` }}
-                >
-                  {result.equity2 > 15 && (
-                    <span className="text-sm font-bold">{result.equity2.toFixed(0)}%</span>
-                  )}
+            {activeTab !== "hilo" && (
+              <div className="mt-6">
+                <div className="h-8 rounded-full overflow-hidden flex">
+                  <div 
+                    className="bg-green-500 flex items-center justify-center"
+                    style={{ width: `${result.equity1}%` }}
+                  >
+                    {result.equity1 > 15 && (
+                      <span className="text-sm font-bold">{result.equity1.toFixed(0)}%</span>
+                    )}
+                  </div>
+                  <div 
+                    className="bg-blue-500 flex items-center justify-center"
+                    style={{ width: `${result.equity2}%` }}
+                  >
+                    {result.equity2 > 15 && (
+                      <span className="text-sm font-bold">{result.equity2.toFixed(0)}%</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 

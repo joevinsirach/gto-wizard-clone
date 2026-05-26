@@ -8,8 +8,8 @@ sys.path.insert(0, "/tmp/PokerHandEvaluator/python")
 sys.path.insert(0, "/tmp/gto-wizard-clone/packages/poker-core/src")
 
 from gto_poker.plo5 import PLO5Evaluator, PLO5Equity
-from gto_poker.omaha_hi_lo import OmahaHiLoEvaluator
-from gto_poker.shortdeck import ShortdeckHand
+from gto_poker.omaha_hi_lo import OmahaHiLoEvaluator, OmahaHiLoEquity
+from gto_poker.shortdeck import ShortdeckHand, ShortdeckEquity
 
 
 # Main router for /omaha prefix
@@ -106,10 +106,60 @@ async def calculate_omaha_hi_lo_equity(request: OmahaHiLoEquityRequest):
         raise HTTPException(status_code=400, detail="board can have at most 5 cards")
     
     evaluator = OmahaHiLoEvaluator()
+    equity_calc = OmahaHiLoEquity()
     
-    # TODO: Implement equity calculation once stub is filled
-    # For now, raise NotImplementedError from the stub
-    raise NotImplementedError("Omaha Hi/Lo equity not yet implemented")
+    h1_eq, h2_eq, h1_low, h2_low = equity_calc.calculate(
+        request.hand1,
+        request.hand2,
+        request.board,
+        request.samples
+    )
+    
+    # Scoop equity = both high AND low won
+    scoop1 = 0.0
+    scoop2 = 0.0
+    
+    board_list = request.board or []
+    # Simple estimate: if both equities are high, calculate scoop probability
+    if board_list and len(board_list) == 5:
+        # With known board, can compute exact scoop
+        from gto_poker.deck import Deck
+        h1_cards = [Deck.parse(c) for c in request.hand1]
+        h2_cards = [Deck.parse(c) for c in request.hand2]
+        board_cards = [Deck.parse(c) for c in request.board]
+        result1 = evaluator.evaluate(h1_cards, board_cards)
+        result2 = evaluator.evaluate(h2_cards, board_cards)
+        
+        # If h1 wins both halves, h1 scoops
+        if result1.high_rank_key > result2.high_rank_key:
+            if result1.can_win_low and result2.can_win_low:
+                if result1.low_rank_key < result2.low_rank_key:
+                    scoop1 = 1.0
+                elif result1.low_rank_key == result2.low_rank_key:
+                    scoop1 = 0.5
+            elif result1.can_win_low and not result2.can_win_low:
+                scoop1 = 1.0
+        elif result1.high_rank_key == result2.high_rank_key:
+            if result1.can_win_low and result2.can_win_low:
+                if result1.low_rank_key < result2.low_rank_key:
+                    scoop1 = 1.0
+                elif result1.low_rank_key == result2.low_rank_key:
+                    scoop1 = 0.5  # Split both
+            elif result1.can_win_low and not result2.can_win_low:
+                scoop1 = 1.0
+        scoop2 = 1.0 - scoop1
+    
+    return OmahaHiLoEquityResponse(
+        hand1=request.hand1,
+        hand2=request.hand2,
+        high_equity1=round(h1_eq, 2),
+        high_equity2=round(h2_eq, 2),
+        low_equity1=round(h1_low, 2),
+        low_equity2=round(h2_low, 2),
+        scoop_equity1=round(scoop1 * 100, 2),
+        scoop_equity2=round(scoop2 * 100, 2),
+        samples=request.samples
+    )
 
 
 # ============== Shortdeck Endpoints ==============
@@ -146,11 +196,23 @@ async def calculate_shortdeck_equity(request: ShortdeckEquityRequest):
     if len(request.board) > 5:
         raise HTTPException(status_code=400, detail="board can have at most 5 cards")
     
-    hand = ShortdeckHand(request.hand1)
+    board_list = request.board or []
     
-    # TODO: Implement equity calculation once stub is filled
-    # For now, raise NotImplementedError from the stub
-    raise NotImplementedError("Shortdeck equity not yet implemented")
+    equity_calc = ShortdeckEquity()
+    eq1, eq2 = equity_calc.calculate(
+        request.hand1,
+        request.hand2,
+        board_list,
+        request.samples
+    )
+    
+    return ShortdeckEquityResponse(
+        hand1=request.hand1,
+        hand2=request.hand2,
+        equity1=round(eq1, 2),
+        equity2=round(eq2, 2),
+        samples=request.samples
+    )
 
 
 __all__ = ["router"]
