@@ -58,16 +58,48 @@ class PLO5Evaluator:
         Returns:
             Hand rank (lower is better, 1 = best)
         """
-        # TODO: Implement PLO5 evaluation
-        raise NotImplementedError("PLO5 evaluation not yet implemented")
+        # Handle string input
+        if len(cards) == 1 and isinstance(cards[0], str):
+            cards = self._parse_hand_string(cards[0])
+            if len(cards) == 10:
+                hole = cards[:5]
+                board = cards[5:]
+                return self._evaluate(hole, board)
+        
+        # Handle case where args are all card strings
+        if all(isinstance(c, str) for c in cards):
+            parsed = []
+            for c in cards:
+                if len(c) == 2:
+                    parsed.append(c.upper())
+                elif len(c) > 2:
+                    # It's a combined string like 'AhAsKsKcAd'
+                    parsed.extend(self._parse_hand_string(c))
+                else:
+                    parsed.append(c.upper())
+            cards = parsed
+        
+        if len(cards) != 10:
+            raise ValueError(f"PLO5 requires exactly 10 cards (5 hole + 5 board), got {len(cards)}")
+        
+        hole = list(cards[:5])
+        board = list(cards[5:])
+        
+        return self._evaluate(hole, board)
     
     def _evaluate(self, hole: List[str], board: List[str]) -> int:
         """Internal evaluation with separated hole and board cards."""
-        # TODO: Implement PLO5 evaluation logic
+        best = 999999  # High sentinel value for rank (lower is better)
+        
         # C(5,2) = 10 combinations of hole cards to use
-        # C(5,3) = 10 combinations of board cards to use
-        # Total 100 combinations to evaluate
-        raise NotImplementedError("PLO5 evaluation not yet implemented")
+        for hole_combo in combinations(hole, 2):
+            # C(5,3) = 10 combinations of board cards to use
+            for board_combo in combinations(board, 3):
+                rank = evaluate_cards(*hole_combo, *board_combo)
+                if rank < best:
+                    best = rank
+        
+        return best
     
     def _parse_hand_string(self, hand_str: str) -> List[str]:
         """Parse a hand string like 'AhKhQhJhTc9c8c7c6c5c' into card list."""
@@ -99,8 +131,7 @@ class PLO5Evaluator:
         Returns:
             Hand rank (lower is better)
         """
-        # TODO: Implement PLO5 evaluation
-        raise NotImplementedError("PLO5 evaluation not yet implemented")
+        return self._evaluate(hole, board)
 
 
 class PLO5Equity:
@@ -137,8 +168,14 @@ class PLO5Equity:
         Returns:
             Tuple of (equity1, equity2) as percentages
         """
-        # TODO: Implement PLO5 equity calculation
-        raise NotImplementedError("PLO5 equity not yet implemented")
+        if len(board) == 0:
+            return self._monte_carlo(hand1, hand2, samples)
+        
+        if len(board) == 5:
+            return self._exact_equity(hand1, hand2, board)
+        
+        # Partial board - need to complete and simulate
+        return self._partial_board_equity(hand1, hand2, board, samples)
     
     def _exact_equity(
         self,
@@ -147,8 +184,28 @@ class PLO5Equity:
         board: List[str],
     ) -> Tuple[float, float]:
         """Exact equity when 5 board cards are known."""
-        # TODO: Implement exact equity for PLO5
-        raise NotImplementedError("PLO5 equity not yet implemented")
+        wins1 = 0
+        wins2 = 0
+        ties = 0
+        
+        # Evaluate each player's best 2-card + 3-board combo
+        for h1_combo in combinations(hand1, 2):
+            for h2_combo in combinations(hand2, 2):
+                rank1 = evaluate_cards(*h1_combo, *board)
+                rank2 = evaluate_cards(*h2_combo, *board)
+                
+                if rank1 < rank2:
+                    wins1 += 1
+                elif rank2 < rank1:
+                    wins2 += 1
+                else:
+                    ties += 1
+        
+        total = wins1 + wins2 + ties
+        if total == 0:
+            return 50.0, 50.0
+        
+        return (wins1 / total) * 100, (wins2 / total) * 100
     
     def _monte_carlo(
         self,
@@ -157,8 +214,40 @@ class PLO5Equity:
         samples: int,
     ) -> Tuple[float, float]:
         """Monte Carlo equity estimation."""
-        # TODO: Implement Monte Carlo for PLO5
-        raise NotImplementedError("PLO5 equity not yet implemented")
+        # Build deck from remaining cards
+        all_ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
+        all_suits = ["h", "d", "c", "s"]
+        used_cards = set(hand1 + hand2)
+        deck = []
+        for rank in all_ranks:
+            for suit in all_suits:
+                card = rank + suit
+                if card not in used_cards:
+                    deck.append(card)
+        
+        wins1 = 0
+        wins2 = 0
+        ties = 0
+        
+        for _ in range(samples):
+            self._random.shuffle(deck)
+            board = deck[:5]
+            
+            rank1 = self._eval._evaluate(hand1, board)
+            rank2 = self._eval._evaluate(hand2, board)
+            
+            if rank1 < rank2:
+                wins1 += 1
+            elif rank2 < rank1:
+                wins2 += 1
+            else:
+                ties += 1
+        
+        total = wins1 + wins2 + ties
+        if total == 0:
+            return 50.0, 50.0
+        
+        return (wins1 / total) * 100, (wins2 / total) * 100
     
     def _partial_board_equity(
         self,
@@ -168,8 +257,41 @@ class PLO5Equity:
         samples: int,
     ) -> Tuple[float, float]:
         """Monte Carlo for partial board (1-4 known cards)."""
-        # TODO: Implement partial board equity for PLO5
-        raise NotImplementedError("PLO5 equity not yet implemented")
+        # Known cards that can't be in the simulation deck
+        all_ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
+        all_suits = ["h", "d", "c", "s"]
+        used_cards = set(hand1 + hand2 + board)
+        deck = []
+        for rank in all_ranks:
+            for suit in all_suits:
+                card = rank + suit
+                if card not in used_cards:
+                    deck.append(card)
+        
+        wins1 = 0
+        wins2 = 0
+        ties = 0
+        board_missing = 5 - len(board)
+        
+        for _ in range(samples):
+            self._random.shuffle(deck)
+            board_sample = board + deck[:board_missing]
+            
+            rank1 = self._eval._evaluate(hand1, board_sample)
+            rank2 = self._eval._evaluate(hand2, board_sample)
+            
+            if rank1 < rank2:
+                wins1 += 1
+            elif rank2 < rank1:
+                wins2 += 1
+            else:
+                ties += 1
+        
+        total = wins1 + wins2 + ties
+        if total == 0:
+            return 50.0, 50.0
+        
+        return (wins1 / total) * 100, (wins2 / total) * 100
 
 
 __all__ = ["PLO5Evaluator", "PLO5Equity", "plo5_hand_rank_to_percentage"]

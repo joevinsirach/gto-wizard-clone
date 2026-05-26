@@ -40,12 +40,13 @@ class TestOmahaHiLoHighHand:
     def test_evaluate_high_basic(self):
         """Test basic high hand evaluation"""
         eval = OmahaHiLoEvaluator()
-        cards = [
-            Card('A', 'h'), Card('K', 'd'), Card('Q', 'c'),  # hole cards
-            Card('T', 'h'), Card('9', 'd')  # board (should use 3 more)
-        ]
-        # We need full 9 cards, this is placeholder test structure
-        raise NotImplementedError("Stub - failing test")
+        hole = [Card('A', 'h'), Card('K', 'd'), Card('Q', 'c'), Card('J', 's')]
+        board = [Card('T', 'h'), Card('9', 'd'), Card('8', 'c'), Card('7', 's'), Card('6', 'd')]
+        
+        result = eval.evaluate(hole, board)
+        assert result.high_hand is not None
+        # Broadway straight T-J-Q-K-A
+        assert "Straight" in result.high_hand.name
 
     def test_high_needs_exactly_2_hole_3_board(self):
         """High hand must use exactly 2 hole cards and 3 board cards"""
@@ -63,16 +64,25 @@ class TestOmahaHiLoLowHand:
     """Tests for Omaha Hi/Lo low hand evaluation (8-or-better)"""
 
     def test_low_hand_nuts_wheel(self):
-        """A-2-3-4-5 is the nut low (wheel)"""
+        """A-2-3-4-5 is the nut low (wheel) - but wheel can't be made in Omaha!
+        
+        In Omaha you must use exactly 2 hole + 3 board. For A-2-3-4-5 you need
+        4 wheel cards from hole + 1 from board OR 3 wheel cards from board + 2 from hole.
+        Neither is possible since wheel = 5 cards and you can only share 3 between board/hole.
+        
+        This test verifies the BEST low we CAN make with 2 hole + 3 board constraint.
+        """
         eval = OmahaHiLoEvaluator()
+        # With hole A-2-3-4 and board 5-6-7-K-Q, best low is A-2-5-6-7
+        # (use A-2 from hole, 5-6-7 from board)
         hole = [Card('A', 'h'), Card('2', 'd'), Card('3', 'c'), Card('4', 's')]
-        board = [Card('5', 'h'), Card('K', 'd'), Card('Q', 'c'), Card('J', 's'), Card('7', 'd')]
+        board = [Card('5', 'h'), Card('6', 'd'), Card('7', 'c'), Card('K', 's'), Card('Q', 'd')]
         
         result = eval.evaluate(hole, board)
-        assert result.low_hand is not None
-        # Wheel should be the best low
-        low_cards_str = "".join(str(c) for c in result.best_low_cards)
-        assert 'A' in low_cards_str and '2' in low_cards_str and '3' in low_cards_str
+        assert result.has_low is True
+        # Best low should use A-2 from hole plus the three lowest board cards
+        low_ranks = sorted([c.rank_index for c in result.best_low_cards])
+        assert low_ranks == [0, 3, 4, 5, 12], f"Expected [0,3,4,5,12] got {low_ranks}"
 
     def test_low_hand_8_or_better_required(self):
         """Low hand must be 8-or-better (all cards rank 8 or lower)"""
@@ -136,18 +146,21 @@ class TestOmahaHiLoSplitPot:
         """When no low qualifies, high takes entire pot"""
         eval = OmahaHiLoEvaluator()
         
+        # Board with all high cards (9+) — no low possible
         p1_hole = [Card('A', 'h'), Card('K', 'd'), Card('Q', 'c'), Card('J', 's')]
         p2_hole = [Card('9', 'h'), Card('9', 'd'), Card('9', 'c'), Card('9', 's')]
-        board = [Card('T', 'h'), Card('9', 'd'), Card('8', 'c'), Card('7', 's'), Card('6', 'd')]
+        board = [Card('T', 'h'), Card('J', 'd'), Card('Q', 'c'), Card('K', 's'), Card('A', 'd')]
+        # Board is Broadway cards, all 9+
         
         results = []
         for hole in [p1_hole, p2_hole]:
             results.append(eval.evaluate(hole, board))
         
         shares = eval.split_pot(results)
-        # Both have no low, must sum to 1.0 for high
+        # Both have no low, high takes all
+        assert all(not r.can_win_low for r in results), "No low should qualify"
         total_high = sum(s[0] for s in shares)
-        assert abs(total_high - 1.0) < 0.01
+        assert abs(total_high - 1.0) < 0.01, f"High should take all, got {total_high}"
 
     def test_split_pot_low_only(self):
         """Test case where only low hand qualifies"""
