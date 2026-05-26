@@ -1,90 +1,47 @@
 """
-SQLAlchemy models for GTO Wizard API.
+SQLAlchemy models for strategy storage.
 """
 
-import uuid
 from datetime import datetime
-from typing import List
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Column, String, Integer, Float, DateTime, Text
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import declarative_base
 
-from apps.api.services.database import Base
+Base = declarative_base(cls=AsyncAttrs)
 
 
 class Strategy(Base):
-    """
-    Strategy model for storing solved GTO strategies.
+    """Strategy storage model."""
     
-    Stores strategy data with efficient indexing for lookups by
-    game_type, players, board, stack_depth, and bet_sizes.
-    """
     __tablename__ = "strategies"
-
-    # Primary key
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-
-    # Unique strategy key for lookups
-    key: Mapped[str] = mapped_column(
-        String(255),
-        unique=True,
-        nullable=False,
-        index=True,
-    )
-
-    # Game configuration
-    game_type: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
-    players: Mapped[int] = mapped_column(Integer, nullable=False)
-    board: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    pot_size: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
-    stack_depth: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    bet_sizes: Mapped[List[int]] = mapped_column(ARRAY(Integer), nullable=False)
-
-    # Strategy data as JSONB for efficient querying
-    strategy_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
-
-    # Timestamps
-    solved_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=datetime.utcnow,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=datetime.utcnow,
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=datetime.utcnow,
-        server_default=func.now(),
-        onupdate=datetime.utcnow,
-    )
-
-    # Composite indexes for common query patterns
-    __table_args__ = (
-        # Index for lookup by game params (excludes bet_sizes since it's an array)
-        Index(
-            "ix_strategies_game_lookup",
-            "game_type",
-            "players",
-            "board",
-            "stack_depth",
-        ),
-        # Index for finding strategies by game type and stack depth
-        Index(
-            "ix_strategies_game_stack",
-            "game_type",
-            "stack_depth",
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return f"<Strategy(key='{self.key}', game={self.game_type}, players={self.players})>"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: None)
+    key = Column(Text, unique=True, nullable=False, index=True)
+    game_type = Column(String(10), nullable=False, default="nlh")
+    players = Column(Integer, nullable=False, default=2)
+    street = Column(String(20), nullable=False, default="preflop")
+    board_hash = Column(Text, nullable=False, default="")
+    bet_size = Column(Float, nullable=False, default=0.0)
+    stack_depth = Column(Integer, nullable=False)
+    strategy_data = Column(JSONB, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "id": str(self.id) if self.id else None,
+            "key": self.key,
+            "game_type": self.game_type,
+            "players": self.players,
+            "street": self.street,
+            "board_hash": self.board_hash,
+            "bet_size": self.bet_size,
+            "stack_depth": self.stack_depth,
+            "strategy_data": self.strategy_data,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
