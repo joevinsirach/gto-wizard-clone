@@ -11,7 +11,7 @@ from datetime import datetime
 
 import redis
 
-from routers import equity, solver, auth, hh, strategy
+from routers import equity, solver, auth, hh, strategy, quiz
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,7 @@ app = FastAPI(
 
 def init_redis(app: FastAPI):
     """Initialize Redis connection on startup."""
-    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
     try:
         client = redis.from_url(redis_url, decode_responses=True)
         client.ping()
@@ -56,6 +56,7 @@ app.include_router(solver.router)
 app.include_router(auth.router)
 app.include_router(hh.router)
 app.include_router(strategy.router)
+app.include_router(quiz.router)
 
 @app.get("/")
 async def root():
