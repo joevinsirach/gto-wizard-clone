@@ -187,6 +187,78 @@ bomb_pot.py
 
 ---
 
+## Phase 5: Hand History Analyzer (Week 11-12)
+
+Hand history analysis with multi-site support (PokerStars, GGPoker, Winamax), leak identification vs GTO baseline, and HH playback viewer.
+
+### Hand History Parsers
+
+```python
+# packages/poker-core/src/gto_poker/hand_history.py
+detect_format(text)           # -> "pokerstars" | "ggpoker" | "winamax" | None
+parse_hand(text)              # auto-detect + parse
+parse_pokerstars_hh(text)     # PokerStars format
+parse_ggpoker_hh(text)        # GGPoker format (uses ***HOLECARDS*** no spaces)
+parse_winamax_hh(text)        # Winamax format
+```
+
+### Database Models
+
+```python
+# apps/api/models/hh_models.py
+HandHistory     # id, user_id, site, raw_text, parsed_data(JSONB), pot, board(JSONB), hero_name
+HandTag         # id, hand_id(FK), user_id, tag
+HandAction      # id, hand_id(FK), player, action_type, street, position, ev_loss, gto_action
+SpotCategory    # preflop_call, preflop_3bet, flop_cbet, turn_cbet, river_shove, etc.
+BoardTexture    # rainbow, two_suited, monotone, paired, connected, gapped
+
+classify_board_texture(board: List[str]) -> BoardTexture
+categorize_spot(actions, hero_name, street) -> SpotCategory
+```
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/hh/import` | Batch import multiple hands |
+| POST | `/api/v1/hh/batch-upload` | Multipart file upload |
+| GET | `/api/v1/hh/hands` | Query with filters (date, board_texture, pot, position, spot_category) |
+| GET | `/api/v1/hh/hands/{hand_id}` | Get single hand details |
+| PATCH | `/api/v1/hh/hands/{hand_id}/tags` | Add/update tags |
+| GET | `/api/v1/hh/export` | CSV export with filters |
+| GET | `/api/v1/hh/stats` | Aggregated stats (total hands, EV loss by spot) |
+| POST | `/api/v1/hh/analyze-leaks` | Leak identification vs GTO baseline |
+| GET | `/api/v1/hh/board-texture/{texture}` | Filter by board texture |
+| GET | `/api/v1/hh/spot-category/{category}` | Filter by spot category |
+
+### Frontend Components
+
+```typescript
+// apps/web/src/components/hh/
+FileUpload.tsx    # Drag-and-drop, progress, format detection, 50MB max
+BatchImport.tsx   # 10k+ hand batch imports with progress tracking
+HandViewer.tsx    # Step-through playback with GTO comparison
+HandTable.tsx     # Paginated hand list with filters
+BoardDisplay.tsx  # Board cards + texture labels (paired, suited, rainbow)
+LeakChart.tsx     # EV loss bar chart visualization
+TagInput.tsx      # HH tagging with autocomplete
+csvExport.ts      # Browser CSV download
+
+// apps/web/src/app/analyze/
+page.tsx          # HH upload page
+hands/page.tsx   # Paginated hand list + CSV export
+leaks/page.tsx   # EV loss report by spot category
+```
+
+### Spot Categories for Leak Analysis
+
+`preflop_call`, `preflop_3bet`, `preflop_4bet`, `preflop_squeeze`,
+`flop_cbet`, `flop_checkraise`, `flop_checkcall`,
+`turn_cbet`, `turn_check`, `turn_checkraise`,
+`river_shove`, `river_donk`, `river_call`
+
+---
+
 ## Phase 2b/2c/2d Skills
 
 Each sub-phase uses targeted skills:
