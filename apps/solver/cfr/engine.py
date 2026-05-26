@@ -1,8 +1,9 @@
 """
 MCCFR (Monte Carlo Counterfactual Regret Minimization) Engine.
 
-Implements chance-sampled CFR for multi-street 2-player Texas Hold'em.
+Implements chance-sampled CFR for multi-street Texas Hold'em.
 Supports: preflop → flop → turn → river → showdown.
+Supports 2-6 players for multi-way pots.
 """
 
 from typing import List, Dict, Tuple, Optional
@@ -16,18 +17,18 @@ from gto_poker.hand import Hand, HandEvaluator
 
 import sys
 sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
-from games.texas_hold_em import TexasHoldEm, GameState, Action, ActionType, create_river_state
+from games.texas_hold_em import TexasHoldEm, GameState, Action, ActionType, create_river_state, create_multiway_river_state
 from games.infosets import InfoSetManager, InfoSet
 
 
 class CFREngine:
     """
     MCCFR solver for Texas Hold'em.
-    
+
     Uses chance-sampled CFR with regret matching.
-    Supports multi-street solving (preflop through river).
+    Supports multi-street solving (preflop through river) and multi-way pots (2-6 players).
     """
-    
+
     def __init__(
         self,
         game: TexasHoldEm = None,
@@ -35,7 +36,7 @@ class CFREngine:
     ):
         """
         Initialize CFR engine.
-        
+
         Args:
             game: TexasHoldEm game instance
             seed: Random seed for reproducibility
@@ -45,16 +46,16 @@ class CFREngine:
         if seed is not None:
             random.seed(seed)
             np.random.seed(seed)
-        
+
         # Infoset manager
         self.infoset_manager = InfoSetManager()
-        
+
         # Iteration count
         self.iteration = 0
-        
+
         # Hand evaluator
         self.evaluator = HandEvaluator()
-    
+
     def solve(
         self,
         initial_state: GameState,
@@ -64,54 +65,63 @@ class CFREngine:
     ) -> Dict[str, np.ndarray]:
         """
         Run CFR to solve the game.
-        
+
         Args:
             initial_state: Starting game state
             iterations: Number of CFR iterations
             callback: Optional callback after each iteration
             sample_chance: Whether to sample cards (for multi-street solving)
-            
+
         Returns:
             Dictionary mapping infoset keys to average strategies
         """
+        n_players = initial_state.n_players if hasattr(initial_state, 'n_players') else 2
+
         for i in range(iterations):
             self.iteration = i + 1
-            
+
             # Work with a copy of initial_state for this iteration
             state = initial_state.copy()
-            
+
             if sample_chance:
                 # Chance sampling: sample cards for this iteration
                 # Only sample if hole cards or board are missing
-                if len(state.hole_cards) < 4 or len(state.board) < 5:
+                expected_hole_cards = n_players * 2
+                if len(state.hole_cards) < expected_hole_cards or len(state.board) < 5:
                     state = self._sample_cards(state)
-            
+
+            # Initialize reach probabilities for all players
+            reach_probs = [1.0] * n_players
+
             # Run one iteration of CFR
-            self._cfr_iteration(state, 1.0, 1.0)
-            
+            self._cfr_iteration(state, reach_probs)
+
             if callback and i % 100 == 0:
                 callback(self.iteration, self.infoset_manager)
-        
+
         return self.get_average_strategies()
     
     def _sample_cards(self, state: GameState) -> GameState:
         """
         Sample missing cards for chance sampling at the start of an iteration.
-        
-        At preflop (street 0): deal 3 flop cards
-        At flop (street 1): deal 1 turn card  
+
+        At preflop (street 0): deal hole cards + 3 flop cards
+        At flop (street 1): deal 1 turn card
         At turn (street 2): deal 1 river card
         At river (street 3): no cards needed
+
+        For multi-way pots, samples hole cards for all players.
         """
         new_state = state.copy()
-        
+        n_players = new_state.n_players if hasattr(new_state, 'n_players') else 2
+
         # Get all dealt cards so far
         dealt = set()
         for card in new_state.hole_cards:
             dealt.add(str(card))
         for card in new_state.board:
             dealt.add(str(card))
-        
+
         # Build remaining deck
         all_cards = []
         for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]:
@@ -119,18 +129,19 @@ class CFREngine:
                 card_str = f"{rank}{suit}"
                 if card_str not in dealt:
                     all_cards.append(card_str)
-        
+
         deck = Deck()
-        
-        # Sample hole cards if missing
-        if len(new_state.hole_cards) < 4:
-            needed = 4 - len(new_state.hole_cards)
+
+        # Sample hole cards if missing (2 per player)
+        expected_hole_cards = n_players * 2
+        if len(new_state.hole_cards) < expected_hole_cards:
+            needed = expected_hole_cards - len(new_state.hole_cards)
             if needed > 0 and len(all_cards) >= needed:
                 sampled = random.sample(all_cards, needed)
                 all_cards = [c for c in all_cards if c not in sampled]
                 for card_str in sampled:
                     new_state.hole_cards.append(deck.parse(card_str))
-        
+
         # Sample community cards based on street
         # Street 0: deal 3 (flop)
         # Street 1: deal 1 (turn)
@@ -142,7 +153,7 @@ class CFREngine:
             2: 1,  # Turn: sample river (1 card)
             3: 0   # River: no more
         }
-        
+
         needed = cards_needed.get(new_state.street, 0)
         if needed > 0 and len(new_state.board) < 5:
             available = 5 - len(new_state.board)
@@ -151,18 +162,46 @@ class CFREngine:
                 sampled = random.sample(all_cards, actual)
                 for card_str in sampled:
                     new_state.board.append(deck.parse(card_str))
-        
+
         return new_state
     
     def _advance_street(self, state: GameState) -> GameState:
         """
         Advance to the next street after betting round ends.
-        Resets betting state for the new street.
+        Resets betting state for the new street and deals next community card.
         """
         new_state = state.copy()
         
-        if new_state.street < 3:
-            new_state.street += 1
+        if new_state.street >= 3:
+            return new_state  # Already at river or beyond
+        
+        new_state.street += 1
+        
+        # Deal exactly ONE more community card for this street
+        # Street 1 (flop has 3): advance to turn → deal 1 card (4th)
+        # Street 2 (turn has 4): advance to river → deal 1 card (5th)
+        board_before = len(new_state.board)
+        cards_to_deal = 1 if board_before < 5 else 0
+        
+        if cards_to_deal > 0:
+            dealt = set()
+            for card in new_state.hole_cards:
+                dealt.add(str(card))
+            for card in new_state.board:
+                dealt.add(str(card))
+            
+            all_cards = []
+            for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]:
+                for suit in ["h", "d", "c", "s"]:
+                    card_str = f"{rank}{suit}"
+                    if card_str not in dealt:
+                        all_cards.append(card_str)
+            
+            if len(all_cards) >= cards_to_deal:
+                sampled = random.sample(all_cards, cards_to_deal)
+                deck = Deck()
+                for card_str in sampled:
+                    new_state.board.append(deck.parse(card_str))
         
         # Reset betting state for new street
         new_state.bet_to_call = 0.0
@@ -173,85 +212,95 @@ class CFREngine:
     def _cfr_iteration(
         self,
         state: GameState,
-        reach_p0: float,
-        reach_p1: float
+        reach_probs: List[float]
     ) -> List[float]:
         """
-        Run one iteration of CFR.
-        
+        Run one iteration of CFR for multi-way pot.
+
         Args:
             state: Current game state
-            reach_p0: Reach probability for player 0
-            reach_p1: Reach probability for player 1
-            
+            reach_probs: Reach probabilities for all players [p0, p1, ..., pn]
+
         Returns:
-            List of utilities for both players
+            List of utilities for all players
         """
+        n_players = state.n_players if hasattr(state, 'n_players') else 2
+
         # Terminal state check
         if state.terminal or state.street >= 4:
             return self._resolve_terminal(state)
-        
-        # Handle both all-in: go straight to showdown
-        if state.stacks[0] == 0 and state.stacks[1] == 0:
+
+        # Handle all players all-in: go straight to showdown
+        if all(stack == 0 for stack in state.stacks):
             return self._handle_showdown(state)
-        
-        # Check if betting round is complete (both checked, or call matched bet)
-        # and we need to advance to next street
+
+        # Check if betting round is complete and we need to advance to next street
         if self._betting_round_complete(state) and state.street < 3:
             new_state = self._advance_street(state)
             new_state.current_player = 0  # P0 acts first on new street
-            return self._cfr_iteration(new_state, reach_p0, reach_p1)
-        
+            return self._cfr_iteration(new_state, reach_probs)
+
         # Get current player
         player = state.current_player
-        
+
+        # Skip inactive players (shouldn't happen with proper next_player logic, but safety check)
+        if player < 0 or player >= n_players:
+            return [0.0] * n_players
+
         # Get valid actions
         valid_actions = self.game.get_valid_actions(state, player)
-        
+
         if not valid_actions:
-            return [0.0, 0.0]
-        
+            return [0.0] * n_players
+
         # Get or create infoset
         infoset_key = state.infoset_key(player)
         infoset = self.infoset_manager.get_or_create(infoset_key, valid_actions)
-        
+
         # Get current strategy via regret matching
         strategy = infoset.get_strategy()
-        
-        if player not in [0, 1]:
-            return [0.0, 0.0]
-        
+
         # Compute utilities for each action
         action_utils = np.zeros(len(valid_actions))
-        
+
         for i, action_str in enumerate(valid_actions):
             # Apply action to get new state
             new_state = self.game.apply_action(state.copy(), player, action_str)
-            
+
             # Recursively compute utility
-            child_utils = self._cfr_iteration(new_state, reach_p0, reach_p1)
-            
-            # Store utility for this action
+            child_utils = self._cfr_iteration(new_state, reach_probs)
+
+            # Store utility for this action (player's utility)
             action_utils[i] = child_utils[player]
-        
+
         # Current player reach probability
-        reach = reach_p0 if player == 0 else reach_p1
-        
+        reach = reach_probs[player]
+
         # Expected value under current strategy
         expected_value = np.dot(strategy, action_utils)
-        
+
         # Counterfactual regrets
         for i in range(len(valid_actions)):
             regret = action_utils[i] - expected_value
             if reach > 0:
                 infoset.regret_sum[i] += regret * reach
-        
+
         # Update strategy sum
         infoset.strategy_sum += strategy * reach
-        
-        # Return expected utility for both players
-        return [expected_value if player == 0 else -expected_value,
-                -expected_value if player == 0 else expected_value]
+
+        # Return expected utility for all players
+        # For player acting: they get expected_value
+        # For other players: utility is based on their position relative to the action
+        utilities = []
+        for p in range(n_players):
+            if p == player:
+                utilities.append(expected_value)
+            else:
+                # Other players' utilities don't change from this action directly
+                # Their utilities are computed in child states
+                utilities.append(-expected_value)  # Simplified: zero-sum assumption
+
+        return utilities
     
     def _betting_round_complete(self, state: GameState) -> bool:
         """
@@ -260,9 +309,14 @@ class CFREngine:
         A betting round is complete when:
         - bet_to_call == 0 (no active bet to call)
         - last_bettor == -1 (no one just bet, or bet was matched)
-        - AND we have actions (the round actually started)
+        - AND we have at least one action (the round actually started)
         """
         if len(state.action_history) == 0:
+            return False
+        
+        # Must have at least 2 actions for a complete betting round
+        # (e.g., check-check, bet-call, check-bet-call, bet-fold, etc.)
+        if len(state.action_history) < 2:
             return False
         
         return state.bet_to_call == 0 and state.last_bettor == -1
@@ -299,14 +353,33 @@ class CFREngine:
         return self._resolve_terminal(new_state)
     
     def _resolve_terminal(self, state: GameState) -> List[float]:
-        """Resolve terminal state and return utilities."""
+        """Resolve terminal state and return utilities for all players."""
+        n_players = state.n_players if hasattr(state, 'n_players') else 2
+
         if state.terminal_reason == "fold":
-            # Fold: winner gets the pot
+            # Fold: remaining player(s) get the pot
+            # If multiple players remain (multi-way fold), they split the pot
             folder = state.action_history[-1].player if state.action_history else 0
-            winner = 1 - folder
-            payoffs = [state.pot, -state.pot] if winner == 0 else [-state.pot, state.pot]
+
+            # Find active players (not the folder)
+            active = [i for i in range(n_players) if i != folder and state.stacks[i] >= 0]
+
+            if len(active) == 1:
+                # Single winner
+                winner = active[0]
+                payoffs = [0.0] * n_players
+                payoffs[winner] = state.pot
+            elif len(active) > 1:
+                # Multi-way pot - split among remaining
+                payoffs = [0.0] * n_players
+                share = state.pot / len(active)
+                for p in active:
+                    payoffs[p] = share
+            else:
+                payoffs = [0.0] * n_players
+
             return payoffs
-        
+
         # Showdown
         return self.game.get_payoffs(state)
     

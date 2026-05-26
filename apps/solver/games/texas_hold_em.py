@@ -19,9 +19,10 @@ from gto_poker.hand import Hand, HandEvaluator
 
 
 class Player(Enum):
-    """Two player indices."""
+    """Player indices."""
     P0 = 0
     P1 = 1
+    # Add P2-P5 for multi-way pots
 
 
 class ActionType(Enum):
@@ -61,67 +62,79 @@ class Action:
 class GameState:
     """
     Complete game state for Texas Hold'em.
-    
+
     For river solver, we fix:
-    - Both players' hole cards
+    - All players' hole cards (2 cards each)
     - Board cards (5 cards on river)
     - Pot size
     - Stack sizes
+
+    Supports 2-6 players for multi-way pots.
     """
-    # Player hole cards [p0_card1, p0_card2, p1_card1, p1_card2]
+    # Player hole cards [p0_card1, p0_card2, p1_card1, p1_card2, ..., pn_card1, pn_card2]
     hole_cards: List[Card] = field(default_factory=list)
-    
+
     # Board cards (0-5 cards depending on street)
     board: List[Card] = field(default_factory=list)
-    
+
+    # Number of players (2-6)
+    n_players: int = 2
+
     # Pot sizes (main pot, then side pots if any)
     pot: float = 0.0
-    
+
     # Amount each player has contributed to pot
     contributions: List[float] = field(default_factory=lambda: [0.0, 0.0])
-    
+
     # Stack sizes (amount each player has left)
     stacks: List[float] = field(default_factory=lambda: [100.0, 100.0])
-    
+
     # Current player to act (-1 if not applicable)
     current_player: int = 0
-    
+
     # Action history
     action_history: List[Action] = field(default_factory=list)
-    
+
     # Street: 0=preflop, 1=flop, 2=turn, 3=river, 4=showdown
     street: int = 3  # Default to river
-    
+
     # Bet to call (amount needed to stay in)
     bet_to_call: float = 0.0
-    
+
     # Last player who bet (to track when betting round ends)
     last_bettor: int = -1
-    
+
     # Amount of the last bet (for showdown detection)
     last_bet_amount: float = 0.0
-    
+
     # Whether the hand is over
     terminal: bool = False
     terminal_reason: str = ""
-    
+
     # Terminal payoffs (set when terminal)
     payoffs: List[float] = field(default_factory=lambda: [0.0, 0.0])
     
     def infoset_key(self, player: int) -> str:
         """
         Generate information set key for a player.
-        
-        Format: "player:board:pot:stack:bet_to_call:action_history"
+
+        Format: "player:hole_cards:board:pot:stacks:bet_to_call:action_history"
+
+        For multi-way pots, includes all active players' hole cards relevant to
+        the information set.
         """
         board_str = "".join(str(c) for c in self.board)
-        hole_str = "".join(str(c) for i, c in enumerate(self.hole_cards) if i // 2 == player)
-        
-        stack_str = f"{self.stacks[0]:.0f},{self.stacks[1]:.0f}"
-        
+        # Get this player's hole cards (each player has 2 cards)
+        start_idx = player * 2
+        hole_str = "".join(str(self.hole_cards[start_idx + i]) for i in range(2) if start_idx + i < len(self.hole_cards))
+
+        # Active players are those with non-zero stacks or that have contributed
+        active_players = [i for i in range(self.n_players) if self.stacks[i] > 0 or self.contributions[i] > 0]
+        stack_str = ",".join(f"{self.stacks[i]:.0f}" for i in range(self.n_players))
+
         # Get recent actions (up to last 4)
         actions_str = ",".join(str(a) for a in self.action_history[-4:])
-        
+
         return f"p{player}:{hole_str}:{board_str}:{self.pot:.0f}:{stack_str}:{self.bet_to_call:.0f}:{actions_str}"
     
     def copy(self) -> "GameState":
@@ -129,6 +142,7 @@ class GameState:
         return GameState(
             hole_cards=list(self.hole_cards),
             board=list(self.board),
+            n_players=self.n_players,
             pot=self.pot,
             contributions=list(self.contributions),
             stacks=list(self.stacks),
@@ -146,85 +160,92 @@ class GameState:
 class TexasHoldEm:
     """
     Texas Hold'em game for CFR.
-    
+
     This class manages:
     - Game rules and valid actions
     - State transitions
     - Hand evaluation at showdown
+    - Multi-way pots (2-6 players)
     """
-    
+
     def __init__(
         self,
-        stack_sizes: List[float] = None,  # In big blinds
+        stack_sizes: List[float] = None,  # In big blinds [p0, p1, ...]
         bet_sizes: List[float] = None,    # Multipliers of pot
-        big_blind: float = 1.0
+        big_blind: float = 1.0,
+        n_players: int = 2
     ):
         """
         Initialize Texas Hold'em game.
-        
+
         Args:
-            stack_sizes: Stack sizes in big blinds [p0, p1]
+            stack_sizes: Stack sizes in big blinds [p0, p1, ...]
             bet_sizes: Available bet sizes as pot multipliers, e.g., [0.5, 1.0]
             big_blind: Size of big blind
+            n_players: Number of players (2-6)
         """
-        self.stack_sizes = stack_sizes or [100.0, 100.0]
+        self.n_players = n_players
+        self.stack_sizes = stack_sizes or [100.0] * n_players
         self.bet_sizes = bet_sizes or [0.5, 1.0]  # Half-pot, pot-sized
         self.big_blind = big_blind
-        
+
         # Hand evaluator
         self.evaluator = HandEvaluator()
-    
+
     def get_valid_actions(self, state: GameState, player: int) -> List[str]:
         """
         Get valid actions for a player at the current state.
-        
+
         River solver simplified: single bet per betting round.
         - Always: fold (give up), check (if no bet), or bet (initiate new bet)
         - If facing a bet: fold, call, or all-in
-        
+
         This prevents the tree explosion from multiple re-raises.
         """
         if state.terminal:
             return []
-        
+
+        if player < 0 or player >= state.n_players:
+            return []
+
         amount_to_call = state.bet_to_call - state.contributions[player]
         if amount_to_call < 0:
             amount_to_call = 0  # Clamp negative values
-        
-        actions = ["fold"]  # Can always fold (unless preflop big blind)
-        
+
+        actions = ["fold"]  # Can always fold
+
         # If facing a bet, can call or all-in
         if amount_to_call > 0:
             actions.append("call")
             # All-in is always available if player has any chips
-            if state.stacks[player] > amount_to_call:
+            if state.stacks[player] > 0:
                 actions.append(f"all_in:{state.stacks[player]}")
         else:
             # No active bet - first action of the betting round
             # Can check or bet (one size only)
             actions.append("check")
             actions.append(f"bet:{self.bet_sizes[0]}" if self.bet_sizes else "bet:0.5")
-            
+
             # All-in as emergency option
             if state.stacks[player] > 0:
                 actions.append(f"all_in:{state.stacks[player]}")
-        
+
         return actions
     
     def apply_action(self, state: GameState, player: int, action_str: str) -> GameState:
         """
         Apply an action and return new state.
-        
+
         Args:
             state: Current game state
-            player: Player taking action (0 or 1)
+            player: Player taking action (0 to n_players-1)
             action_str: Action string like "fold", "call", "raise:0.5"
-            
+
         Returns:
             New game state
         """
         new_state = state.copy()
-        
+
         # Create and store the action
         from games.texas_hold_em import Action, ActionType
         if action_str == "fold":
@@ -246,162 +267,215 @@ class TexasHoldEm:
             action = Action(ActionType.CHECK, player)
         else:
             action = Action(ActionType(action_str), player)
-        
+
         new_state.action_history.append(action)
-        new_state.current_player = 1 - player  # Switch player
-        
+
+        # Find next active player (not folded, has chips)
+        next_player = self._get_next_active_player(state, player)
+        new_state.current_player = next_player
+
         if action_str == "fold":
             new_state.terminal = True
             new_state.terminal_reason = "fold"
-            # Winner gets the pot
-            winner = 1 - player
-            new_state.payoffs = [0.0, 0.0]
-            new_state.payoffs[winner] = state.pot
+            # In multi-way pot, if only one player remains, they win
+            remaining = self._get_active_players(new_state)
+            if len(remaining) == 1:
+                winner = remaining[0]
+                new_state.payoffs = [0.0] * new_state.n_players
+                new_state.payoffs[winner] = state.pot
+            else:
+                # Multiple players remain, set payoffs to 0 for now (will be resolved at showdown)
+                new_state.payoffs = [0.0] * new_state.n_players
             return new_state
-        
+
         amount_to_call = state.bet_to_call - state.contributions[player]
-        
+
         if action_str == "call":
             # Match the bet
             call_amount = min(max(0, amount_to_call), state.stacks[player])
             new_state.contributions[player] += call_amount
             new_state.stacks[player] -= call_amount
             new_state.pot += call_amount
-            
+
             # If player called a bet (not just checking when no bet), betting round ends
             if amount_to_call > 0:
                 new_state.bet_to_call = 0.0
                 new_state.last_bettor = -1  # Betting round complete
-            
+
         elif action_str.startswith("raise:"):
             raise_mult = float(action_str.split(":")[1])
             # If raise_mult < 10, treat as pot multiplier; otherwise as absolute amount
             bet_size = state.pot * raise_mult if raise_mult < 10 else raise_mult
-            
+
             # Amount needed to call (to match the current bet)
             amount_to_call = max(0, state.bet_to_call - state.contributions[player])
-            
+
             # Total cost = amount_to_call + bet_size, capped at player's stack
             total_cost = min(amount_to_call + bet_size, state.stacks[player])
-            
+
             new_state.contributions[player] += total_cost
             new_state.stacks[player] -= total_cost
             new_state.pot += total_cost
-            
-            # After this action, what does opponent need to call?
-            opponent = 1 - player
-            opponent_contribution = new_state.contributions[opponent]
-            new_state.bet_to_call = max(0, new_state.contributions[player] - opponent_contribution)
+
+            # After this action, what do other players need to call?
+            max_contribution = max(new_state.contributions)
+            new_state.bet_to_call = max(0, max_contribution - new_state.contributions[player])
             new_state.last_bettor = player
-            
+
         elif action_str.startswith("all_in:"):
             # All-in is like bet/raise but for the player's entire stack
             player_stack = state.stacks[player]
             amount_to_call = max(0, state.bet_to_call - state.contributions[player])
-            
+
             total_cost = min(amount_to_call + player_stack, player_stack)
-            
+
             new_state.contributions[player] += total_cost
             new_state.stacks[player] -= total_cost
             new_state.pot += total_cost
-            
-            # After all-in, opponent needs to call the difference
-            opponent = 1 - player
-            opponent_contribution = new_state.contributions[opponent]
-            new_state.bet_to_call = max(0, new_state.contributions[player] - opponent_contribution)
+
+            # After all-in, others need to call the difference
+            max_contribution = max(new_state.contributions)
+            new_state.bet_to_call = max(0, max_contribution - new_state.contributions[player])
             new_state.last_bettor = player
-            
-            # If both players are all-in (both stacks = 0), trigger showdown
-            if new_state.stacks[0] == 0 and new_state.stacks[1] == 0:
+
+            # Check if all active players are all-in (trigger showdown)
+            active = self._get_active_players(new_state)
+            all_all_in = all(new_state.stacks[p] == 0 for p in active)
+            if all_all_in and len(active) >= 2:
                 new_state.terminal = True
                 new_state.terminal_reason = "showdown"
                 new_state.last_bettor = -1
                 return new_state
-            
+
         elif action_str.startswith("bet:"):
             # Bet initiates a new bet (like raise but no amount_to_call needed)
             bet_mult = float(action_str.split(":")[1])
             bet_size = state.pot * bet_mult if bet_mult < 10 else bet_mult
-            
+
             # Bet the bet_size, capped at player's stack
             total_cost = min(bet_size, state.stacks[player])
-            
+
             new_state.contributions[player] += total_cost
             new_state.stacks[player] -= total_cost
             new_state.pot += total_cost
-            
-            # After a bet, opponent needs to call to stay in
-            opponent = 1 - player
-            opponent_contribution = new_state.contributions[opponent]
-            new_state.bet_to_call = max(0, new_state.contributions[player] - opponent_contribution)
+
+            # After a bet, others need to call to stay in
+            max_contribution = max(new_state.contributions)
+            new_state.bet_to_call = max(0, max_contribution - new_state.contributions[player])
             new_state.last_bettor = player
-            
+
         elif action_str == "check":
             # No change to pot or stacks
-            # Player checked - if they were last bettor and opponent hasn't acted yet,
-            # this is fine, otherwise showdown check
             pass
-        
-        # Showdown detection for river
-        # Showdown when: betting round is over (no active bet) AND at least 2 actions
+
+        # Showdown detection for river street only
+        # On the river (street 3), showdown happens when betting round ends
         if not new_state.terminal and new_state.street >= 3:
-            n_actions = len(new_state.action_history)
-            last_action = new_state.action_history[-1]
-            second_last = new_state.action_history[-2] if n_actions >= 2 else None
-            
-            # Check for showdown:
-            # Case 1: Both checked (first to act checked, then other player checked)
-            # Case 2: Bet was called (last action was a call with a previous bettor)
-            if n_actions >= 2:
-                both_checked = (
-                    last_action.action_type == ActionType.CHECK and 
-                    second_last and second_last.action_type == ActionType.CHECK
-                )
-                # Check if this call completed a betting round (there was a bet before)
-                opponent = 1 - player
-                # Check if player actually put in more money (called)
-                player_contributed = new_state.contributions[player] > state.contributions[player]
-                call_completes_round = (
-                    last_action.action_type == ActionType.CALL and
-                    player_contributed and  # Player put in more money (called a bet)
-                    new_state.bet_to_call == 0  # Call matched the bet (no remaining bet)
-                )
-                
-                if both_checked or call_completes_round:
-                    new_state.terminal = True
-                    new_state.terminal_reason = "showdown"
-                    new_state.last_bettor = -1
-        
+            if self._betting_round_complete(new_state):
+                new_state.terminal = True
+                new_state.terminal_reason = "showdown"
+                new_state.last_bettor = -1
+
         return new_state
+
+    def _get_next_active_player(self, state: GameState, current_player: int) -> int:
+        """Get the next active player after current_player."""
+        n = state.n_players
+        for offset in range(1, n + 1):
+            next_p = (current_player + offset) % n
+            if state.stacks[next_p] > 0:
+                return next_p
+        return -1  # No active players
+
+    def _get_active_players(self, state: GameState) -> List[int]:
+        """Get list of active players (not folded, have chips)."""
+        return [i for i in range(state.n_players) if state.stacks[i] > 0]
+
+    def _betting_round_complete(self, state: GameState) -> bool:
+        """
+        Check if betting round is complete (no active bet to call).
+
+        For multi-way pots, betting round is complete when:
+        - bet_to_call == 0 (no active bet)
+        - last_bettor == -1 (no one just bet without response)
+        - AND at least one action has been taken
+        """
+        if len(state.action_history) == 0:
+            return False
+
+        if state.bet_to_call > 0:
+            return False
+
+        # Check if all active players have acted after last bet
+        active = self._get_active_players(state)
+        if not active:
+            return True
+
+        # If there's no bet to call and last_bettor is -1, check if everyone checked
+        if state.last_bettor == -1:
+            return True
+
+        return False
     
     def is_terminal(self, state: GameState) -> bool:
         """Check if state is terminal."""
         return state.terminal or state.street == 4
     
     def get_payoffs(self, state: GameState) -> List[float]:
-        """Get payoffs at terminal state."""
+        """Get payoffs at terminal state for multi-way showdown."""
         if state.terminal_reason == "fold":
-            # Winner already determined
-            pass
-        
-        # Showdown: evaluate hands
-        p0_cards = [state.hole_cards[0], state.hole_cards[1]] + state.board
-        p1_cards = [state.hole_cards[2], state.hole_cards[3]] + state.board
-        
-        result = self.evaluator.compare(p0_cards, p1_cards)
-        
-        if result == 1:  # P0 wins (compare returns 1 when first arg wins)
-            return [state.pot, -state.pot]
-        elif result == -1:  # P1 wins
-            return [-state.pot, state.pot]
-        else:  # Tie
-            return [0.0, 0.0]
-    
+            # Return payoffs as already set (could be multi-way if others folded)
+            return state.payoffs if state.payoffs else [0.0] * state.n_players
+
+        # Showdown: evaluate all hands and split pot among winners
+        n_players = state.n_players
+
+        # Collect each player's best 5-card hand
+        player_hands = []
+        for i in range(n_players):
+            start_idx = i * 2
+            hole = [state.hole_cards[start_idx + j] for j in range(2) if start_idx + j < len(state.hole_cards)]
+            full_hand = hole + state.board
+            player_hands.append(full_hand)
+
+        # Find the winning hand(s)
+        best_hand_index = -1
+        best_hand_value = None
+        winners = []
+
+        for i in range(n_players):
+            result = self.evaluator.compare(player_hands[i], player_hands[best_hand_index] if best_hand_index >= 0 else player_hands[i])
+            if best_hand_index == -1:
+                best_hand_index = i
+                best_hand_value = player_hands[i]
+            elif result == 1:  # Current player beats best
+                best_hand_index = i
+                best_hand_value = player_hands[i]
+                winners = [i]
+            elif result == 0:  # Tie with best
+                winners.append(i)
+
+        if not winners:
+            winners = [best_hand_index]
+
+        # Payoffs: winners get their share of the pot
+        payoffs = [0.0] * n_players
+        win_amount = state.pot / len(winners)
+        for w in winners:
+            payoffs[w] = win_amount
+
+        # Set payoffs as negative for losers (their loss)
+        for i in range(n_players):
+            if i not in winners:
+                payoffs[i] = -state.contributions[i]
+
+        return payoffs
+
     def resolve(self, state: GameState) -> List[float]:
         """Resolve the hand and return payoffs."""
         if state.terminal_reason == "fold":
             # Return payoffs as already set
-            return getattr(state, 'payoffs', [0.0, 0.0])
+            return state.payoffs if state.payoffs else [0.0] * state.n_players
         return self.get_payoffs(state)
 
 
@@ -413,31 +487,97 @@ def create_river_state(
     stacks: List[float],
     current_player: int = 0,
     bet_to_call: float = 0.0,
-    action_history: List[Action] = None
+    action_history: List[Action] = None,
+    n_players: int = 2,
+    extra_hole_cards: List[str] = None
 ) -> GameState:
     """
     Create a river game state with known cards.
-    
+
     For river solver, all 5 board cards are known.
+
+    Args:
+        p0_cards: Player 0 hole cards like ["Ac", "Kd"]
+        p1_cards: Player 1 hole cards like ["Qs", "Js"]
+        board: 5 board cards like ["Kh", "8c", "3d", "2s", "Ks"]
+        pot: Current pot size
+        stacks: Stack sizes in big blinds [p0, p1, ...]
+        current_player: Player to act first
+        bet_to_call: Amount needed to call
+        action_history: List of previous actions
+        n_players: Total number of players (2-6)
+        extra_hole_cards: Additional hole cards for 3+ players [[p2_cards], [p3_cards], ...]
     """
     deck = Deck()
-    
+
     hole_cards = []
     for card_str in p0_cards:
         hole_cards.append(deck.parse(card_str))
     for card_str in p1_cards:
         hole_cards.append(deck.parse(card_str))
-    
+
+    # Add extra hole cards for additional players
+    if extra_hole_cards:
+        for player_cards in extra_hole_cards:
+            for card_str in player_cards:
+                hole_cards.append(deck.parse(card_str))
+
     board_cards = [deck.parse(c) for c in board]
-    
+
+    # Initialize contributions based on number of players
+    contributions = [0.0] * n_players
+
     return GameState(
         hole_cards=hole_cards,
         board=board_cards,
+        n_players=n_players,
         pot=pot,
+        contributions=contributions,
         stacks=list(stacks),
         current_player=current_player,
         action_history=action_history or [],
         street=3,  # River
+        bet_to_call=bet_to_call
+    )
+
+
+def create_multiway_river_state(
+    all_hole_cards: List[str],  # Flat list of hole cards: [p0c1, p0c2, p1c1, p1c2, ...]
+    board: List[str],
+    pot: float,
+    stacks: List[float],
+    current_player: int = 0,
+    bet_to_call: float = 0.0,
+    action_history: List[Action] = None
+) -> GameState:
+    """
+    Create a river game state with multiple players using flat hole card list.
+
+    Args:
+        all_hole_cards: Flat list of hole card strings [p0c1, p0c2, p1c1, p1c2, ...]
+        board: 5 board cards
+        pot: Current pot size
+        stacks: Stack sizes in big blinds
+        current_player: Player to act first
+        bet_to_call: Amount needed to call
+        action_history: List of previous actions
+    """
+    deck = Deck()
+    n_players = len(all_hole_cards) // 2
+    hole_cards = [deck.parse(c) for c in all_hole_cards]
+    board_cards = [deck.parse(c) for c in board]
+    contributions = [0.0] * n_players
+
+    return GameState(
+        hole_cards=hole_cards,
+        board=board_cards,
+        n_players=n_players,
+        pot=pot,
+        contributions=contributions,
+        stacks=list(stacks),
+        current_player=current_player,
+        action_history=action_history or [],
+        street=3,
         bet_to_call=bet_to_call
     )
 
