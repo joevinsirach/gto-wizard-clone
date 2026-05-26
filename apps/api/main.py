@@ -13,7 +13,7 @@ import redis
 
 from routers import equity, solver, auth, hh, strategy, quiz
 from routers import plo4_equity, plo4_ranges
-from routers import double_board, bomb_pot
+from routers import double_board, bomb_pot, spots
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -62,6 +62,7 @@ app.include_router(plo4_equity.router)
 app.include_router(plo4_ranges.router)
 app.include_router(double_board.router)
 app.include_router(bomb_pot.router)
+app.include_router(spots.router)
 
 
 @app.get("/")
