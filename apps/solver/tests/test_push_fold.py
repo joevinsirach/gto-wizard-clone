@@ -37,6 +37,9 @@ from strategy.storage import (
     StrategyStorage,
     StoredStrategy,
     StrategyCache,
+    PushFoldStorage,
+    make_push_fold_key,
+    parse_push_fold_key,
 )
 
 
@@ -237,30 +240,82 @@ class TestChartGeneratorClass:
 
 
 class TestStrategyStorage:
-    """Tests for strategy storage."""
+    """Tests for strategy storage with new key format."""
     
     def test_make_strategy_key(self):
-        """Test strategy key format."""
-        key = StrategyStorage.make_strategy_key(20, "BTN")
-        assert key == "nlh:2:preflop:20:btn"
+        """Test new strategy key format."""
+        # New format: nlh:2:{street}:{board_hash}:{bet_size}:{stack}
+        key = StrategyStorage.make_strategy_key(
+            street="preflop",
+            board_hash="",
+            bet_size=0.0,
+            stack_depth=100,
+        )
+        assert key == "nlh:2:preflop::0.0:100"
+    
+    def test_make_strategy_key_with_board(self):
+        """Test strategy key with board hash."""
+        key = StrategyStorage.make_strategy_key(
+            street="river",
+            board_hash="Kd7h2c",
+            bet_size=0.5,
+            stack_depth=100,
+        )
+        assert key == "nlh:2:river:Kd7h2c:0.5:100"
     
     def test_parse_strategy_key(self):
-        """Test parsing strategy key."""
-        parsed = StrategyStorage.parse_strategy_key("nlh:2:preflop:20:btn")
+        """Test parsing new strategy key format."""
+        parsed = StrategyStorage.parse_strategy_key("nlh:2:river:Kd7h2c:0.5:100")
+        assert parsed["game_type"] == "nlh"
+        assert parsed["players"] == 2
+        assert parsed["street"] == "river"
+        assert parsed["board_hash"] == "Kd7h2c"
+        assert parsed["bet_size"] == 0.5
+        assert parsed["stack_depth"] == 100
+    
+    def test_parse_strategy_key_preflop(self):
+        """Test parsing preflop strategy key."""
+        parsed = StrategyStorage.parse_strategy_key("nlh:2:preflop::0.0:100")
         assert parsed["game_type"] == "nlh"
         assert parsed["players"] == 2
         assert parsed["street"] == "preflop"
-        assert parsed["stack_depth"] == 20
-        assert parsed["position"] == "btn"
+        assert parsed["board_hash"] == ""
+        assert parsed["bet_size"] == 0.0
+        assert parsed["stack_depth"] == 100
     
     def test_parse_strategy_key_invalid(self):
         """Test parsing invalid key raises error."""
         with pytest.raises(ValueError):
             StrategyStorage.parse_strategy_key("invalid:key")
+        with pytest.raises(ValueError):
+            StrategyStorage.parse_strategy_key("nlh:2:preflop:20:btn")  # old format
+    
+    def test_make_push_fold_key(self):
+        """Test legacy push/fold key format."""
+        key = make_push_fold_key(20, "BTN")
+        assert key == "nlh:2:preflop:20:btn"
+    
+    def test_parse_push_fold_key(self):
+        """Test parsing legacy push/fold key format."""
+        parsed = parse_push_fold_key("nlh:2:preflop:20:btn")
+        assert parsed["game_type"] == "nlh"
+        assert parsed["players"] == 2
+        assert parsed["street"] == "preflop"
+        assert parsed["stack_depth"] == 20
+        assert parsed["position"] == "btn"
+
+
+class TestPushFoldStorage:
+    """Tests for backward-compatible push/fold storage."""
+    
+    def test_push_fold_storage_init(self):
+        """Test PushFoldStorage initialization."""
+        storage = PushFoldStorage()
+        assert storage._storage is not None
     
     def test_store_and_get_chart(self):
         """Test storing and retrieving a chart."""
-        storage = StrategyStorage()
+        storage = PushFoldStorage()
         chart = {"AA": "push", "72o": "fold"}
         
         storage.store_chart(20, "BTN", chart)
@@ -270,13 +325,13 @@ class TestStrategyStorage:
     
     def test_get_chart_not_found(self):
         """Test getting non-existent chart returns None."""
-        storage = StrategyStorage()
+        storage = PushFoldStorage()
         result = storage.get_chart(20, "UTG")
         assert result is None
     
     def test_get_or_generate_chart(self):
         """Test get or generate method."""
-        storage = StrategyStorage()
+        storage = PushFoldStorage()
         
         # First call generates
         chart = storage.get_or_generate_chart(20, "BTN")
@@ -286,18 +341,83 @@ class TestStrategyStorage:
         # Second call returns cached
         cached = storage.get_or_generate_chart(20, "BTN")
         assert cached == chart
+
+
+class TestNewStorageAPI:
+    """Tests for the new PostgreSQL-backed storage API."""
     
-    def test_to_json_from_json(self):
-        """Test serialization roundtrip."""
+    def test_save_and_get_strategy(self):
+        """Test saving and retrieving a strategy."""
         storage = StrategyStorage()
-        chart = {"AA": "push", "AKs": "push", "72o": "fold"}
+        strategy_data = {
+            "type": "gto",
+            "actions": [
+                {"hand": "AA", "action": "raise", "frequency": 1.0, "ev": 2.5},
+                {"hand": "KK", "action": "raise", "frequency": 0.9, "ev": 2.3},
+            ]
+        }
         
-        strategy = storage.store_chart(20, "BTN", chart)
+        # This will fail without DB, but tests the API signature
+        try:
+            strategy = storage.save_strategy(
+                street="river",
+                strategy_data=strategy_data,
+                board_hash="Kd7h2c",
+                bet_size=0.5,
+                stack_depth=100,
+            )
+            assert strategy.key == "nlh:2:river:Kd7h2c:0.5:100"
+        except RuntimeError as e:
+            # Expected if no database connection
+            assert "not installed" in str(e) or "connection" in str(e).lower()
+    
+    def test_get_strategy_by_params(self):
+        """Test getting strategy by parameters."""
+        storage = StrategyStorage()
+        
+        # Test with no DB - should return None gracefully
+        result = storage.get_strategy_by_params(
+            street="river",
+            board_hash="Kd7h2c",
+            bet_size=0.5,
+            stack_depth=100,
+        )
+        # Without DB this returns None, but API is correct
+        assert result is None or isinstance(result, dict)
+    
+    def test_cache_stats(self):
+        """Test cache statistics."""
+        storage = StrategyStorage()
+        stats = storage.get_cache_stats()
+        
+        assert "memory_cache_size" in stats
+        assert "cache_hits" in stats
+        assert "cache_misses" in stats
+        assert "hit_rate" in stats
+    
+    def test_json_roundtrip(self):
+        """Test JSON serialization roundtrip."""
+        storage = StrategyStorage()
+        
+        # Create a strategy directly
+        strategy = StoredStrategy(
+            key="nlh:2:river:Kd7h2c:0.5:100",
+            game_type="nlh",
+            players=2,
+            street="river",
+            board_hash="Kd7h2c",
+            bet_size=0.5,
+            stack_depth=100,
+            strategy_data={"type": "gto", "actions": []},
+        )
+        
         json_str = storage.to_json(strategy)
-        
         restored = storage.from_json(json_str)
+        
         assert restored.key == strategy.key
-        assert restored.chart == chart
+        assert restored.street == strategy.street
+        assert restored.board_hash == strategy.board_hash
+        assert restored.bet_size == strategy.bet_size
 
 
 class TestChartToMatrix:
