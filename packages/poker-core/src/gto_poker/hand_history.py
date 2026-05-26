@@ -52,9 +52,14 @@ class Player:
 class Action:
     """A betting action."""
     player: str
-    action_type: ActionType
+    action: str  # 'fold', 'check', 'call', 'bet', 'raise', 'allin'
     amount: Optional[float] = None
     street: str = "preflop"  # preflop, flop, turn, river
+    
+    @property
+    def action_type(self) -> str:
+        """Backward compatibility alias."""
+        return self.action
 
 
 @dataclass
@@ -106,46 +111,6 @@ class ParsedHand:
 
 # Winamax uses € symbol
 CURRENCY_SYMBOLS = ['€', '€']
-
-
-@dataclass
-class PlayerInfo:
-    """Player at the table."""
-    name: str
-    seat: int
-    stack: float
-    hole_cards: Optional[List[str]] = None
-    position: Optional[str] = None  # 'button', 'sb', 'bb', 'utg', etc.
-
-
-@dataclass
-class Action:
-    """A betting action."""
-    player: str
-    action: str  # 'fold', 'check', 'call', 'bet', 'raise', 'allin'
-    amount: Optional[float] = None
-    street: str = 'preflop'  # preflop, flop, turn, river
-
-
-@dataclass
-class ParsedHand:
-    """Parsed hand history data structure."""
-    hand_id: str = ''
-    site: str = 'winamax'
-    game_type: str = "No Limit Hold'em"
-    limit_type: str = 'No Limit'
-    stakes: Optional[tuple] = None  # (small_blind, big_blind)
-    table_name: str = ''
-    max_seats: int = 6
-    button_position: int = 0
-    players: List[PlayerInfo] = field(default_factory=list)
-    actions: Dict[str, List[Action]] = field(default_factory=dict)
-    board: List[str] = field(default_factory=list)
-    pot: float = 0.0
-    rake: float = 0.0
-    winners: List[tuple] = field(default_factory=list)  # [(player, amount), ...]
-    hero_name: Optional[str] = None
-    raw_text: str = ''
 
 
 def _parse_currency_amount(amount_str: str) -> float:
@@ -569,7 +534,7 @@ def parse_pokerstars_hh(text: str) -> ParsedHand:
                         amount = float(match.group(2))
                     except (ValueError, IndexError):
                         amount = None
-                act = Action(player=player, action_type=ActionType[action_type.upper()], amount=amount, street=current_street)
+                act = Action(player=player, action=action_type, amount=amount, street=current_street)
                 if current_street in hand.actions:
                     hand.actions[current_street].append(act)
                 break
@@ -771,7 +736,7 @@ def parse_ggpoker_hh(text: str) -> ParsedHand:
                         amount = float(match.group(2))
                     except (ValueError, IndexError):
                         amount = None
-                act = Action(player=player, action_type=ActionType[action_type.upper()], amount=amount, street=current_street)
+                act = Action(player=player, action=action_type, amount=amount, street=current_street)
                 if current_street in hand.actions:
                     hand.actions[current_street].append(act)
                 break
