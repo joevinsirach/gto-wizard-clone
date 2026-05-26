@@ -178,49 +178,36 @@ class TexasHoldEm:
         """
         Get valid actions for a player at the current state.
         
-        Returns list of action strings: ["fold", "call", "raise:0.5", "raise:1.0"]
+        River solver simplified: single bet per betting round.
+        - Always: fold (give up), check (if no bet), or bet (initiate new bet)
+        - If facing a bet: fold, call, or all-in
+        
+        This prevents the tree explosion from multiple re-raises.
         """
         if state.terminal:
             return []
         
-        actions = ["fold"]
-        
-        # Check if player can call
         amount_to_call = state.bet_to_call - state.contributions[player]
+        if amount_to_call < 0:
+            amount_to_call = 0  # Clamp negative values
         
-        # Determine if we're facing a bet or if it's the first action of a betting round
-        facing_bet = amount_to_call > 0
+        actions = ["fold"]  # Can always fold (unless preflop big blind)
         
-        if facing_bet:
-            # There's a bet to call - player must fold, call, or raise
+        # If facing a bet, can call or all-in
+        if amount_to_call > 0:
             actions.append("call")
-            
-            # Player can raise (if they have enough chips)
-            for bet_mult in self.bet_sizes:
-                bet_size = state.pot * bet_mult
-                total_cost = amount_to_call + bet_size
-                if total_cost <= state.stacks[player]:
-                    actions.append(f"raise:{bet_mult}")
-            
-            # All-in
+            # All-in is always available if player has any chips
             if state.stacks[player] > amount_to_call:
-                actions.append(f"raise:{state.stacks[player]}")
+                actions.append(f"all_in:{state.stacks[player]}")
         else:
-            # No bet to call - player can check or bet/raise
-            # Exception: if last_bettor is the OTHER player and this player already acted,
-            # then this player can't bet again (already got a chance to respond)
-            
+            # No active bet - first action of the betting round
+            # Can check or bet (one size only)
             actions.append("check")
+            actions.append(f"bet:{self.bet_sizes[0]}" if self.bet_sizes else "bet:0.5")
             
-            # Player can also bet/raise (initiate a bet)
-            for bet_mult in self.bet_sizes:
-                bet_size = state.pot * bet_mult
-                if bet_size <= state.stacks[player]:
-                    actions.append(f"raise:{bet_mult}")
-            
-            # All-in as a raise
+            # All-in as emergency option
             if state.stacks[player] > 0:
-                actions.append(f"raise:{state.stacks[player]}")
+                actions.append(f"all_in:{state.stacks[player]}")
         
         return actions
     
@@ -247,6 +234,14 @@ class TexasHoldEm:
         elif action_str.startswith("raise:"):
             amount = float(action_str.split(":")[1])
             action = Action(ActionType.RAISE, player, amount)
+        elif action_str.startswith("bet:"):
+            # Bet is like raise but without needing to match an existing bet
+            amount = float(action_str.split(":")[1])
+            action = Action(ActionType.BET, player, amount)
+        elif action_str.startswith("all_in:"):
+            # All-in action - amount is the player's entire stack
+            amount = float(action_str.split(":")[1])
+            action = Action(ActionType.ALL_IN, player, amount)
         elif action_str == "check":
             action = Action(ActionType.CHECK, player)
         else:
@@ -268,7 +263,7 @@ class TexasHoldEm:
         
         if action_str == "call":
             # Match the bet
-            call_amount = min(amount_to_call, state.stacks[player])
+            call_amount = min(max(0, amount_to_call), state.stacks[player])
             new_state.contributions[player] += call_amount
             new_state.stacks[player] -= call_amount
             new_state.pot += call_amount
@@ -280,19 +275,66 @@ class TexasHoldEm:
             
         elif action_str.startswith("raise:"):
             raise_mult = float(action_str.split(":")[1])
+            # If raise_mult < 10, treat as pot multiplier; otherwise as absolute amount
             bet_size = state.pot * raise_mult if raise_mult < 10 else raise_mult
             
-            # Total cost = amount_to_call + bet_size
+            # Amount needed to call (to match the current bet)
+            amount_to_call = max(0, state.bet_to_call - state.contributions[player])
+            
+            # Total cost = amount_to_call + bet_size, capped at player's stack
             total_cost = min(amount_to_call + bet_size, state.stacks[player])
-            actual_bet = total_cost - amount_to_call
             
             new_state.contributions[player] += total_cost
             new_state.stacks[player] -= total_cost
             new_state.pot += total_cost
-            # bet_to_call is the amount opponent needs to call
+            
+            # After this action, what does opponent need to call?
             opponent = 1 - player
-            new_state.bet_to_call = new_state.contributions[player] - new_state.contributions[opponent]
-            new_state.last_bettor = player  # Current player is now the last bettor
+            opponent_contribution = new_state.contributions[opponent]
+            new_state.bet_to_call = max(0, new_state.contributions[player] - opponent_contribution)
+            new_state.last_bettor = player
+            
+        elif action_str.startswith("all_in:"):
+            # All-in is like bet/raise but for the player's entire stack
+            player_stack = state.stacks[player]
+            amount_to_call = max(0, state.bet_to_call - state.contributions[player])
+            
+            total_cost = min(amount_to_call + player_stack, player_stack)
+            
+            new_state.contributions[player] += total_cost
+            new_state.stacks[player] -= total_cost
+            new_state.pot += total_cost
+            
+            # After all-in, opponent needs to call the difference
+            opponent = 1 - player
+            opponent_contribution = new_state.contributions[opponent]
+            new_state.bet_to_call = max(0, new_state.contributions[player] - opponent_contribution)
+            new_state.last_bettor = player
+            
+            # If both players are all-in (both stacks = 0), trigger showdown
+            if new_state.stacks[0] == 0 and new_state.stacks[1] == 0:
+                new_state.terminal = True
+                new_state.terminal_reason = "showdown"
+                new_state.last_bettor = -1
+                return new_state
+            
+        elif action_str.startswith("bet:"):
+            # Bet initiates a new bet (like raise but no amount_to_call needed)
+            bet_mult = float(action_str.split(":")[1])
+            bet_size = state.pot * bet_mult if bet_mult < 10 else bet_mult
+            
+            # Bet the bet_size, capped at player's stack
+            total_cost = min(bet_size, state.stacks[player])
+            
+            new_state.contributions[player] += total_cost
+            new_state.stacks[player] -= total_cost
+            new_state.pot += total_cost
+            
+            # After a bet, opponent needs to call to stay in
+            opponent = 1 - player
+            opponent_contribution = new_state.contributions[opponent]
+            new_state.bet_to_call = max(0, new_state.contributions[player] - opponent_contribution)
+            new_state.last_bettor = player
             
         elif action_str == "check":
             # No change to pot or stacks
@@ -317,9 +359,11 @@ class TexasHoldEm:
                 )
                 # Check if this call completed a betting round (there was a bet before)
                 opponent = 1 - player
+                # Check if player actually put in more money (called)
+                player_contributed = new_state.contributions[player] > state.contributions[player]
                 call_completes_round = (
                     last_action.action_type == ActionType.CALL and
-                    amount_to_call > 0 and  # Player called a bet (not just matched zero)
+                    player_contributed and  # Player put in more money (called a bet)
                     new_state.bet_to_call == 0  # Call matched the bet (no remaining bet)
                 )
                 
