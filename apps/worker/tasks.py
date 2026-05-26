@@ -196,6 +196,56 @@ def solve_spot(self, params: Dict[str, Any]) -> Dict[str, Any]:
         # Publish completion
         publish_progress(job_id, 100, "complete", {"stage": "complete"})
         
+        # Save strategy to PostgreSQL via StrategyStorageService
+        try:
+            from apps.api.services.strategy_storage import get_strategy_storage
+            
+            # Determine street from board
+            street = "preflop"
+            board_key = board or "preflop"
+            if board:
+                # Board cards present - determine street from card count
+                board_list = board.split(",") if isinstance(board, str) else board
+                card_count = len(board_list) if board_list else 0
+                if card_count == 3:
+                    street = "flop"
+                elif card_count == 4:
+                    street = "turn"
+                elif card_count >= 5:
+                    street = "river"
+            
+            storage = get_strategy_storage()
+            
+            # Convert strategy_data to list format for storage service
+            strategy_actions = []
+            if "actions" in strategy_data:
+                for action in strategy_data["actions"]:
+                    strategy_actions.append({
+                        "hand": action.get("hand", ""),
+                        "action": action.get("action", ""),
+                        "frequency": action.get("frequency", 0.0),
+                    })
+            
+            # Store to PostgreSQL
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(storage.store_strategy(
+                    game_type=game_type,
+                    players=players,
+                    board=board_key,
+                    stack_depth=stack_depth,
+                    strategy_data=strategy_actions,
+                    pot_size=pot_size,
+                    bet_sizes=bet_sizes or [],
+                ))
+                logger.info(f"Strategy saved to PostgreSQL: key={storage.make_strategy_key(game_type, players, board_key, bet_sizes or [], stack_depth)}")
+            finally:
+                loop.close()
+        except Exception as storage_error:
+            logger.warning(f"Could not save strategy to PostgreSQL: {storage_error}")
+        
         logger.info(f"Solve task {job_id} completed successfully with {len(strategies)} infosets")
         return result
         

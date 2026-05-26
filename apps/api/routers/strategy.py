@@ -77,9 +77,13 @@ def make_strategy_key(
     bet_sizes: List[int],
     stack_depth: int,
 ) -> str:
-    """Generate a strategy key."""
+    """Generate a strategy key.
+    
+    Format: {game_type}:{players}:{board}:{bet_sizes}:{stack_depth}
+    Example: nlh:2:preflop:[]:100
+    """
     bet_sizes_str = ",".join(map(str, sorted(bet_sizes))) if bet_sizes else ""
-    return f"nlh:2:{board}:{stack_depth}:{bet_sizes_str}"
+    return f"{game_type}:{players}:{board}:{bet_sizes_str}:{stack_depth}"
 
 
 def parse_strategy_key(key: str) -> Dict[str, Any]:
