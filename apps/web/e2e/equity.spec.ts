@@ -209,7 +209,7 @@ test.describe("Equity Calculator Page", () => {
     const heroCellBg = await firstHeroCell.evaluate((el: HTMLElement) =>
       window.getComputedStyle(el).backgroundColor
     );
-    expect(heroCellBg).toMatch(/rgb\(34|75|102)/); // green-600 or blue-600
+    expect(heroCellBg).toMatch(/rgb\(34/); // green-600 or blue-600
 
     // Verify villain cell at same position is NOT selected
     const villainCells = equityPage.getRangeSelectorCells(villainSection);
@@ -217,7 +217,7 @@ test.describe("Equity Calculator Page", () => {
     const villainCellBg = await firstVillainCell.evaluate((el: HTMLElement) =>
       window.getComputedStyle(el).backgroundColor
     );
-    expect(villainCellBg).toMatch(/rgb\(55|70|80)/); // gray-700 (unselected)
+    expect(villainCellBg).toMatch(/rgb\(55/); // gray-700 (unselected)
   });
 
   test("8. Legend displays all three hand types", async ({ page }) => {

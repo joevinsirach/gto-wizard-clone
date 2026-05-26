@@ -156,7 +156,7 @@ test.describe("PWA Features", () => {
       const manifest = await response.json();
 
       // Should be standalone for PWA experience
-      expect(manifest.display).toBe("standalone" || manifest.display === "standalone");
+      expect(manifest.display).toBe("standalone");
     }
   });
 
@@ -260,7 +260,7 @@ test.describe("PWA Features", () => {
     // No horizontal overflow (common mobile issue)
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
-    expect(bodyWidth).toBeLessThanOrEqual(viewviewWidth + 5);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 5);
   });
 
   test("12. Service worker registration (if supported)", async ({ page }) => {

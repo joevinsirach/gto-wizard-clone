@@ -1,6 +1,6 @@
 # GTO Wizard Clone
 
-**Open-source GTO poker training platform** — equity calculator, CFR solver, PLO4 tools, double board / bomb pot solver, training modes, hand history analysis, and ICM calculator.
+**Open-source GTO poker training platform** — equity calculator, CFR solver, PLO4 tools, double board / bomb pot solver, training modes, hand history analysis, ICM calculator, push/fold charts, training courses, and community spots.
 
 ## Supported Game Variants
 
@@ -81,3 +81,107 @@ docker compose up
 ## License
 
 MIT
+
+---
+
+## Phase 6: ICM Calculator & Polish
+
+### ICM Calculator (`/icm`)
+
+ICM (Independent Chip Model) calculator for tournament equity calculations. Supports prize pool distribution, chip stack management, and tournament equity calculations.
+
+**Features:**
+- Prize Pool Panel — Configure tournament payouts (% and amounts)
+- Chip Stack Panel — Add/remove players with chip amounts
+- Tournament Settings — Buy-in and total chips
+- ICM Results — Equity percentages and expected values
+- About ICM — Educational section explaining ICM concepts
+
+**Navigation:** `/icm`
+
+### Push/Fold Charts (`/strategies`)
+
+Nash-equilibrium push/fold charts for tournament situations. Pre-generated charts for common stack sizes and positions.
+
+**Features:**
+- Filterable charts by stack depth and position
+- Open push and call charts
+- ICM-adjusted recommendations
+- Export functionality
+
+**Navigation:** `/strategies`
+
+### Training Courses (`/courses`)
+
+Pre-built training courses with structured lessons, progress tracking, and multiple difficulty levels.
+
+**Features:**
+- Course categories: Preflop, Postflop, ICM, GTO Fundamentals
+- Difficulty levels: Beginner, Intermediate, Advanced
+- Progress tracking with completion percentages
+- Quick Stats dashboard
+- Continue Training button for resuming courses
+
+**Navigation:** `/courses`
+
+### Community Spots (`/spots`)
+
+Share and discover community strategy spots. View, like, and practice community-contributed spots.
+
+**Features:**
+- Filter by position (BTN, SB, BB, CO, etc.)
+- Filter by board type (dry, wet, paired, rainbow)
+- Search functionality
+- Sort by recent or popular
+- Like/unlike spots
+- Share new spot functionality
+- Strategy heatmap for selected spots
+- Practice this spot button
+
+**Navigation:** `/spots`
+
+---
+
+## PWA Installation
+
+GTO Wizard Clone supports Progressive Web App (PWA) installation on desktop and mobile devices.
+
+**Installation Steps:**
+
+**Desktop (Chrome/Edge/Brave):**
+1. Visit the application URL
+2. Click the install icon in the address bar (or overflow menu)
+3. Click "Install" in the prompt
+4. App will be installed and available in your app launcher
+
+**Desktop (Firefox):**
+1. Visit the application URL
+2. Click the menu (≡) button
+3. Select "Install" or "Save Application"
+4. Follow the prompts
+
+**Mobile (iOS Safari):**
+1. Visit the application URL
+2. Tap the Share button (square with arrow)
+3. Scroll down and tap "Add to Home Screen"
+4. Name the app and tap "Add"
+5. App icon will appear on your home screen
+
+**Mobile (Android Chrome):**
+1. Visit the application URL
+2. Tap the menu (⋮) button
+3. Tap "Install app" or "Add to Home screen"
+4. Follow the prompts
+
+**PWA Features:**
+- Offline support (service worker)
+- App shortcuts for quick navigation
+- Standalone display mode
+- Theme-aware status bar
+- 192x192 and 512x512 icons for all devices
+
+**PWA Shortcuts:**
+- ICM Calculator → `/icm`
+- Courses → `/courses`
+- Spots → `/spots`
+- Equity Calculator → `/equity`

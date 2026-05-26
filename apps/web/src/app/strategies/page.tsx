@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { StrategyHeatmap, StrategyCell } from "@/components/ui/StrategyHeatmap";
+import { ICMAwareStrategy } from "@/components/strategy/ICMAwareStrategy";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -420,6 +421,17 @@ export default function StrategiesPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const { progress, connected } = useSolverWebSocket(jobId);
 
+  // ICM-aware strategy state
+  const [icmStrategy, setIcmStrategy] = useState<{
+    bubbleFactor: number;
+    icmEquity: number;
+    chipEquity: number;
+    recommendedAction: "push" | "fold" | "call";
+    confidence: "high" | "medium" | "low";
+    explanation: string;
+    handAdjustments: Record<string, string>;
+  } | null>(null);
+
   // Build board string from cards
   const boardString = boardCards.filter(c => c.length === 2).join("");
 
@@ -471,6 +483,74 @@ export default function StrategiesPage() {
 
     fetchData();
   }, [boardString, stackDepth, position]);
+
+  // Compute ICM-aware strategy when relevant parameters change
+  useEffect(() => {
+    // Generate mock stack data for ICM calculation
+    // In a real app, this would come from tournament context
+    const playerCount = 9; // Typical full-ring table
+    const mockStacks = Array(playerCount).fill(stackDepth * 100); // 100 big blinds each
+    const positionIdx = POSITIONS.indexOf(position);
+
+    // Adjust our stack based on position
+    mockStacks[positionIdx] = stackDepth * 100;
+
+    // Simple bubble factor approximation for demo
+    const totalChips = mockStacks.reduce((a, b) => a + b, 0);
+    const avgChips = totalChips / playerCount;
+    const bf = totalChips / (avgChips * playerCount) > 0.5
+      ? 1.0 + (1.0 - (stackDepth * 100 / totalChips)) * 0.5
+      : 1.0;
+
+    // Clamp bubble factor to reasonable range
+    const bubbleFactor = Math.max(0.9, Math.min(2.0, bf));
+
+    // Calculate ICM equity (simplified)
+    const chipEquity = (stackDepth * 100) / totalChips;
+    const icmEquity = chipEquity * bubbleFactor;
+
+    // Determine recommendation based on bubble factor
+    let recommendedAction: "push" | "fold" | "call" = "push";
+    let confidence: "high" | "medium" | "low" = "medium";
+    let explanation = "";
+    const handAdjustments: Record<string, string> = {};
+
+    if (bubbleFactor > 1.5) {
+      recommendedAction = "fold";
+      confidence = "high";
+      explanation = `Very high bubble pressure (${bubbleFactor.toFixed(2)}x). Chips are extremely valuable - play only premium hands.`;
+      handAdjustments.premium_tight = "Only AA, KK, QQ, AKs push";
+      handAdjustments.bubble_note = "Maximum ICM caution required";
+    } else if (bubbleFactor > 1.3) {
+      recommendedAction = "fold";
+      confidence = "high";
+      explanation = `High bubble pressure (${bubbleFactor.toFixed(2)}x). Consider folding marginal hands as chips are worth significantly more.`;
+      handAdjustments.tight_range = "Push AA-QQ, AK; fold everything else";
+      handAdjustments.bubble_note = "ICM pressure is high";
+    } else if (bubbleFactor > 1.15) {
+      recommendedAction = "push";
+      confidence = "medium";
+      explanation = `Moderate bubble pressure (${bubbleFactor.toFixed(2)}x). Standard ranges but be cautious with marginal hands.`;
+      handAdjustments.standard_with_caution = "Push standard range, consider folding weak suited connectors";
+      handAdjustments.bubble_note = "Some ICM pressure";
+    } else {
+      recommendedAction = "push";
+      confidence = "high";
+      explanation = `Normal ICM conditions (${bubbleFactor.toFixed(2)}x). Follow standard push/fold charts.`;
+      handAdjustments.standard = "Follow standard push/fold chart";
+      handAdjustments.bubble_note = "No significant ICM pressure";
+    }
+
+    setIcmStrategy({
+      bubbleFactor,
+      icmEquity: Math.min(icmEquity, 1.0),
+      chipEquity,
+      recommendedAction,
+      confidence,
+      explanation,
+      handAdjustments,
+    });
+  }, [stackDepth, position]);
 
   // Handle solve new spot
   const handleSolve = async () => {
@@ -697,6 +777,19 @@ export default function StrategiesPage() {
               </div>
             </div>
           </div>
+
+          {/* ICM-Aware Strategy Recommendation */}
+          {icmStrategy && (
+            <ICMAwareStrategy
+              bubbleFactor={icmStrategy.bubbleFactor}
+              icmEquity={icmStrategy.icmEquity}
+              chipEquity={icmStrategy.chipEquity}
+              recommendedAction={icmStrategy.recommendedAction}
+              confidence={icmStrategy.confidence}
+              explanation={icmStrategy.explanation}
+              handAdjustments={icmStrategy.handAdjustments}
+            />
+          )}
         </div>
       )}
 

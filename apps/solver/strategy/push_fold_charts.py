@@ -598,6 +598,114 @@ def parse_hand_string(hand_str: str) -> Tuple[str, str, bool]:
         raise ValueError(f"Invalid hand string: {hand_str}")
 
 
+def get_icm_aware_strategy(
+    stack_bb: float,
+    position: str,
+    stacks: list[float],
+    prize_pool: float = 1.0,
+) -> dict:
+    """
+    Get ICM-aware strategy recommendation for a specific spot.
+    
+    This generates strategy recommendations that account for ICM pressure
+    using bubble factors to adjust push/fold decisions.
+    
+    Args:
+        stack_bb: Our stack size in big blinds
+        position: Position name (UTG, MP, CO, BTN, SB, BB)
+        stacks: List of all player stacks (for ICM calculation)
+        prize_pool: Total prize pool (default 1.0 for normalized)
+    
+    Returns:
+        Dict containing:
+            - action: Recommended action (push/fold/call)
+            - confidence: Confidence level (high/medium/low)
+            - bubble_factor: Current bubble factor
+            - icm_equity: ICM equity percentage
+            - explanation: Human-readable explanation of the recommendation
+            - hand_adjustments: Dict of hand-specific adjustments
+    """
+    from gto_poker.icm import get_standard_prizes, icm_for_push_fold
+    
+    result = {
+        "position": position,
+        "stack_bb": stack_bb,
+        "bubble_factor": 1.0,
+        "icm_equity": 0.5,
+        "chip_equity": 0.5,
+        "action": "push",
+        "confidence": "medium",
+        "explanation": "",
+        "hand_adjustments": {},
+    }
+    
+    # Calculate ICM data
+    n = len(stacks)
+    prizes = get_standard_prizes(n, prize_pool)
+    icm_data = icm_for_push_fold(stacks, prizes)
+    
+    # Find our position index
+    pos_idx = PushFoldCharts.POSITIONS.index(position) if position in PushFoldCharts.POSITIONS else 0
+    
+    result["bubble_factor"] = icm_data['bubble_factors'][pos_idx] if pos_idx < len(icm_data['bubble_factors']) else 1.0
+    result["icm_equity"] = icm_data['equities'][pos_idx] if pos_idx < len(icm_data['equities']) else 0.5
+    result["chip_equity"] = icm_data['chip_equities'][pos_idx] if pos_idx < len(icm_data['chip_equities']) else 0.5
+    
+    # Adjust strategy based on bubble factor
+    bf = result["bubble_factor"]
+    
+    if bf > 1.5:
+        # Very high bubble - play extremely tight
+        result["action"] = "fold"
+        result["confidence"] = "high"
+        result["explanation"] = (
+            f"Very high bubble pressure ({bf:.2f}x). "
+            "Chips are extremely valuable - play only premium hands."
+        )
+        result["hand_adjustments"] = {
+            "premium_tight": "Only AA, KK, QQ, AKs push",
+            "bubble_note": "Maximum ICM caution required"
+        }
+    elif bf > 1.3:
+        # High bubble - significantly tighten
+        result["action"] = "fold"
+        result["confidence"] = "high"
+        result["explanation"] = (
+            f"High bubble pressure ({bf:.2f}x). "
+            "Consider folding marginal hands as chips are worth significantly more."
+        )
+        result["hand_adjustments"] = {
+            "tight_range": "Push AA-QQ, AK; fold everything else",
+            "bubble_note": "ICM pressure is high"
+        }
+    elif bf > 1.15:
+        # Moderate bubble - slightly tighten
+        result["action"] = "push"
+        result["confidence"] = "medium"
+        result["explanation"] = (
+            f"Moderate bubble pressure ({bf:.2f}x). "
+            "Standard ranges but be cautious with marginal hands."
+        )
+        result["hand_adjustments"] = {
+            "standard_with_caution": "Push standard range, consider folding weak suited connectors",
+            "bubble_note": "Some ICM pressure"
+        }
+    else:
+        # Normal bubble - standard play
+        result["action"] = "push"
+        result["confidence"] = "high"
+        result["explanation"] = (
+            f"Normal ICM conditions ({bf:.2f}x). "
+            "Follow standard push/fold charts."
+        )
+        result["hand_adjustments"] = {
+            "standard": "Follow standard push/fold chart",
+            "bubble_note": "No significant ICM pressure"
+        }
+    
+    return result
+
+
 def chart_to_matrix(chart: Dict[Tuple[str, str], str]) -> List[List[str]]:
     """
     Convert chart dict to 13x13 matrix for display.

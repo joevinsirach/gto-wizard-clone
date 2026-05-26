@@ -259,6 +259,165 @@ leaks/page.tsx   # EV loss report by spot category
 
 ---
 
+## Phase 6: ICM Calculator & Polish (Week 13-14)
+
+ICM calculator, push/fold charts, training courses, community spots, and PWA polish.
+
+### ICM Calculator (`/icm`)
+
+ICM (Independent Chip Model) calculator for tournament equity calculations. Uses the [`apcode/poker-mtt-icm`](https://github.com/apcode/poker-mtt-icm) library for tournament equity computations.
+
+#### Frontend Components
+
+```typescript
+// apps/web/src/app/icm/page.tsx
+PrizePoolPanel    # Prize distribution editing (% and amounts)
+ChipStackPanel    # Player chips with add/remove functionality
+TournamentSettings # Buy-in and total chips inputs
+ICMResults        # Equity calculations display
+AboutICM         # Educational section about ICM concepts
+```
+
+#### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/icm/calculate` | Calculate ICM equity for a tournament state |
+| POST | `/api/v1/icm/prize-pool` | Update prize pool distribution |
+
+---
+
+### Push/Fold Charts (`/strategies`)
+
+Pre-generated Nash push/fold charts for common tournament stack sizes. Charts are filtered by stack depth and position.
+
+#### Frontend Components
+
+```typescript
+// apps/web/src/app/strategies/page.tsx
+PushFoldChart    # Filterable chart display
+PositionFilter   # Filter by position (BTN, SB, BB, CO, etc.)
+StackFilter      # Filter by stack depth (BBs)
+ChartTypeToggle  # Open push vs call charts
+ExportButton     # Export chart as image/PDF
+```
+
+---
+
+### Training Courses (`/courses`)
+
+Structured learning paths with lessons, quizzes, and progress tracking.
+
+#### Frontend Components
+
+```typescript
+// apps/web/src/app/courses/page.tsx
+CourseCard        # Course preview with progress bar
+CourseDetail      # Course detail view with lessons
+QuickStats        # Dashboard with courses started, lessons completed, time spent
+DifficultyFilter # Filter courses by difficulty
+CategoryFilter   # Filter by category (preflop, postflop, icm, gto_fundamentals)
+ProgressBar       # Visual progress indicator (bg-poker-gold)
+```
+
+#### Database Models
+
+```python
+# apps/api/models/course_models.py
+Course        # id, title, description, category, difficulty, lessons_count
+Lesson        # id, course_id, title, content, order, type (video/text/quiz)
+UserProgress  # id, user_id, lesson_id, completed, score
+```
+
+#### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/courses` | List all courses (filterable) |
+| GET | `/api/v1/courses/{course_id}` | Get course with lessons |
+| POST | `/api/v1/courses/{course_id}/progress` | Update user progress |
+| GET | `/api/v1/courses/stats` | Get user's course statistics |
+
+---
+
+### Community Spots (`/spots`)
+
+Share and discover community strategy spots. Users can submit spots with board and ranges.
+
+#### Frontend Components
+
+```typescript
+// apps/web/src/app/spots/page.tsx
+SpotsList         # Paginated list of community spots
+SpotCard          # Spot preview with position badges
+SpotDetail        # Full spot view with strategy heatmap
+PositionFilter    # Filter by position (BTN, SB, BB, CO)
+BoardTypeFilter   # Filter by board type (dry, wet, paired, rainbow)
+SearchInput       # Search spots by title/description
+SortDropdown      # Sort by recent or popular
+ShareSpotButton   # Open spot submission modal
+StrategyHeatmap   # Visual representation of GTO strategy
+LikeButton        # Toggle like on spot
+PracticeButton    # Navigate to train with this spot
+```
+
+#### Database Models
+
+```python
+# apps/api/models/spots_models.py
+Spot              # id, user_id, title, description, position, board_type, hero_range, villain_range, board_cards, likes_count
+SpotComment       # id, spot_id, user_id, comment, created_at
+SpotLike          # id, spot_id, user_id (unique constraint)
+```
+
+#### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/spots` | Listspots (filterable by position, board_type) |
+| GET | `/api/v1/spots/{spot_id}` | Get spot details |
+| POST | `/api/v1/spots` | Create new spot |
+| POST | `/api/v1/spots/{spot_id}/like` | Toggle like |
+| GET | `/api/v1/spots/stats` | Get community stats |
+
+---
+
+### PWA Installation
+
+Progressive Web App support for desktop and mobile installation.
+
+#### Manifest Requirements
+
+```json
+{
+  "name": "GTO Wizard Clone",
+  "short_name": "GTO Wizard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#16a34a",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "ICM Calculator", "url": "/icm" },
+    { "name": "Courses", "url": "/courses" },
+    { "name": "Community Spots", "url": "/spots" }
+  ]
+}
+```
+
+#### Key Features
+
+- Service worker for offline caching
+- 192x192 and 512x512 icons
+- App shortcuts for quick navigation
+- Standalone display mode
+- Theme-aware status bar styling
+
+---
+
 ## Phase 2b/2c/2d Skills
 
 Each sub-phase uses targeted skills:

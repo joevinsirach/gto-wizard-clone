@@ -254,10 +254,101 @@ def _normalize_boxes(
 
 
 
+def get_standard_prizes(n_players: int, total_prize: float = 1.0) -> list[float]:
+    """Get standard tournament prize distribution.
+    
+    Args:
+        n_players: Number of players in tournament.
+        total_prize: Total prize pool (default 1.0 for normalized).
+    
+    Returns:
+        List of prize amounts for each place (index 0 = 1st place).
+    
+    Example:
+        >>> get_standard_prizes(10)
+        [0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    """
+    if n_players <= 0:
+        return []
+    
+    # Standard payout structure: ~50%/30%/20% for top 3
+    if n_players <= 3:
+        # 1st: 50%, 2nd: 30%, 3rd: 20%
+        prizes = [0.5, 0.3, 0.2][:n_players]
+    elif n_players <= 10:
+        # Top 3 get paid: 50%/30%/20%
+        prizes = [0.5, 0.3, 0.2] + [0.0] * (n_players - 3)
+    elif n_players <= 30:
+        # Top 4 get paid: 40%/25%/20%/15%
+        prizes = [0.4, 0.25, 0.20, 0.15] + [0.0] * (n_players - 4)
+    else:
+        # Typical big field: Top 9 paid - 30%/20%/15%/10%/7%/5%/3%/2%/1%
+        top_prizes = [0.30, 0.20, 0.15, 0.10, 0.07, 0.05, 0.03, 0.02, 0.01]
+        prizes = top_prizes + [0.0] * (n_players - len(top_prizes))
+    
+    # Normalize to total_prize
+    total = sum(prizes)
+    if total > 0:
+        prizes = [p * total_prize / total for p in prizes]
+    
+    return prizes
+
+
+def icm_for_push_fold(
+    stacks: list[float],
+    prizes: list[float],
+    n_simulations: int = 100_000,
+    seed: Optional[int] = None,
+) -> dict:
+    """Calculate ICM data specifically for push/fold analysis.
+    
+    Args:
+        stacks: List of chip stacks for each player.
+        prizes: List of prize amounts for each place.
+        n_simulations: Number of Monte Carlo simulations.
+        seed: Optional random seed for reproducibility.
+    
+    Returns:
+        Dict with keys:
+            - equities: List of ICM equities for each player
+            - chip_equities: List of raw chip equities
+            - bubble_factors: List of bubble factors
+    """
+    n = len(stacks)
+    
+    if n != len(prizes):
+        prizes = list(prizes) + [0.0] * (n - len(prizes))
+    
+    # Calculate ICM equities
+    icm_equities = malmoud_harville(stacks, prizes, n_simulations, seed)
+    
+    # Calculate chip equities (simple proportional)
+    total_chips = sum(stacks) if sum(stacks) > 0 else 1
+    total_prize = sum(prizes)
+    chip_equities = [s / total_chips * total_prize for s in stacks]
+    
+    # Calculate bubble factors
+    bubble_factors = []
+    for i in range(n):
+        if chip_equities[i] > 0:
+            bf = icm_equities[i] / chip_equities[i]
+        else:
+            bf = 1.0
+        bubble_factors.append(bf)
+    
+    return {
+        "equities": icm_equities,
+        "chip_equities": chip_equities,
+        "bubble_factors": bubble_factors,
+    }
+
+
 __all__ = [
     "ICMResult",
     "malmoud_harville",
     "calculate_bubble_factor",
     "icm_calculate",
     "icm_equity_chips",
+    "get_standard_prizes",
+    "icm_for_push_fold",
 ]
