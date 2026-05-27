@@ -6,8 +6,10 @@ state management and chance sampling at each street. Supports partial solves
 (e.g., just flop, or flop+turn).
 
 Usage:
+    from cfr.solve_pipeline import SolvePipeline, SolveConfig, Street
+    config = SolveConfig.flop_only()
     pipeline = SolvePipeline(game_type="holdem", config=config)
-    result = pipeline.solve(starting_street="flop", streets=["flop", "turn", "river"])
+    result = pipeline.solve(starting_street=Street.FLOP, streets=[Street.FLOP])
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import logging
 import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Callable
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
