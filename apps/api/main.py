@@ -13,10 +13,15 @@ import redis
 
 from routers import equity, solver, auth, hh, strategy, quiz, analyze_leaks
 from routers import plo4_equity, plo4_ranges, omaha
-from routers import double_board, bomb_pot, spots
+from routers import double_board, bomb_pot, spots, courses, icm, icm_training
 from routers.strategy_lookup import router as strategy_lookup_router
 from routers.quiz_ws import websocket_handler
 from apps.api.services.redis_bridge import start_redis_bridge, stop_redis_bridge
+from apps.api.services.database import init_db
+
+# Import models to register them with Base
+from apps.api.models.spots import CommunitySpot, SpotComment, SpotLike
+from apps.api.models.course_models import Course, Lesson, UserProgress
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +48,8 @@ def init_redis(app: FastAPI):
 @app.on_event("startup")
 async def startup_event():
     init_redis(app)
+    # Initialize database tables
+    await init_db()
     # Start Redis-to-WebSocket bridge for solver progress streaming
     await start_redis_bridge()
 
@@ -76,6 +83,9 @@ app.include_router(bomb_pot.router)
 app.include_router(spots.router)
 app.include_router(omaha.router)
 app.include_router(analyze_leaks.router)
+app.include_router(courses.router)
+app.include_router(icm.router)
+app.include_router(icm_training.router)
 app.include_router(strategy_lookup_router)
 
 

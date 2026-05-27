@@ -209,7 +209,7 @@ export default function CoursesPage() {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-poker-gold">6</div>
           <div className="text-sm text-gray-400">Available Courses</div>

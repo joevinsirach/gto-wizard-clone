@@ -2,7 +2,7 @@
 
 Open-source GTO poker training platform with equity calculator, CFR solver, training modes, hand history analysis, and ICM calculator. Supports **NLH, PLO4, PLO5, Omaha Hi/Lo, Shortdeck, Double Board PLO, and Bomb Pot**.
 
-**Created:** 2026-05-25 | **Updated:** 2026-05-26
+**Updated:** 2026-05-27
 
 ---
 
@@ -34,12 +34,12 @@ Open-source GTO poker training platform with equity calculator, CFR solver, trai
 | Variant | Code | Phase | Evaluator | Notes |
 |---------|------|-------|-----------|-------|
 | No-Limit Hold'em | `nlh` | ✅ Ready | OMPEval (C++) | Standard |
-| Pot-Limit Omaha 4 | `plo4` | Phase 2b | **PokerHandEvaluator** (C++/Python) | 4 hole cards |
+| Pot-Limit Omaha 4 | `plo4` | ✅ Complete | **PokerHandEvaluator** (C++/Python) | 4 hole cards |
 | PLO5 (5-card Omaha) | `plo5` | Phase 2c | 4-card from 5 eval | 5 hole cards |
 | Omaha Hi/Lo (8-or-better) | `plo_hi_lo` | Phase 2c | PokerHandEvaluator (native) | Split pot + 8-qualifier required |
 | Shortdeck (6+ Hold'em) | `shortdeck` | Phase 2c | Modified rankings | A-6 only, flush > full house |
-| **Double Board PLO** | `double_board_plo` | Phase 2d | **Novel** — two boards | Scoop/chop scoring |
-| **Bomb Pot** | `bomb_pot` | Phase 2d | **Novel** — action-first | Straddle/junk blinds |
+| **Double Board PLO** | `double_board_plo` | ✅ Complete | **Novel** — two boards | Scoop/chop scoring |
+| **Bomb Pot** | `bomb_pot` | ✅ Complete | **Novel** — action-first | Straddle/junk blinds |
 
 ---
 
@@ -465,10 +465,7 @@ Each sub-phase uses targeted skills:
 
 ---
 
-*Last updated: 2026-05-26*
----
-
-## Phase 4: Training Mode (Week 9-10)
+*Last updated: 2026-05-27*
 
 Training mode provides quiz-based GTO learning with real-time feedback, progress tracking, and review capabilities.
 
@@ -566,3 +563,5 @@ LeaderboardPanel // Real-time rankings widget
 ---
 
 *Last updated: 2026-05-27*
+
+## Phase 4: Training Mode (Week 9-10)

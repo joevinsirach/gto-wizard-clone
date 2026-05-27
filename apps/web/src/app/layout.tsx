@@ -25,6 +25,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: '#d4af37',
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -36,7 +37,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/icon-512.svg" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -61,8 +62,8 @@ export default function RootLayout({
         <main className="flex-1">
           {children}
         </main>
-        <footer className="border-t border-gray-800 py-6 mt-auto">
-          <div className="container mx-auto px-4 text-center text-sm text-gray-500">
+        <footer className="border-t border-gray-800 py-4 sm:py-6 mt-auto pb-safe">
+          <div className="container mx-auto px-4 text-center text-xs sm:text-sm text-gray-500">
             © {new Date().getFullYear()} GTO Wizard. Built for poker excellence.
           </div>
         </footer>

@@ -5,250 +5,362 @@ Provides endpoints for:
 - Creating, reading, updating, deleting community spots
 - Liking spots
 - Forking spots to user's account
+- Commenting on spots
 
 Spots represent poker game situations (board, position, stack depth) with
 associated GTO strategy data that can be shared with the community.
 """
 
-import json
+import uuid
 import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.services.redis_service import RedisService
+from apps.api.models.spots import CommunitySpot, SpotComment, SpotLike
+from apps.api.services.database import get_session_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/spots", tags=["spots"])
 
-# Redis key prefixes
-SPOTS_KEY = "community:spots"
-SPOT_KEY_PREFIX = "community:spot:"
-SPOT_LIKES_PREFIX = "community:spot:likes:"
-SPOT_FORKS_PREFIX = "community:spot:forks:"
+
+# Pydantic models for request/response
+class SpotCreate(BaseModel):
+    """Request model for creating a spot."""
+    title: str = Field(..., description="Spot title")
+    description: Optional[str] = Field(None, description="Spot description")
+    board: str = Field("", description="Board cards (e.g., 'Kd-Qh-2c')")
+    board_type: str = Field("flop", description="Board type: flop, turn, river")
+    position: str = Field("", description="Position: btn, sb, bb, utg, etc.")
+    pot_size: float = Field(0.0, ge=0.0, description="Pot size in chips")
+    stack_depth: int = Field(100, gt=0, description="Stack depth in big blinds")
+    author: str = Field("anonymous", description="Author name")
+    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
+    strategy_json: Dict[str, Any] = Field(..., description="Strategy data")
 
 
-def get_redis():
-    """Get Redis service instance."""
-    return RedisService()
+class SpotUpdate(BaseModel):
+    """Request model for updating a spot."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    board: Optional[str] = None
+    board_type: Optional[str] = None
+    position: Optional[str] = None
+    pot_size: Optional[float] = None
+    stack_depth: Optional[int] = None
+    tags: Optional[List[str]] = None
+    strategy_json: Optional[Dict[str, Any]] = None
 
 
-def spot_key(spot_id: str) -> str:
-    """Get Redis key for a spot."""
-    return f"{SPOT_KEY_PREFIX}{spot_id}"
+class SpotCommentCreate(BaseModel):
+    """Request model for creating a comment."""
+    author: str = Field("anonymous", description="Author name")
+    content: str = Field(..., description="Comment content")
 
 
-def spot_likes_key(spot_id: str) -> str:
-    """Get Redis key for spot likes counter."""
-    return f"{SPOT_LIKES_PREFIX}{spot_id}"
+class SpotResponse(BaseModel):
+    """Response model for spot retrieval."""
+    id: str
+    title: str
+    description: Optional[str] = None
+    board: str
+    board_type: str
+    position: str
+    pot_size: float
+    stack_depth: int
+    author: str
+    tags: List[str] = []
+    strategy_json: Dict[str, Any]
+    likes: int = 0
+    fork_count: int = 0
+    parent_spot_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    comments_count: int = 0
 
 
-def spot_forks_key(spot_id: str) -> str:
-    """Get Redis key for spot forks counter."""
-    return f"{SPOT_FORKS_PREFIX}{spot_id}"
-
-
-def spot_to_response(spot_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert spot dict to response format."""
-    # Ensure tags is a list
-    if spot_data.get("tags") is None:
-        spot_data["tags"] = []
-    return spot_data
+class SpotListResponse(BaseModel):
+    """Response model for listing spots."""
+    spots: List[Dict[str, Any]]
+    total: int
+    offset: int
+    limit: int
 
 
 @router.post("", response_model=Dict[str, Any], status_code=201)
-async def create_spot(request: Dict[str, Any]) -> Dict[str, Any]:
+async def create_spot(request: SpotCreate) -> Dict[str, Any]:
     """
     Create a new community spot.
     
     A spot represents a poker game situation with strategy data
     that can be shared with the community.
     """
-    redis = get_redis()
-    
-    # Validate required fields
-    if not request.get("title"):
-        raise HTTPException(status_code=400, detail="title is required")
-    if not request.get("strategy_json"):
-        raise HTTPException(status_code=400, detail="strategy_json is required")
-    
-    # Generate spot ID
-    import uuid
-    spot_id = str(uuid.uuid4())
-    
-    # Prepare spot data
-    spot_data = {
-        "id": spot_id,
-        "title": request.get("title"),
-        "description": request.get("description"),
-        "board": request.get("board", ""),
-        "board_type": request.get("board_type", "flop"),
-        "position": request.get("position", ""),
-        "pot_size": request.get("pot_size", 0.0),
-        "stack_depth": request.get("stack_depth", 100),
-        "author": request.get("author", "anonymous"),
-        "tags": request.get("tags", []),
-        "strategy_json": request.get("strategy_json"),
-        "likes": 0,
-        "fork_count": 0,
-        "parent_spot_id": None,
-    }
-    
-    # Store spot in Redis
-    await redis.set(spot_key(spot_id), json.dumps(spot_data))
-    
-    # Add to spots list
-    await redis.zadd(SPOTS_KEY, {spot_id: float(time.time())})
-    
-    return spot_to_response(spot_data)
+    async with get_session_context() as session:
+        spot = CommunitySpot(
+            title=request.title,
+            description=request.description,
+            board=request.board,
+            board_type=request.board_type,
+            position=request.position,
+            pot_size=request.pot_size,
+            stack_depth=request.stack_depth,
+            author=request.author,
+            tags=request.tags,
+            strategy_json=request.strategy_json,
+        )
+        session.add(spot)
+        await session.flush()
+        await session.refresh(spot)
+        
+        return spot.to_dict()
 
 
-@router.get("", response_model=Dict[str, Any])
+@router.get("", response_model=SpotListResponse)
 async def list_spots(
     board_type: Optional[str] = Query(None, description="Filter by board type"),
     position: Optional[str] = Query(None, description="Filter by position"),
     author: Optional[str] = Query(None, description="Filter by author"),
     tags: Optional[str] = Query(None, description="Comma-separated tags to filter by"),
     stack_depth_min: Optional[int] = Query(None, description="Minimum stack depth"),
+    sort_by: str = Query("recent", description="Sort by: recent, popular"),
     limit: int = Query(50, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Results offset"),
-) -> Dict[str, Any]:
+) -> SpotListResponse:
     """
     List community spots with optional filters.
     
     Supports filtering by board_type, position, author, tags, and stack_depth.
-    Results are ordered by creation date (newest first).
+    Results can be sorted by creation date (newest first) or popularity (most likes).
     """
-    redis = get_redis()
-    
-    # Get all spot IDs sorted by creation time (newest first)
-    spot_ids = await redis.zrevrange(SPOTS_KEY, 0, -1)
-    
-    spots = []
-    for spot_id in spot_ids:
-        spot_json = await redis.get(spot_key(spot_id))
-        if not spot_json:
-            continue
-        
-        spot_data = json.loads(spot_json)
+    async with get_session_context() as session:
+        # Build query
+        query = select(CommunitySpot)
         
         # Apply filters
-        if board_type and spot_data.get("board_type") != board_type:
-            continue
-        if position and spot_data.get("position") != position:
-            continue
-        if author and spot_data.get("author") != author:
-            continue
-        if stack_depth_min and spot_data.get("stack_depth", 0) < stack_depth_min:
-            continue
+        if board_type:
+            query = query.where(CommunitySpot.board_type == board_type)
+        if position:
+            query = query.where(CommunitySpot.position == position)
+        if author:
+            query = query.where(CommunitySpot.author == author)
+        if stack_depth_min:
+            query = query.where(CommunitySpot.stack_depth >= stack_depth_min)
         if tags:
-            filter_tags = set(tags.split(","))
-            spot_tags = set(spot_data.get("tags", []))
-            if not filter_tags.intersection(spot_tags):
-                continue
+            filter_tags = tags.split(",")
+            for tag in filter_tags:
+                query = query.where(CommunitySpot.tags.contains([tag]))
         
-        spots.append(spot_to_response(spot_data))
-    
-    total = len(spots)
-    
-    # Apply pagination
-    spots = spots[offset:offset + limit]
-    
-    return {
-        "spots": spots,
-        "total": total,
-        "offset": offset,
-        "limit": limit,
-    }
+        # Get total count
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await session.execute(count_query)
+        total = total_result.scalar() or 0
+        
+        # Apply sorting
+        if sort_by == "popular":
+            query = query.order_by(CommunitySpot.likes_count.desc())
+        else:
+            query = query.order_by(CommunitySpot.created_at.desc())
+        
+        # Apply pagination
+        query = query.offset(offset).limit(limit)
+        
+        # Execute
+        result = await session.execute(query)
+        spots = result.scalars().all()
+        
+        return SpotListResponse(
+            spots=[spot.to_dict() for spot in spots],
+            total=total,
+            offset=offset,
+            limit=limit,
+        )
 
 
 @router.get("/{spot_id}", response_model=Dict[str, Any])
 async def get_spot(spot_id: str) -> Dict[str, Any]:
     """Get a single spot by ID."""
-    redis = get_redis()
-    
-    spot_json = await redis.get(spot_key(spot_id))
-    if not spot_json:
-        raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
-    
-    return spot_to_response(json.loads(spot_json))
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        spot = result.scalar_one_or_none()
+        
+        if not spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        return spot.to_dict()
 
 
 @router.put("/{spot_id}", response_model=Dict[str, Any])
-async def update_spot(spot_id: str, request: Dict[str, Any]) -> Dict[str, Any]:
+async def update_spot(spot_id: str, request: SpotUpdate) -> Dict[str, Any]:
     """Update an existing spot."""
-    redis = get_redis()
-    
-    spot_json = await redis.get(spot_key(spot_id))
-    if not spot_json:
-        raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
-    
-    spot_data = json.loads(spot_json)
-    
-    # Update allowed fields
-    update_fields = ["title", "description", "board", "board_type", "position", 
-                    "pot_size", "stack_depth", "tags", "strategy_json"]
-    for field in update_fields:
-        if field in request:
-            spot_data[field] = request[field]
-    
-    # Store updated spot
-    await redis.set(spot_key(spot_id), json.dumps(spot_data))
-    
-    return spot_to_response(spot_data)
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        spot = result.scalar_one_or_none()
+        
+        if not spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        # Update fields
+        update_data = request.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            if hasattr(spot, field):
+                setattr(spot, field, value)
+        
+        await session.flush()
+        await session.refresh(spot)
+        
+        return spot.to_dict()
 
 
 @router.delete("/{spot_id}")
 async def delete_spot(spot_id: str) -> Dict[str, str]:
     """Delete a spot."""
-    redis = get_redis()
-    
-    spot_json = await redis.get(spot_key(spot_id))
-    if not spot_json:
-        raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
-    
-    # Delete spot
-    await redis.delete(spot_key(spot_id))
-    await redis.delete(spot_likes_key(spot_id))
-    await redis.delete(spot_forks_key(spot_id))
-    
-    # Remove from spots list
-    await redis.zrem(SPOTS_KEY, spot_id)
-    
-    return {"status": "deleted", "id": spot_id}
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        spot = result.scalar_one_or_none()
+        
+        if not spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        await session.delete(spot)
+        
+        return {"status": "deleted", "id": spot_id}
 
 
+# Like endpoints
 @router.post("/{spot_id}/like", response_model=Dict[str, Any])
-async def like_spot(spot_id: str) -> Dict[str, Any]:
+async def like_spot(
+    spot_id: str,
+    user_id: str = Query("anonymous", description="User ID who is liking")
+) -> Dict[str, Any]:
     """
     Like a spot.
     
-    Increments the like count for the spot. Each user should track
-    their own liked spots to prevent duplicate likes.
+    Creates a like record for the spot. Each user can only like a spot once.
     """
-    redis = get_redis()
-    
-    spot_json = await redis.get(spot_key(spot_id))
-    if not spot_json:
-        raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
-    
-    spot_data = json.loads(spot_json)
-    
-    # Increment likes
-    new_likes = (spot_data.get("likes") or 0) + 1
-    spot_data["likes"] = new_likes
-    
-    # Store updated spot
-    await redis.set(spot_key(spot_id), json.dumps(spot_data))
-    
-    return {
-        "id": spot_id,
-        "likes": new_likes,
-        "message": f"Spot liked successfully. Total likes: {new_likes}",
-    }
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        # Get spot
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        spot = result.scalar_one_or_none()
+        
+        if not spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        # Check if already liked
+        like_query = select(SpotLike).where(
+            SpotLike.spot_id == spot_uuid,
+            SpotLike.user_id == user_id
+        )
+        like_result = await session.execute(like_query)
+        existing_like = like_result.scalar_one_or_none()
+        
+        if existing_like:
+            return {
+                "id": spot_id,
+                "likes": spot.likes_count,
+                "message": "Already liked",
+            }
+        
+        # Create like
+        like = SpotLike(spot_id=spot_uuid, user_id=user_id)
+        session.add(like)
+        
+        # Increment likes count
+        spot.likes_count = (spot.likes_count or 0) + 1
+        
+        await session.flush()
+        
+        return {
+            "id": spot_id,
+            "likes": spot.likes_count,
+            "message": f"Spot liked successfully. Total likes: {spot.likes_count}",
+        }
 
 
+@router.delete("/{spot_id}/like", response_model=Dict[str, Any])
+async def unlike_spot(
+    spot_id: str,
+    user_id: str = Query("anonymous", description="User ID who is unliking")
+) -> Dict[str, Any]:
+    """Unlike a spot."""
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        # Get spot
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        spot = result.scalar_one_or_none()
+        
+        if not spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        # Find and delete like
+        like_query = select(SpotLike).where(
+            SpotLike.spot_id == spot_uuid,
+            SpotLike.user_id == user_id
+        )
+        like_result = await session.execute(like_query)
+        existing_like = like_result.scalar_one_or_none()
+        
+        if existing_like:
+            await session.delete(existing_like)
+            spot.likes_count = max(0, (spot.likes_count or 0) - 1)
+        
+        await session.flush()
+        
+        return {
+            "id": spot_id,
+            "likes": spot.likes_count,
+            "message": "Spot unliked" if existing_like else "Was not liked",
+        }
+
+
+@router.get("/{spot_id}/likes", response_model=List[Dict[str, Any]])
+async def get_spot_likes(spot_id: str) -> List[Dict[str, Any]]:
+    """Get all likes for a spot."""
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        query = select(SpotLike).where(SpotLike.spot_id == spot_uuid)
+        result = await session.execute(query)
+        likes = result.scalars().all()
+        
+        return [like.to_dict() for like in likes]
+
+
+# Fork endpoint
 @router.post("/{spot_id}/fork", response_model=Dict[str, Any])
 async def fork_spot(
     spot_id: str,
@@ -260,52 +372,119 @@ async def fork_spot(
     Creates a copy of the spot under a new author. The forked spot
     maintains a reference to its parent spot.
     """
-    redis = get_redis()
-    
-    spot_json = await redis.get(spot_key(spot_id))
-    if not spot_json:
-        raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
-    
-    parent_spot = json.loads(spot_json)
-    
-    # Generate new spot ID
-    import uuid
-    new_spot_id = str(uuid.uuid4())
-    
-    # Increment fork count on parent
-    parent_fork_count = (parent_spot.get("fork_count") or 0) + 1
-    parent_spot["fork_count"] = parent_fork_count
-    await redis.set(spot_key(spot_id), json.dumps(parent_spot))
-    
-    # Create forked spot
-    forked_spot = {
-        "id": new_spot_id,
-        "title": f"{parent_spot.get('title', 'Spot')} (fork)",
-        "description": parent_spot.get("description"),
-        "board": parent_spot.get("board", ""),
-        "board_type": parent_spot.get("board_type", "flop"),
-        "position": parent_spot.get("position", ""),
-        "pot_size": parent_spot.get("pot_size", 0.0),
-        "stack_depth": parent_spot.get("stack_depth", 100),
-        "author": author,
-        "tags": parent_spot.get("tags", []),
-        "strategy_json": parent_spot.get("strategy_json"),
-        "likes": 0,
-        "fork_count": 0,
-        "parent_spot_id": spot_id,
-    }
-    
-    # Store forked spot
-    await redis.set(spot_key(new_spot_id), json.dumps(forked_spot))
-    
-    # Add to spots list
-    await redis.zadd(SPOTS_KEY, {new_spot_id: float(time.time())})
-    
-    return {
-        "id": new_spot_id,
-        "parent_spot_id": spot_id,
-        "message": f"Spot forked successfully by {author}",
-    }
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        # Get parent spot
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        parent_spot = result.scalar_one_or_none()
+        
+        if not parent_spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        # Create forked spot
+        forked_spot = CommunitySpot(
+            title=f"{parent_spot.title} (fork)",
+            description=parent_spot.description,
+            board=parent_spot.board,
+            board_type=parent_spot.board_type,
+            position=parent_spot.position,
+            pot_size=parent_spot.pot_size,
+            stack_depth=parent_spot.stack_depth,
+            author=author,
+            tags=parent_spot.tags or [],
+            strategy_json=parent_spot.strategy_json,
+            parent_spot_id=spot_uuid,
+        )
+        session.add(forked_spot)
+        
+        # Increment fork count on parent
+        parent_spot.fork_count = (parent_spot.fork_count or 0) + 1
+        
+        await session.flush()
+        await session.refresh(forked_spot)
+        
+        return {
+            "id": str(forked_spot.id),
+            "parent_spot_id": spot_id,
+            "message": f"Spot forked successfully by {author}",
+        }
 
 
-import time
+# Comment endpoints
+@router.post("/{spot_id}/comments", response_model=Dict[str, Any], status_code=201)
+async def create_comment(
+    spot_id: str,
+    request: SpotCommentCreate
+) -> Dict[str, Any]:
+    """Add a comment to a spot."""
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        # Get spot
+        query = select(CommunitySpot).where(CommunitySpot.id == spot_uuid)
+        result = await session.execute(query)
+        spot = result.scalar_one_or_none()
+        
+        if not spot:
+            raise HTTPException(status_code=404, detail=f"Spot not found: {spot_id}")
+        
+        # Create comment
+        comment = SpotComment(
+            spot_id=spot_uuid,
+            author=request.author,
+            content=request.content,
+        )
+        session.add(comment)
+        
+        await session.flush()
+        await session.refresh(comment)
+        
+        return comment.to_dict()
+
+
+@router.get("/{spot_id}/comments", response_model=List[Dict[str, Any]])
+async def get_comments(spot_id: str) -> List[Dict[str, Any]]:
+    """Get all comments for a spot."""
+    async with get_session_context() as session:
+        try:
+            spot_uuid = uuid.UUID(spot_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid spot ID: {spot_id}")
+        
+        query = select(SpotComment).where(
+            SpotComment.spot_id == spot_uuid
+        ).order_by(SpotComment.created_at.desc())
+        
+        result = await session.execute(query)
+        comments = result.scalars().all()
+        
+        return [comment.to_dict() for comment in comments]
+
+
+@router.delete("/{spot_id}/comments/{comment_id}")
+async def delete_comment(spot_id: str, comment_id: str) -> Dict[str, str]:
+    """Delete a comment."""
+    async with get_session_context() as session:
+        try:
+            comment_uuid = uuid.UUID(comment_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid comment ID: {comment_id}")
+        
+        query = select(SpotComment).where(SpotComment.id == comment_uuid)
+        result = await session.execute(query)
+        comment = result.scalar_one_or_none()
+        
+        if not comment:
+            raise HTTPException(status_code=404, detail=f"Comment not found: {comment_id}")
+        
+        await session.delete(comment)
+        
+        return {"status": "deleted", "id": comment_id}
