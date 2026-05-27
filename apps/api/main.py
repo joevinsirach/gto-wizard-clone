@@ -5,15 +5,16 @@ REST API + WebSocket server for poker training platform
 
 import logging
 import os
+from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
 
 import redis
 
 from routers import equity, solver, auth, hh, strategy, quiz
 from routers import plo4_equity, plo4_ranges
 from routers import double_board, bomb_pot, spots
+from routers.quiz_ws import websocket_handler
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +32,7 @@ def init_redis(app: FastAPI):
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
     try:
         app.state.redis = redis.from_url(redis_url)
-        logger.info("Redis connection initialized")
+        logger.info("Redis connection established")
     except Exception as e:
         logger.warning(f"Redis connection failed: {e}")
         app.state.redis = None
@@ -85,6 +86,12 @@ async def solver_ws(ws: WebSocket, job_id: str):
                 await ws.send_json({"type": "pong"})
     except WebSocketDisconnect:
         pass
+
+
+@app.websocket("/ws/quiz")
+async def quiz_ws(ws: WebSocket):
+    """WebSocket endpoint for real-time quiz events."""
+    await websocket_handler(ws)
 
 
 if __name__ == "__main__":

@@ -13,108 +13,69 @@ import {
   Area,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { QuizCard, Action, QuizQuestion } from "@/components/train/QuizCard";
+import { QuizCard, Action, QuizOption } from "@/components/train/QuizCard";
 import { SpotCategoryFilter } from "@/components/train/SpotCategoryFilter";
 import { DifficultySelector } from "@/components/train/DifficultySelector";
+import { useQuizApi, QuizSpot } from "@/hooks/useQuizApi";
 
-// Sample data for demo - in production this would come from API
-const SAMPLE_QUESTIONS: QuizQuestion[] = [
-  {
-    id: "1",
-    hand: "AA",
-    board: "KsQdJh",
-    potSize: 100,
-    stackDepth: 200,
-    position: "BTN",
-    correctAction: "raise",
-    gtoFrequency: 0.85,
-    gtoEV: 1.45,
-    options: [
-      { action: "raise", ev: 1.45, frequency: 0.85 },
-      { action: "call", ev: 1.20, frequency: 0.10 },
-      { action: "fold", ev: 0, frequency: 0.05 },
-    ],
-    category: "Pre-flop",
-    difficulty: "easy",
-    explanation: "With AA on a coordinated board, you want to build the pot and extract value. Raising is the clear GTO play.",
-  },
-  {
-    id: "2",
-    hand: "KK",
-    board: "Ah7d2c",
-    potSize: 80,
-    stackDepth: 150,
-    position: "CO",
-    correctAction: "call",
-    gtoFrequency: 0.70,
-    gtoEV: 0.95,
-    options: [
-      { action: "raise", ev: 0.80, frequency: 0.20 },
-      { action: "call", ev: 0.95, frequency: 0.70 },
-      { action: "fold", ev: 0, frequency: 0.10 },
-    ],
-    category: "Post-flop",
-    difficulty: "medium",
-    explanation: "With top two pair on a dry board, calling allows you to extract value from worse hands while keeping your range balanced.",
-  },
-  {
-    id: "3",
-    hand: "JT",
-    board: "QdKsTc",
-    potSize: 120,
-    stackDepth: 100,
-    position: "SB",
-    correctAction: "fold",
-    gtoFrequency: 0.55,
-    gtoEV: -0.15,
-    options: [
-      { action: "raise", ev: -0.45, frequency: 0.25 },
-      { action: "call", ev: -0.20, frequency: 0.20 },
-      { action: "fold", ev: -0.15, frequency: 0.55 },
-    ],
-    category: "Post-flop",
-    difficulty: "hard",
-    explanation: "Facing a raise with a gutshot straight draw and backdoor flush, the pot odds don't justify calling. Folding preserves equity.",
-  },
-  {
-    id: "4",
-    hand: "55",
-    board: "6s7s8d",
-    potSize: 60,
-    stackDepth: 180,
-    position: "MP",
-    correctAction: "call",
-    gtoFrequency: 0.65,
-    gtoEV: 0.72,
-    options: [
-      { action: "raise", ev: 0.60, frequency: 0.25 },
-      { action: "call", ev: 0.72, frequency: 0.65 },
-      { action: "fold", ev: 0, frequency: 0.10 },
-    ],
-    category: "Post-flop",
-    difficulty: "medium",
-    explanation: "With middle set on a connected board, calling keeps your range balanced and allows you to extract value from drawing hands.",
-  },
-  {
-    id: "5",
-    hand: "AK",
-    board: "Kd9d2h",
-    potSize: 90,
-    stackDepth: 160,
-    position: "BTN",
-    correctAction: "raise",
-    gtoFrequency: 0.80,
-    gtoEV: 1.25,
-    options: [
-      { action: "raise", ev: 1.25, frequency: 0.80 },
-      { action: "call", ev: 1.05, frequency: 0.15 },
-      { action: "fold", ev: 0, frequency: 0.05 },
-    ],
-    category: "Post-flop",
-    difficulty: "easy",
-    explanation: "Top pair top kicker on a dry board - you want to charge draw-heavy hands for staying in.",
-  },
-];
+// Convert API spot to QuizCard format
+interface QuizQuestion {
+  id: string;
+  hand: string;
+  board?: string;
+  potSize: number;
+  stackDepth: number;
+  position: string;
+  correctAction: Action;
+  gtoFrequency: number;
+  gtoEV: number;
+  options: QuizOption[];
+  category?: string;
+  difficulty?: "easy" | "medium" | "hard";
+  explanation?: string;
+}
+
+function spotToQuestion(spot: QuizSpot): QuizQuestion {
+  // Build options array from API format
+  const options: QuizOption[] = [];
+  if (spot.options) {
+    for (const [action, opts] of Object.entries(spot.options)) {
+      if (Array.isArray(opts)) {
+        for (const opt of opts) {
+          options.push({
+            action: opt.action as Action,
+            ev: opt.ev,
+            frequency: opt.frequency,
+          });
+        }
+      }
+    }
+  }
+  // Fallback options if none derived
+  if (options.length === 0) {
+    options.push(
+      { action: "raise", ev: spot.gto_ev, frequency: spot.gto_frequency },
+      { action: "call", ev: spot.gto_ev * 0.8, frequency: 0.15 },
+      { action: "fold", ev: 0, frequency: 0.05 }
+    );
+  }
+
+  return {
+    id: spot.id,
+    hand: spot.hero_hand,
+    board: spot.board || undefined,
+    potSize: spot.pot_size,
+    stackDepth: spot.stack_depth,
+    position: spot.position,
+    correctAction: spot.gto_action as Action,
+    gtoFrequency: spot.gto_frequency,
+    gtoEV: spot.gto_ev,
+    options,
+    category: spot.category,
+    difficulty: spot.difficulty as "easy" | "medium" | "hard",
+    explanation: spot.explanation || undefined,
+  };
+}
 
 interface SessionStats {
   totalQuestions: number;
@@ -259,10 +220,10 @@ export default function TrainPage() {
     }));
   }, [stats.history]);
 
-  // Categories for filter
+  // Categories for filter (from API or static fallback)
   const categories = useMemo(() => {
-    const cats = new Set(SAMPLE_QUESTIONS.map((q) => q.category).filter(Boolean));
-    return Array.from(cats) as string[];
+    // Use static categories if API not loaded yet
+    return ["3-bet pot", "open-raise pot", "overcard board", "monoboard", "paired board", "wet board", "straight completed"] as string[];
   }, []);
 
   // Difficulties for selector
