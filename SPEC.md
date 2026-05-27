@@ -432,3 +432,103 @@ Each sub-phase uses targeted skills:
 ---
 
 *Last updated: 2026-05-26*
+---
+
+## Phase 4: Training Mode (Week 9-10)
+
+Training mode provides quiz-based GTO learning with real-time feedback, progress tracking, and review capabilities.
+
+### Quiz Database Schema
+
+```
+apps/api/services/quiz_models.py
+├── QuizSpot         — poker spots with GTO solutions
+├── QuizSubmission  — user answers to spots
+├── UserStats       — per-user accuracy and streaks
+└── ReviewSpot      — spots marked for review
+```
+
+**QuizSpot fields:**
+- `game_type`, `category`, `difficulty`, `position`
+- `hero_hand`, `board`, `turn`, `river`
+- `pot_size`, `stack_depth`
+- `gto_action`, `gto_frequency`, `gto_ev`, `options` (JSONB)
+- `explanation`, `street` (preflop/flop/turn/river)
+
+**Spot Categories:** `3-bet pot`, `open-raise pot`, `overcard board`, `monoboard`, `paired board`, `wet board`, `straight completed`
+**Difficulties:** `beginner`, `intermediate`, `advanced`
+
+### API Endpoints (REST)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/quiz/random` | Random spot with optional filters (category, difficulty, street) |
+| POST | `/api/v1/quiz/submit` | Submit answer → compare to GTO → record result |
+| GET | `/api/v1/quiz/spot/{spot_id}` | Get specific spot details |
+| GET | `/api/v1/quiz/stats/{user_id}` | User accuracy, streak, level, weak spots |
+| GET | `/api/v1/quiz/leaderboard` | Top users by accuracy (min 10 solves) |
+| GET | `/api/v1/quiz/categories` | All categories and difficulties |
+| GET | `/api/v1/quiz/missed/{user_id}` | User's missed spots for review |
+| POST | `/api/v1/quiz/review/{spot_id}` | Mark spot for review + mastered status |
+| GET | `/api/v1/quiz/review/{user_id}` | Get user's review spots |
+
+### WebSocket Events (Real-time)
+
+**Endpoint:** `/ws/quiz`
+
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `join_quiz_session` | Client→Server | Join a quiz session room |
+| `leave_quiz_session` | Client→Server | Leave current session |
+| `quiz_answer` | Client→Server | Submit answer (broadcast) |
+| `request_leaderboard` | Client→Server | Get current leaderboard |
+| `quiz:user_answered` | Server→All | Real-time answer broadcast |
+| `quiz:user_joined` | Server→All | User joined notification |
+| `quiz:user_left` | Server→All | User left notification |
+| `leaderboard` | Server→Client | Current rankings |
+
+### EV Loss Calculation
+
+```
+ev_loss = gto_ev - selected_action_ev
+```
+
+When user selects wrong action, they "lose" the difference in EV between the optimal play and their selection. Correct answers have 0 EV loss.
+
+### Leaderboard Scoring
+
+```
+score = correct_count × 10 + streak × 2 - avg_ev_loss × 100
+```
+
+Ranked by score descending, minimum 10 solves required for ranking.
+
+### Frontend Components
+
+```typescript
+// apps/web/src/hooks/useQuizApi.ts
+useQuizApi() // fetchRandomSpot, submitAnswer, fetchUserStats, fetchCategories
+
+// apps/web/src/app/train/page.tsx
+TrainPage    // Main quiz UI with filters, stats, charts
+
+// apps/web/src/app/train/review/page.tsx
+ReviewPage   // Review missed spots with explanations
+
+// apps/web/src/components/train/QuizCard.tsx
+QuizCard     // Spot display + action buttons + feedback
+
+// apps/web/src/components/train/LeaderboardPanel.tsx
+LeaderboardPanel // Real-time rankings widget
+```
+
+### Review Mode Flow
+
+1. User answers quiz question → wrong answer added to `UserStats.missed_spot_ids`
+2. User visits `/train/review` → fetches missed spots from API
+3. QuizCard shows explanation after each answer
+4. Correct answer in review → marked as `mastered` in `ReviewSpot`
+
+---
+
+*Last updated: 2026-05-27*
