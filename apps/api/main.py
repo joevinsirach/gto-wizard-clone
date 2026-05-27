@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import redis
 
-from routers import equity, solver, auth, hh, strategy, quiz
+from routers import equity, solver, auth, hh, strategy, quiz, analyze_leaks
 from routers import plo4_equity, plo4_ranges, omaha
 from routers import double_board, bomb_pot, spots
 from routers.quiz_ws import websocket_handler
@@ -74,6 +74,7 @@ app.include_router(double_board.router)
 app.include_router(bomb_pot.router)
 app.include_router(spots.router)
 app.include_router(omaha.router)
+app.include_router(analyze_leaks.router)
 
 
 @app.get("/")

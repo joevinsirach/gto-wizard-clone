@@ -3,20 +3,16 @@
  */
 
 export { FileUpload, type LoadedFile } from "./FileUpload";
-export { BatchImport, type ImportResult, type ImportProgress } from "./BatchImport";
+export { BatchImport, type BatchFile } from "./BatchImport";
 export { TagInput, type Tag } from "./TagInput";
-export { exportHandsToCSV, generateExportFilename } from "./csvExport";
 export {
   BoardDisplay,
   BoardCard,
   InlineBoard,
-  BoardTextureBadge,
-  analyzeBoardTexture,
   type Card,
   type Suit,
   type Rank,
   type BoardCards,
-  type BoardTextureResult,
 } from "./BoardDisplay";
 export { HandTable, type HandRecord, type Column } from "./HandTable";
 export type {
@@ -30,5 +26,14 @@ export type {
   StreetName,
 } from "./HandViewer";
 export { HandViewer } from "./HandViewer";
+export type {
+  HandPlaybackProps,
+  HandDetail,
+  HHAction,
+  HHPlayer,
+  HHCard,
+  GTOComparison,
+} from "./HandPlayback";
+export { HandPlayback } from "./HandPlayback";
 export type { LeakEntry } from "./LeakChart";
-export { LeakChart, MOCK_LEAKS } from "./LeakChart";
+export { LeakChart } from "./LeakChart";

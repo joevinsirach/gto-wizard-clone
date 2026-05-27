@@ -567,9 +567,13 @@ async def query_hands(
     if tag:
         query = query.join(HandTag).filter(HandTag.tag == tag)
     
-    # Position filter requires checking actions
+    # Position filter: check if hero is in that position from players JSONB
     if position:
-        query = query.join(HandAction).filter(HandAction.position == position.upper())
+        pos_upper = position.upper()
+        # Filter hands where hero's position matches using JSONB containment
+        filters.append(
+            HandHistory.players.contains([{"position": pos_upper}])
+        )
     
     # Apply all filters
     query = query.filter(and_(*filters))
@@ -1091,3 +1095,188 @@ async def get_hands_by_spot(
         )
         for h in hands
     ]
+
+
+class PlaybackStep(BaseModel):
+    """A single step in hand playback."""
+    step: int
+    street: str
+    action_index: int
+    action: str
+    player: str
+    amount: Optional[float] = None
+    pot_after: float
+    board_after: List[str] = []
+    is_hero_action: bool = False
+    hero_position: Optional[str] = None
+
+
+class HandPlaybackResponse(BaseModel):
+    """Step-by-step playback of a hand."""
+    hand_id: uuid.UUID
+    hero_name: Optional[str] = None
+    board: List[str] = []
+    stakes: Optional[dict] = None
+    pot: float = 0.0
+    button_position: Optional[int] = None
+    players: List[dict] = []
+    steps: List[PlaybackStep] = []
+    gto_comparison: Optional[dict] = None
+
+
+@router.post("/hands/{hand_id}/recalculate-ev", response_model=HandHistoryResponse)
+async def recalculate_ev(
+    hand_id: uuid.UUID,
+    user_id: uuid.UUID = Query(..., description="User ID"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Recalculate EV loss for a hand by comparing actual actions to GTO baseline.
+    """
+    from apps.api.services.gto_comparison import compare_to_gto
+    
+    query = db.query(HandHistory).options(
+        selectinload(HandHistory.actions),
+    ).filter(HandHistory.id == hand_id)
+    
+    result = await db.execute(query)
+    hand = result.scalar_one_or_none()
+    
+    if not hand:
+        raise HTTPException(status_code=404, detail="Hand not found")
+    
+    if hand.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Hand does not belong to user")
+    
+    if not hand.parsed_data:
+        raise HTTPException(status_code=400, detail="Hand has no parsed data")
+    
+    total_ev_loss = 0.0
+    hero_name = hand.hero_name or hand.parsed_data.get("hero_name")
+    
+    if hero_name and "actions" in hand.parsed_data:
+        if hand.parsed_data.get("actions"):
+            try:
+                comparison = compare_to_gto(hand.parsed_data, hero_name)
+                total_ev_loss = comparison.ev_loss
+            except Exception:
+                total_ev_loss = 0.0
+    
+    hand.ev_loss = total_ev_loss
+    await db.commit()
+    await db.refresh(hand)
+    
+    return HandHistoryResponse(
+        id=hand.id,
+        user_id=hand.user_id,
+        site=hand.site.value,
+        hero_name=hand.hero_name,
+        pot=hand.pot,
+        board=hand.board,
+        game_type=hand.game_type,
+        table_name=hand.table_name,
+        board_texture=hand.board_texture.value if hand.board_texture else None,
+        spot_category=hand.spot_category.value if hand.spot_category else None,
+        stakes=hand.stakes,
+        max_seats=hand.max_seats,
+        button_position=hand.button_position,
+        players=hand.players,
+        ev_loss=hand.ev_loss,
+        winners=hand.winners,
+        external_hand_id=hand.external_hand_id,
+        created_at=hand.created_at,
+        tags=[t.tag for t in hand.tags] if hasattr(hand, 'tags') and hand.tags else [],
+    )
+
+
+@router.get("/hands/{hand_id}/playback", response_model=HandPlaybackResponse)
+async def get_hand_playback(
+    hand_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get step-by-step playback data for a hand.
+    """
+    query = db.query(HandHistory).options(
+        selectinload(HandHistory.actions),
+    ).filter(HandHistory.id == hand_id)
+    
+    result = await db.execute(query)
+    hand = result.scalar_one_or_none()
+    
+    if not hand:
+        raise HTTPException(status_code=404, detail="Hand not found")
+    
+    hero_name = hand.hero_name or (hand.parsed_data.get("hero_name") if hand.parsed_data else None)
+    
+    steps = []
+    current_pot = 0.0
+    current_board: List[str] = []
+    step_num = 0
+    
+    streets_order = ["preflop", "flop", "turn", "river", "showdown"]
+    
+    for street in streets_order:
+        street_actions: List[dict] = []
+        if hand.parsed_data and "actions" in hand.parsed_data:
+            street_actions = hand.parsed_data["actions"].get(street, [])
+        
+        for idx, action in enumerate(street_actions):
+            action_type = action.get("action", action.get("action_type", ""))
+            player = action.get("player", "")
+            amount = action.get("amount")
+            
+            if action_type in ("bet", "raise", "call"):
+                if amount:
+                    current_pot += amount
+            elif action_type == "allin" and amount:
+                current_pot += amount
+            
+            if street == "flop" and hand.board and len(hand.board) >= 3:
+                current_board = hand.board[:3]
+            elif street == "turn" and hand.board and len(hand.board) >= 4:
+                current_board = hand.board[:4]
+            elif street == "river" and hand.board and len(hand.board) >= 5:
+                current_board = hand.board[:5]
+            
+            is_hero = (player == hero_name) if hero_name else False
+            
+            steps.append(PlaybackStep(
+                step=step_num,
+                street=street,
+                action_index=idx,
+                action=action_type,
+                player=player,
+                amount=amount,
+                pot_after=current_pot,
+                board_after=list(current_board),
+                is_hero_action=is_hero,
+                hero_position=None,
+            ))
+            step_num += 1
+    
+    gto_comp = None
+    if hero_name and hand.ev_loss is not None:
+        from apps.api.services.gto_comparison import compare_to_gto
+        try:
+            comparison = compare_to_gto(hand.parsed_data, hero_name)
+            gto_comp = {
+                "ev_loss": comparison.ev_loss,
+                "gto_action": comparison.gto_action,
+                "user_action": comparison.user_action,
+                "recommendation": comparison.recommendation,
+            }
+        except Exception:
+            pass
+    
+    return HandPlaybackResponse(
+        hand_id=hand.id,
+        hero_name=hero_name,
+        board=hand.board or [],
+        stakes=hand.stakes,
+        pot=hand.pot or current_pot,
+        button_position=hand.button_position,
+        players=hand.players or [],
+        steps=steps,
+        gto_comparison=gto_comp,
+    )

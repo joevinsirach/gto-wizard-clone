@@ -1,477 +1,472 @@
 /**
- * BatchImport — batch hand history import with progress tracking.
- * Handles large files (10,000+ hands) with streaming parse and error reporting.
+ * BatchImport — batch hand history import with per-file progress, error handling, and retry.
  */
 
-import { useCallback, useState } from "react";
-import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useCallback, useReducer, useRef, useState } from "react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, RefreshCw, Eye, Loader2 } from "lucide-react";
+import { cn, formatFileSize } from "@/lib/utils";
 
-export interface ImportResult {
-  fileName: string;
-  totalHands: number;
-  importedHands: number;
-  failedHands: number;
-  errors: string[];
-  format: string;
+export interface BatchFile {
+  id: string;
+  name: string;
+  size: number;
+  content: string;
+  hands: string[];
+  status: "pending" | "uploading" | "processing" | "done" | "error";
+  progress: number;
+  error?: string;
+  dbId?: string;
 }
 
-export interface BatchImportProps {
-  onImportComplete?: (results: ImportResult[]) => void;
-  onImportProgress?: (progress: ImportProgress) => void;
+interface BatchImportProps {
+  onUpload: (files: BatchFile[]) => Promise<{ db_id: string; hand_id: string }[]>;
+  onViewHands?: () => void;
+  onComplete?: (results: { db_id: string; hand_id: string }[]) => void;
+  accept?: string;
   maxSizeMB?: number;
+  maxConcurrent?: number;
   className?: string;
 }
 
-export interface ImportProgress {
-  currentFile: number;
-  totalFiles: number;
-  currentHand: number;
-  totalHands: number;
-  phase: "reading" | "parsing" | "analyzing" | "complete" | "error";
-  currentFileName?: string;
-  errors: string[];
+interface FileState {
+  files: BatchFile[];
 }
 
-// Format detection helpers
-function detectFormat(text: string): string {
-  if (/PokerStars/i.test(text)) return "PokerStars";
-  if (/GGPoker/i.test(text)) return "GGPoker";
-  if (/Ignition/i.test(text)) return "Ignition";
-  return "Unknown";
+type FileAction =
+  | { type: "ADD_FILES"; payload: BatchFile[] }
+  | { type: "UPDATE_FILE"; id: string; payload: Partial<BatchFile> }
+  | { type: "REMOVE_FILE"; id: string }
+  | { type: "CLEAR_ALL" }
+  | { type: "RETRY_FILE"; id: string };
+
+function fileReducer(state: FileState, action: FileAction): FileState {
+  switch (action.type) {
+    case "ADD_FILES":
+      return { files: [...state.files, ...action.payload] };
+    case "UPDATE_FILE":
+      return {
+        files: state.files.map((f) =>
+          f.id === action.id ? { ...f, ...action.payload } : f
+        ),
+      };
+    case "REMOVE_FILE":
+      return { files: state.files.filter((f) => f.id !== action.id) };
+    case "CLEAR_ALL":
+      return { files: [] };
+    case "RETRY_FILE":
+      return {
+        files: state.files.map((f) =>
+          f.id === action.id ? { ...f, status: "pending", progress: 0, error: undefined } : f
+        ),
+      };
+    default:
+      return state;
+  }
 }
+
+const HAND_SEPARATOR_RE = /(?:PokerStars Hand #|GGPoker Hand #|Hand #)/i;
 
 function extractHands(text: string): string[] {
-  const HAND_SEPARATOR_RE = /(?:PokerStars Hand #|GGPoker Hand #|Hand #|Ignition Hand #)/i;
-  const separatorMatch = text.match(HAND_SEPARATOR_RE);
-  if (!separatorMatch) return [];
-  const separator = separatorMatch[0];
-  const parts = text.split(separator);
+  const parts = text.split(HAND_SEPARATOR_RE);
   const hands: string[] = [];
   for (let i = 1; i < parts.length; i += 2) {
     const prev = parts[i - 1];
     const match = prev.match(/\n\n([\s\S]*)$/);
     const body = match ? match[1] : "";
     const header = parts[i].split("\n")[0];
-    hands.push(`${separator}${header}\n${body}`);
+    hands.push(`PokerStars Hand #${header}\n${body}`);
   }
   return hands;
 }
 
-// Simple hand parser for error detection
-function validateHand(handText: string): boolean {
-  // A valid hand should have at least the header line with "Hand #"
-  if (!/Hand [#\d]/.test(handText)) return false;
-  // Should have at least one player line
-  if (!/Seat \d+/.test(handText)) return false;
-  return true;
-}
-
-function estimateHandsFromSize(fileSizeBytes: number): number {
-  // Rough estimate: avg hand is ~2KB
-  return Math.round(fileSizeBytes / 2000);
+function generateId(): string {
+  return Math.random().toString(36).slice(2, 11);
 }
 
 export function BatchImport({
-  onImportComplete,
-  onImportProgress,
+  onUpload,
+  onViewHands,
+  onComplete,
+  accept = ".txt,.hh,.hhc",
   maxSizeMB = 50,
+  maxConcurrent = 3,
   className,
 }: BatchImportProps) {
-  const [isImporting, setIsImporting] = useState(false);
-  const [results, setResults] = useState<ImportResult[]>([]);
-  const [progress, setProgress] = useState<ImportProgress | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [dragActive, setDragActive] = useState(false);
+  const [state, dispatch] = useReducer(fileReducer, { files: [] });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [results, setResults] = useState<{ db_id: string; hand_id: string }[]>([]);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef(false);
 
-  const totalEstimatedHands = selectedFiles.reduce(
-    (sum, f) => sum + estimateHandsFromSize(f.size),
-    0,
+  const processFiles = useCallback(
+    async (fileList: FileList) => {
+      setGlobalError(null);
+      const newFiles: BatchFile[] = [];
+
+      for (const file of Array.from(fileList)) {
+        const sizeMB = file.size / (1024 * 1024);
+        const extension = file.name.split(".").pop()?.toLowerCase();
+        const allowedExtensions = ["txt", "hh", "hhc"];
+
+        if (extension && !allowedExtensions.includes(extension)) {
+          setGlobalError(`Invalid file type: .${extension}`);
+          continue;
+        }
+
+        if (sizeMB > maxSizeMB) {
+          setGlobalError(`File too large: ${formatFileSize(file.size)}. Max: ${maxSizeMB}MB`);
+          continue;
+        }
+
+        try {
+          const content = await file.text();
+          const hands = extractHands(content);
+
+          newFiles.push({
+            id: generateId(),
+            name: file.name,
+            size: file.size,
+            content,
+            hands,
+            status: "pending",
+            progress: 0,
+          });
+        } catch {
+          setGlobalError(`Failed to read file: ${file.name}`);
+        }
+      }
+
+      if (newFiles.length > 0) {
+        dispatch({ type: "ADD_FILES", payload: newFiles });
+      }
+    },
+    [maxSizeMB],
   );
-
-  const handleFiles = useCallback((files: FileList) => {
-    const fileArray = Array.from(files);
-    const validFiles = fileArray.filter((f) => {
-      if (f.size > maxSizeMB * 1024 * 1024) return false;
-      return true;
-    });
-    setSelectedFiles((prev) => [...prev, ...validFiles]);
-  }, [maxSizeMB]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(true);
+    setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(false);
+    setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      setDragActive(false);
+      setIsDragging(false);
       if (e.dataTransfer.files.length > 0) {
-        handleFiles(e.dataTransfer.files);
+        processFiles(e.dataTransfer.files);
       }
     },
-    [handleFiles],
+    [processFiles],
   );
 
-  const removeFile = useCallback((index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const clearAllFiles = useCallback(() => {
-    setSelectedFiles([]);
-    setResults([]);
-    setProgress(null);
-  }, []);
-
-  const runImport = useCallback(async () => {
-    if (selectedFiles.length === 0) return;
-
-    setIsImporting(true);
-    setResults([]);
-    const importResults: ImportResult[] = [];
-
-    for (let fi = 0; fi < selectedFiles.length; fi++) {
-      const file = selectedFiles[fi];
-      const result: ImportResult = {
-        fileName: file.name,
-        totalHands: 0,
-        importedHands: 0,
-        failedHands: 0,
-        errors: [],
-        format: "Unknown",
-      };
-
-      // Phase: reading
-      setProgress({
-        currentFile: fi + 1,
-        totalFiles: selectedFiles.length,
-        currentHand: 0,
-        totalHands: estimateHandsFromSize(file.size),
-        phase: "reading",
-        currentFileName: file.name,
-        errors: [],
-      });
-      onImportProgress?.({
-        currentFile: fi + 1,
-        totalFiles: selectedFiles.length,
-        currentHand: 0,
-        totalHands: estimateHandsFromSize(file.size),
-        phase: "reading",
-        currentFileName: file.name,
-        errors: [],
-      });
-
-      try {
-        const content = await file.text();
-        const format = detectFormat(content);
-        result.format = format;
-
-        // Phase: parsing
-        setProgress((prev) =>
-          prev
-            ? { ...prev, phase: "parsing", totalHands: estimateHandsFromSize(file.size) * 2 }
-            : null
-        );
-
-        const hands = extractHands(content);
-        result.totalHands = hands.length;
-
-        // Phase: analyzing (simulate for large files)
-        for (let hi = 0; hi < hands.length; hi++) {
-          const hand = hands[hi];
-
-          // Simulate progress updates every 100 hands
-          if (hi % 100 === 0 || hi === hands.length - 1) {
-            setProgress({
-              currentFile: fi + 1,
-              totalFiles: selectedFiles.length,
-              currentHand: hi + 1,
-              totalHands: hands.length,
-              phase: "analyzing",
-              currentFileName: file.name,
-              errors: result.errors,
-            });
-          }
-
-          // Validate each hand
-          if (!validateHand(hand)) {
-            result.failedHands++;
-            if (result.errors.length < 5) {
-              result.errors.push(
-                `Hand #${hi + 1}: Could not parse - missing required fields`
-              );
-            }
-          } else {
-            result.importedHands++;
-          }
-        }
-      } catch (err) {
-        result.errors.push(`File read error: ${err instanceof Error ? err.message : "Unknown error"}`);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files.length > 0) {
+        processFiles(e.target.files);
       }
+    },
+    [processFiles],
+  );
 
-      importResults.push(result);
-      setProgress({
-        currentFile: fi + 1,
-        totalFiles: selectedFiles.length,
-        currentHand: result.totalHands,
-        totalHands: result.totalHands,
-        phase: "complete",
-        currentFileName: file.name,
-        errors: result.errors,
-      });
+  const removeFile = useCallback((id: string) => {
+    dispatch({ type: "REMOVE_FILE", id });
+  }, []);
+
+  const retryFile = useCallback((id: string) => {
+    dispatch({ type: "RETRY_FILE", id });
+  }, []);
+
+  const handleUploadBatch = useCallback(async () => {
+    const pendingFiles = state.files.filter((f) => f.status === "pending" || f.status === "error");
+    if (pendingFiles.length === 0) return;
+
+    setIsProcessing(true);
+    abortRef.current = false;
+    setGlobalError(null);
+    setIsComplete(false);
+
+    // Mark all pending files as uploading
+    for (const file of pendingFiles) {
+      dispatch({ type: "UPDATE_FILE", id: file.id, payload: { status: "uploading", progress: 10 } });
     }
 
-    setResults(importResults);
-    setIsImporting(false);
-    onImportComplete?.(importResults);
-  }, [selectedFiles, onImportComplete, onImportProgress]);
+    // Process in batches based on maxConcurrent
+    const results: { db_id: string; hand_id: string }[] = [];
 
-  const totalImportedHands = results.reduce((sum, r) => sum + r.importedHands, 0);
-  const totalFailedHands = results.reduce((sum, r) => sum + r.failedHands, 0);
-  const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
+    for (let i = 0; i < pendingFiles.length; i += maxConcurrent) {
+      if (abortRef.current) break;
+
+      const batch = pendingFiles.slice(i, i + maxConcurrent);
+
+      await Promise.all(
+        batch.map(async (file) => {
+          if (abortRef.current) return;
+
+          try {
+            dispatch({ type: "UPDATE_FILE", id: file.id, payload: { status: "processing", progress: 30 } });
+
+            // Simulate progress updates during processing
+            dispatch({ type: "UPDATE_FILE", id: file.id, payload: { progress: 50 } });
+
+            const result = await onUpload([file]);
+
+            dispatch({ type: "UPDATE_FILE", id: file.id, payload: { progress: 100, status: "done", dbId: result[0]?.db_id } });
+            results.push(...result);
+          } catch (err) {
+            dispatch({
+              type: "UPDATE_FILE",
+              id: file.id,
+              payload: {
+                status: "error",
+                error: err instanceof Error ? err.message : "Upload failed",
+              },
+            });
+          }
+        })
+      );
+    }
+
+    setResults(results);
+    setIsComplete(true);
+    setIsProcessing(false);
+    onComplete?.(results);
+  }, [state.files, maxConcurrent, onUpload, onComplete]);
+
+  const handleClearAll = useCallback(() => {
+    dispatch({ type: "CLEAR_ALL" });
+    setIsComplete(false);
+    setResults([]);
+    setGlobalError(null);
+  }, []);
+
+  const totalHands = state.files.reduce((sum, f) => sum + f.hands.length, 0);
+  const completedFiles = state.files.filter((f) => f.status === "done").length;
+  const errorFiles = state.files.filter((f) => f.status === "error").length;
+  const hasPending = state.files.some((f) => f.status === "pending" || f.status === "error");
+  const allDone = state.files.length > 0 && state.files.every((f) => f.status === "done");
 
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
+    <div className={cn("flex flex-col gap-3", className)}>
       {/* Drop zone */}
-      <div
+      <label
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition-colors",
-          dragActive
-            ? "border-primary bg-primary/5"
+          "relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-all duration-200",
+          isDragging
+            ? "border-primary bg-primary/10 scale-[1.02]"
             : "border-border hover:border-primary/50 hover:bg-primary/5",
-          isImporting && "opacity-60",
+          (globalError || errorFiles > 0) && "border-destructive",
         )}
       >
-        <Upload className={cn("h-8 w-8", dragActive ? "text-primary" : "text-muted-foreground")} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          multiple
+          onChange={handleInputChange}
+          className="sr-only"
+        />
+        <Upload
+          className={cn(
+            "h-8 w-8 transition-colors",
+            isDragging ? "text-primary" : "text-muted-foreground",
+          )}
+        />
         <span className="text-sm text-muted-foreground text-center">
-          {dragActive
-            ? "Drop files here"
-            : "Drag & drop hand history files to queue for batch import"}
+          {isDragging ? "Drop files here" : "Drag & drop hand history files or click to browse"}
         </span>
-        <label className="text-xs text-primary hover:text-primary/80 cursor-pointer">
-          or click to browse
-          <input
-            type="file"
-            multiple
-            accept=".txt,.hh,.hhc"
-            onChange={(e) => e.target.files && handleFiles(e.target.files)}
-            className="sr-only"
-          />
-        </label>
-      </div>
+        <span className="text-xs text-muted-foreground/70">
+          Supports .txt, .hh, .hhc • Max {maxSizeMB}MB per file
+        </span>
+      </label>
 
-      {/* Selected files queue */}
-      {selectedFiles.length > 0 && (
-        <div className="flex flex-col gap-2">
+      {globalError && (
+        <div className="flex items-center gap-2 text-destructive text-sm">
+          <AlertCircle className="h-4 w-4" />
+          <span>{globalError}</span>
+        </div>
+      )}
+
+      {/* File list */}
+      {state.files.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border p-3 bg-background/30">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex items-center gap-3">
               <span className="text-sm font-medium">
-                {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} queued
+                {state.files.length} file{state.files.length !== 1 ? "s" : ""} ({totalHands} hands)
               </span>
-              <span className="text-xs text-muted-foreground ml-2">
-                (~{totalEstimatedHands.toLocaleString()} estimated hands)
-              </span>
+              {completedFiles > 0 && (
+                <span className="flex items-center gap-1 text-xs text-emerald-500">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {completedFiles} done
+                </span>
+              )}
+              {errorFiles > 0 && (
+                <span className="flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="h-3 w-3" />
+                  {errorFiles} failed
+                </span>
+              )}
             </div>
-            {selectedFiles.length > 0 && (
+            <div className="flex items-center gap-2">
+              {isProcessing && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Processing...
+                </span>
+              )}
               <button
-                onClick={clearAllFiles}
+                onClick={handleClearAll}
                 className="text-xs text-muted-foreground hover:text-destructive transition-colors"
               >
                 Clear all
               </button>
-            )}
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {selectedFiles.map((file, i) => (
+          <div className="flex flex-col gap-1.5 max-h-[250px] overflow-y-auto">
+            {state.files.map((file) => (
               <div
-                key={`${file.name}-${i}`}
-                className="flex items-center gap-1.5 pl-2 pr-1 py-1 rounded bg-secondary/50 text-xs"
+                key={file.id}
+                className={cn(
+                  "flex items-start gap-2 p-2 rounded",
+                  file.status === "error"
+                    ? "bg-destructive/10"
+                    : file.status === "done"
+                    ? "bg-emerald-500/5"
+                    : "bg-secondary/20"
+                )}
               >
-                <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="max-w-[150px] truncate">{file.name}</span>
-                <span className="text-muted-foreground/70">
-                  {(file.size / 1024 / 1024).toFixed(1)}MB
-                </span>
-                <button
-                  onClick={() => removeFile(i)}
-                  className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                {file.status === "uploading" || file.status === "processing" ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary mt-0.5" />
+                ) : file.status === "done" ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
+                ) : file.status === "error" ? (
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium truncate max-w-[180px]" title={file.name}>
+                      {file.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatFileSize(file.size)}
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  {(file.status === "uploading" || file.status === "processing") && (
+                    <div className="mt-1.5">
+                      <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300 rounded-full"
+                          style={{ width: `${file.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status text */}
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-muted-foreground">
+                      {file.status === "pending" && `${file.hands.length} hands`}
+                      {file.status === "uploading" && "Uploading..."}
+                      {file.status === "processing" && "Processing..."}
+                      {file.status === "done" && `${file.hands.length} hands imported`}
+                      {file.status === "error" && (
+                        <span className="text-destructive">{file.error}</span>
+                      )}
+                    </span>
+                    {file.dbId && (
+                      <span className="text-xs font-courier text-muted-foreground/70">
+                        {file.dbId}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1">
+                  {file.status === "error" && (
+                    <button
+                      onClick={() => retryFile(file.id)}
+                      className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                      title="Retry"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => removeFile(file.id)}
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Remove"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Import button */}
-          <Button
-            onClick={runImport}
-            disabled={isImporting || selectedFiles.length === 0}
-            className="mt-2 bg-poker-gold text-gray-900 hover:bg-poker-gold/90 font-semibold"
-          >
-            {isImporting ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Importing...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Import {totalEstimatedHands.toLocaleString()} Hands
-              </span>
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Live progress */}
-      {isImporting && progress && (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="text-sm font-medium">
-                {progress.phase === "reading"
-                  ? "Reading files..."
-                  : progress.phase === "parsing"
-                  ? "Parsing hands..."
-                  : progress.phase === "analyzing"
-                  ? "Analyzing hands..."
-                  : "Complete"}
-              </span>
-            </div>
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <span className="text-xs text-muted-foreground">
-              File {progress.currentFile} of {progress.totalFiles}
+              {hasPending ? "Ready to import" : allDone ? "All files imported" : "No pending files"}
             </span>
-          </div>
-
-          {/* File name */}
-          {progress.currentFileName && (
-            <p className="text-xs text-muted-foreground mb-2 truncate">
-              {progress.currentFileName}
-            </p>
-          )}
-
-          {/* Progress bar */}
-          <div className="w-full h-2 bg-secondary rounded-full overflow-hidden mb-2">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                progress.phase === "complete" ? "bg-emerald-500" : "bg-primary",
+            <div className="flex items-center gap-2">
+              {isComplete && allDone && onViewHands && (
+                <button
+                  onClick={onViewHands}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Eye className="h-3 w-3" />
+                  View hands
+                </button>
               )}
-              style={{
-                width: `${
-                  progress.phase === "complete"
-                    ? 100
-                    : progress.totalHands > 0
-                    ? (progress.currentHand / progress.totalHands) * 100
-                    : 0
-                }%`,
-              }}
-            />
-          </div>
-
-          {/* Stats row */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {progress.currentHand.toLocaleString()} / {progress.totalHands.toLocaleString()} hands
-            </span>
-            {progress.errors.length > 0 && (
-              <span className="text-orange-400">
-                {progress.errors.length} error{progress.errors.length !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Results summary */}
-      {!isImporting && results.length > 0 && (
-        <div className="rounded-lg border border-border bg-card">
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm font-medium">Import Complete</span>
-              </div>
               <button
-                onClick={clearAllFiles}
-                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                onClick={handleUploadBatch}
+                disabled={!hasPending || isProcessing}
+                className={cn(
+                  "px-3 py-1.5 text-xs rounded transition-colors",
+                  hasPending && !isProcessing
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                )}
               >
-                <RefreshCw className="h-3 w-3" />
+                {isProcessing ? "Importing..." : `Import ${state.files.filter((f) => f.status === "pending" || f.status === "error").length} files`}
               </button>
             </div>
-
-            {/* Summary stats */}
-            <div className="grid grid-cols-3 gap-3 mt-3">
-              <div className="text-center">
-                <div className="text-xl font-bold text-emerald-400">
-                  {totalImportedHands.toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground">Imported</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-orange-400">
-                  {totalFailedHands.toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground">Failed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-red-400">
-                  {totalErrors.toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground">Errors</div>
-              </div>
-            </div>
           </div>
+        </div>
+      )}
 
-          {/* Per-file results */}
-          <div className="divide-y divide-border/40">
-            {results.map((r, i) => (
-              <div key={`${r.fileName}-${i}`} className="p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {r.errors.length === 0 ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                    ) : (
-                      <AlertCircle className="h-3.5 w-3.5 text-orange-400" />
-                    )}
-                    <span className="text-xs font-medium truncate max-w-[150px]">
-                      {r.fileName}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">{r.format}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {r.importedHands}/{r.totalHands} hands
-                  </div>
-                </div>
-                {r.errors.length > 0 && (
-                  <div className="mt-2 flex flex-col gap-0.5">
-                    {r.errors.slice(0, 3).map((err, ei) => (
-                      <p key={ei} className="text-[10px] text-orange-400 font-mono pl-4">
-                        {err}
-                      </p>
-                    ))}
-                    {r.errors.length > 3 && (
-                      <p className="text-[10px] text-muted-foreground pl-4">
-                        +{r.errors.length - 3} more errors
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+      {/* Success state */}
+      {isComplete && results.length > 0 && (
+        <div className="flex items-center gap-2 text-sm text-emerald-500">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Successfully imported {results.length} hand{results.length !== 1 ? "s" : ""}</span>
+          {onViewHands && (
+            <button
+              onClick={onViewHands}
+              className="flex items-center gap-1 ml-2 text-primary hover:text-primary/80 transition-colors"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              View hands
+            </button>
+          )}
         </div>
       )}
     </div>
