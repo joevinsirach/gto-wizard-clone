@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   LineChart,
   Line,
@@ -13,45 +13,120 @@ import {
   Area,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { QuizCard, Action, QuizOption } from "@/components/train/QuizCard";
+import { QuizCard, Action, QuizQuestion, QuizOption } from "@/components/train/QuizCard";
 import { SpotCategoryFilter } from "@/components/train/SpotCategoryFilter";
 import { DifficultySelector } from "@/components/train/DifficultySelector";
 import { useQuizApi, QuizSpot } from "@/hooks/useQuizApi";
 
-// Convert API spot to QuizCard format
-interface QuizQuestion {
-  id: string;
-  hand: string;
-  board?: string;
-  potSize: number;
-  stackDepth: number;
-  position: string;
-  correctAction: Action;
-  gtoFrequency: number;
-  gtoEV: number;
-  options: QuizOption[];
-  category?: string;
-  difficulty?: "easy" | "medium" | "hard";
-  explanation?: string;
-}
+// Static demo questions (fallback when API unavailable)
+const DEMO_QUESTIONS: QuizQuestion[] = [
+  {
+    id: "demo-1",
+    hand: "AA",
+    board: "KsQdJh",
+    potSize: 100,
+    stackDepth: 200,
+    position: "BTN",
+    correctAction: "raise",
+    gtoFrequency: 0.85,
+    gtoEV: 1.45,
+    options: [
+      { action: "raise", ev: 1.45, frequency: 0.85 },
+      { action: "call", ev: 1.20, frequency: 0.10 },
+      { action: "fold", ev: 0, frequency: 0.05 },
+    ],
+    category: "Pre-flop",
+    difficulty: "easy",
+    explanation: "With AA on a coordinated board, you want to build the pot and extract value. Raising is the clear GTO play.",
+  },
+  {
+    id: "demo-2",
+    hand: "KK",
+    board: "Ah7d2c",
+    potSize: 80,
+    stackDepth: 150,
+    position: "CO",
+    correctAction: "call",
+    gtoFrequency: 0.70,
+    gtoEV: 0.95,
+    options: [
+      { action: "raise", ev: 0.80, frequency: 0.20 },
+      { action: "call", ev: 0.95, frequency: 0.70 },
+      { action: "fold", ev: 0, frequency: 0.10 },
+    ],
+    category: "Post-flop",
+    difficulty: "medium",
+    explanation: "With top two pair on a dry board, calling allows you to extract value from worse hands while keeping your range balanced.",
+  },
+  {
+    id: "demo-3",
+    hand: "JT",
+    board: "QdKsTc",
+    potSize: 120,
+    stackDepth: 100,
+    position: "SB",
+    correctAction: "fold",
+    gtoFrequency: 0.55,
+    gtoEV: -0.15,
+    options: [
+      { action: "raise", ev: -0.45, frequency: 0.25 },
+      { action: "call", ev: -0.20, frequency: 0.20 },
+      { action: "fold", ev: -0.15, frequency: 0.55 },
+    ],
+    category: "Post-flop",
+    difficulty: "hard",
+    explanation: "Facing a raise with a gutshot straight draw and backdoor flush, the pot odds don't justify calling. Folding preserves equity.",
+  },
+  {
+    id: "demo-4",
+    hand: "55",
+    board: "6s7s8d",
+    potSize: 60,
+    stackDepth: 180,
+    position: "MP",
+    correctAction: "call",
+    gtoFrequency: 0.65,
+    gtoEV: 0.72,
+    options: [
+      { action: "raise", ev: 0.60, frequency: 0.25 },
+      { action: "call", ev: 0.72, frequency: 0.65 },
+      { action: "fold", ev: 0, frequency: 0.10 },
+    ],
+    category: "Post-flop",
+    difficulty: "medium",
+    explanation: "With middle set on a connected board, calling keeps your range balanced and allows you to extract value from drawing hands.",
+  },
+  {
+    id: "demo-5",
+    hand: "AK",
+    board: "Kd9d2h",
+    potSize: 90,
+    stackDepth: 160,
+    position: "BTN",
+    correctAction: "raise",
+    gtoFrequency: 0.80,
+    gtoEV: 1.25,
+    options: [
+      { action: "raise", ev: 1.25, frequency: 0.80 },
+      { action: "call", ev: 1.05, frequency: 0.15 },
+      { action: "fold", ev: 0, frequency: 0.05 },
+    ],
+    category: "Post-flop",
+    difficulty: "easy",
+    explanation: "Top pair top kicker on a dry board - you want to charge draw-heavy hands for staying in.",
+  },
+];
 
+// Convert API spot to QuizCard format
 function spotToQuestion(spot: QuizSpot): QuizQuestion {
-  // Build options array from API format
   const options: QuizOption[] = [];
   if (spot.options) {
-    for (const [action, opts] of Object.entries(spot.options)) {
+    for (const [, opts] of Object.entries(spot.options)) {
       if (Array.isArray(opts)) {
-        for (const opt of opts) {
-          options.push({
-            action: opt.action as Action,
-            ev: opt.ev,
-            frequency: opt.frequency,
-          });
-        }
+        options.push(...opts as QuizOption[]);
       }
     }
   }
-  // Fallback options if none derived
   if (options.length === 0) {
     options.push(
       { action: "raise", ev: spot.gto_ev, frequency: spot.gto_frequency },
@@ -59,7 +134,6 @@ function spotToQuestion(spot: QuizSpot): QuizQuestion {
       { action: "fold", ev: 0, frequency: 0.05 }
     );
   }
-
   return {
     id: spot.id,
     hand: spot.hero_hand,
@@ -111,15 +185,56 @@ export default function TrainPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [sessionActive, setSessionActive] = useState(true);
+  const [questions, setQuestions] = useState<QuizQuestion[]>(DEMO_QUESTIONS);
+  const hasLoadedApi = useRef(false);
+
+  const {
+    spot,
+    isLoadingSpot,
+    fetchRandomSpot,
+    submitAnswer,
+  } = useQuizApi();
+
+  // Load initial spot from API on mount
+  useEffect(() => {
+    if (!hasLoadedApi.current) {
+      hasLoadedApi.current = true;
+      fetchRandomSpot(selectedCategory || undefined, selectedDifficulty || undefined)
+        .then((apiSpot) => {
+          if (apiSpot) {
+            const q = spotToQuestion(apiSpot);
+            setQuestions([q]);
+            setCurrentQuestionIndex(0);
+            setStats(INITIAL_STATS);
+          }
+        })
+        .catch(() => {
+          // Fall back to demo questions
+        });
+    }
+  }, []);
+
+  // Fetch new spot when filters change (skip for demo)
+  useEffect(() => {
+    if (hasLoadedApi.current && !showReview && sessionActive) {
+      fetchRandomSpot(selectedCategory || undefined, selectedDifficulty || undefined)
+        .then((apiSpot) => {
+          if (apiSpot) {
+            setQuestions([spotToQuestion(apiSpot)]);
+            setCurrentQuestionIndex(0);
+          }
+        });
+    }
+  }, [selectedCategory, selectedDifficulty]);
 
   // Filter questions based on category and difficulty
   const filteredQuestions = useMemo(() => {
-    return SAMPLE_QUESTIONS.filter((q) => {
+    return questions.filter((q) => {
       if (selectedCategory && q.category !== selectedCategory) return false;
       if (selectedDifficulty && q.difficulty !== selectedDifficulty) return false;
       return true;
     });
-  }, [selectedCategory, selectedDifficulty]);
+  }, [questions, selectedCategory, selectedDifficulty]);
 
   const currentQuestion = filteredQuestions[currentQuestionIndex];
 
@@ -133,10 +248,17 @@ export default function TrainPage() {
     (action: Action, isCorrect: boolean, evLoss: number) => {
       if (!currentQuestion) return;
 
+      // Submit to API if available
+      submitAnswer({
+        spot_id: currentQuestion.id,
+        user_id: "local-user",
+        selected_action: action,
+      }).catch(() => {
+        // Silently fail API submission in demo mode
+      });
+
       setStats((prev) => {
         const newStats = { ...prev };
-        
-        // Update totals
         newStats.totalQuestions += 1;
         if (isCorrect) {
           newStats.correctAnswers += 1;
@@ -147,7 +269,6 @@ export default function TrainPage() {
         }
         newStats.totalEvLoss += evLoss;
 
-        // Update category accuracy
         const category = currentQuestion.category || "Unknown";
         if (!newStats.categoryAccuracy[category]) {
           newStats.categoryAccuracy[category] = { correct: 0, total: 0 };
@@ -157,7 +278,6 @@ export default function TrainPage() {
           newStats.categoryAccuracy[category].correct += 1;
         }
 
-        // Update difficulty accuracy
         const difficulty = currentQuestion.difficulty || "medium";
         if (!newStats.difficultyAccuracy[difficulty]) {
           newStats.difficultyAccuracy[difficulty] = { correct: 0, total: 0 };
@@ -167,7 +287,6 @@ export default function TrainPage() {
           newStats.difficultyAccuracy[difficulty].correct += 1;
         }
 
-        // Add to history
         newStats.history.push({
           timestamp: Date.now(),
           accuracy: (newStats.correctAnswers / newStats.totalQuestions) * 100,
@@ -178,7 +297,7 @@ export default function TrainPage() {
         return newStats;
       });
     },
-    [currentQuestion]
+    [currentQuestion, submitAnswer]
   );
 
   // Next question
@@ -196,12 +315,21 @@ export default function TrainPage() {
     setCurrentQuestionIndex(0);
     setShowReview(false);
     setSessionActive(true);
-  }, []);
+    // Fetch a new spot from API
+    fetchRandomSpot(selectedCategory || undefined, selectedDifficulty || undefined)
+      .then((apiSpot) => {
+        if (apiSpot) {
+          setQuestions([spotToQuestion(apiSpot)]);
+        } else {
+          setQuestions(DEMO_QUESTIONS);
+        }
+      });
+  }, [selectedCategory, selectedDifficulty, fetchRandomSpot]);
 
   // Get weak spots (categories with low accuracy)
   const weakSpots = useMemo(() => {
     return Object.entries(stats.categoryAccuracy)
-      .filter(([, data]) => data.total >= 2) // At least 2 questions
+      .filter(([, data]) => data.total >= 2)
       .map(([category, data]) => ({
         category,
         accuracy: (data.correct / data.total) * 100,
@@ -220,11 +348,11 @@ export default function TrainPage() {
     }));
   }, [stats.history]);
 
-  // Categories for filter (from API or static fallback)
-  const categories = useMemo(() => {
-    // Use static categories if API not loaded yet
-    return ["3-bet pot", "open-raise pot", "overcard board", "monoboard", "paired board", "wet board", "straight completed"] as string[];
-  }, []);
+  // Categories for filter
+  const categories = [
+    "3-bet pot", "open-raise pot", "overcard board", "monoboard",
+    "paired board", "wet board", "straight completed", "Pre-flop", "Post-flop"
+  ];
 
   // Difficulties for selector
   const difficulties = ["easy", "medium", "hard"] as const;
@@ -531,7 +659,7 @@ export default function TrainPage() {
             {/* Difficulty Breakdown */}
             {Object.keys(stats.difficultyAccuracy).length > 0 && (
               <div className="bg-gray-900/80 backdrop-blur rounded-xl p-4 border border-gray-800">
-                <h3 className="font-semibold mb-4 text-poker-gold">Difficulty</h3>
+                <h3 className="font-semibold mb-4 text.poker-gold">Difficulty</h3>
                 <div className="space-y-2">
                   {(["easy", "medium", "hard"] as const).map((diff) => {
                     const data = stats.difficultyAccuracy[diff];
