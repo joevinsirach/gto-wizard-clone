@@ -537,10 +537,9 @@ export function useStrategyApi(apiEndpoint?: string) {
     try {
       const queryParams = new URLSearchParams({
         board: params.board,
-        stackDepth: params.stackDepth.toString(),
+        stack_depth: params.stackDepth.toString(),
         position: params.position,
         street: params.street,
-        actionType: params.actionType,
       });
       
       const response = await fetch(`${apiEndpoint}?${queryParams}`);

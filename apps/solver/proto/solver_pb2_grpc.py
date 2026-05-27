@@ -67,6 +67,11 @@ class SolverServiceStub(object):
                 request_serializer=solver__pb2.GetStrategyRequest.SerializeToString,
                 response_deserializer=solver__pb2.GetStrategyResponse.FromString,
                 _registered_method=True)
+        self.LookupStrategy = channel.unary_unary(
+                '/solver.SolverService/LookupStrategy',
+                request_serializer=solver__pb2.LookupStrategyRequest.SerializeToString,
+                response_deserializer=solver__pb2.LookupStrategyResponse.FromString,
+                _registered_method=True)
         self.ListStrategies = channel.unary_unary(
                 '/solver.SolverService/ListStrategies',
                 request_serializer=solver__pb2.ListStrategiesRequest.SerializeToString,
@@ -137,6 +142,13 @@ class SolverServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def LookupStrategy(self, request, context):
+        """Lookup a strategy by specific parameters (board, bet_size, stack_depth, etc.)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ListStrategies(self, request, context):
         """List stored strategies with optional filters
         """
@@ -197,6 +209,11 @@ def add_SolverServiceServicer_to_server(servicer, server):
                     servicer.GetStrategy,
                     request_deserializer=solver__pb2.GetStrategyRequest.FromString,
                     response_serializer=solver__pb2.GetStrategyResponse.SerializeToString,
+            ),
+            'LookupStrategy': grpc.unary_unary_rpc_method_handler(
+                    servicer.LookupStrategy,
+                    request_deserializer=solver__pb2.LookupStrategyRequest.FromString,
+                    response_serializer=solver__pb2.LookupStrategyResponse.SerializeToString,
             ),
             'ListStrategies': grpc.unary_unary_rpc_method_handler(
                     servicer.ListStrategies,
@@ -384,6 +401,33 @@ class SolverService(object):
             '/solver.SolverService/GetStrategy',
             solver__pb2.GetStrategyRequest.SerializeToString,
             solver__pb2.GetStrategyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def LookupStrategy(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/solver.SolverService/LookupStrategy',
+            solver__pb2.LookupStrategyRequest.SerializeToString,
+            solver__pb2.LookupStrategyResponse.FromString,
             options,
             channel_credentials,
             insecure,

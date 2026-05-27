@@ -168,6 +168,27 @@ message HealthResponse {
     map<string, string> details = 3;  // Additional details
 }
 
+// ============== Lookup Messages ==============
+
+// Request message for looking up a strategy by parameters
+message LookupStrategyRequest {
+    string game_type = 1;    // Game type (e.g., "nlh", "plo")
+    int32 players = 2;       // Number of players
+    string board = 3;         // Board cards (e.g., "Kh8c3d2sKs")
+    int32 stack_depth = 4;   // Stack depth in big blinds
+    float bet_size = 5;      // Bet size as fraction of pot
+    string street = 6;       // Street: "preflop", "flop", "turn", "river"
+}
+
+// Response message for strategy lookup
+message LookupStrategyResponse {
+    string strategy_data = 1;   // JSON string containing strategy data
+    string status = 2;          // "found", "not_found", "generating", "error"
+    string key = 3;             // Strategy key
+    string created_at = 4;      // Creation timestamp (ISO format)
+    string error = 5;           // Error message if status is "error"
+}
+
 // ============== Services ==============
 
 // Main solver service for GTO poker calculations
@@ -189,6 +210,9 @@ service SolverService {
 
     // Get a GTO strategy by parameters
     rpc GetStrategy(GetStrategyRequest) returns (GetStrategyResponse);
+
+    // Lookup a strategy by specific parameters (board, bet_size, stack_depth, etc.)
+    rpc LookupStrategy(LookupStrategyRequest) returns (LookupStrategyResponse);
 
     // List stored strategies with optional filters
     rpc ListStrategies(ListStrategiesRequest) returns (ListStrategiesResponse);

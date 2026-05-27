@@ -32,7 +32,24 @@ from gto_poker.icm import (
     get_standard_prizes,
 )
 
-# Import strategy storage
+# Import strategy storage services
+# Use the async StrategyStorageService from apps.api.services
+# Note: StrategyStorageService uses pydantic and asyncpg which may not be installed
+# The service will work without them but database operations will fail gracefully
+import importlib.util
+import sys
+
+def _import_strategy_storage_service():
+    """Lazy import of StrategyStorageService to avoid pydantic/asyncpg dependency issues."""
+    strategy_storage_path = '/tmp/gto-wizard-clone/apps/api/services/strategy_storage.py'
+    spec = importlib.util.spec_from_file_location("strategy_storage_module", strategy_storage_path)
+    strategy_storage_module = importlib.util.module_from_spec(spec)
+    sys.modules['strategy_storage_module'] = strategy_storage_module
+    spec.loader.exec_module(strategy_storage_module)
+    return strategy_storage_module.StrategyStorageService
+
+StrategyStorageService = None  # Will be lazily initialized
+
 from strategy.storage import StrategyStorage, PushFoldStorage
 
 
@@ -50,9 +67,11 @@ class SolverServicer(solver_pb2_grpc.SolverServiceServicer):
         self.lock = threading.Lock()
         self._redis_client = None
         self._celery_app = None
+        self._strategy_storage_service: Optional[StrategyStorageService] = None
         self._strategy_storage: Optional[StrategyStorage] = None
         self._push_fold_storage: Optional[PushFoldStorage] = None
         self._setup_celery()
+        self._loop = None
     
     def _setup_celery(self):
         """Set up Celery integration if available."""
@@ -77,6 +96,25 @@ class SolverServicer(solver_pb2_grpc.SolverServiceServicer):
         if self._push_fold_storage is None:
             self._push_fold_storage = PushFoldStorage()
         return self._push_fold_storage
+    
+    def _get_or_create_loop(self):
+        """Get or create an event loop for async operations."""
+        if self._loop is None or self._loop.is_closed():
+            try:
+                self._loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self._loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._loop)
+        return self._loop
+    
+    async def _get_strategy_storage_service(self) -> "StrategyStorageService":
+        """Get or create the async strategy storage service instance."""
+        global StrategyStorageService
+        if self._strategy_storage_service is None:
+            if StrategyStorageService is None:
+                StrategyStorageService = _import_strategy_storage_service()
+            self._strategy_storage_service = await StrategyStorageService.get_instance()
+        return self._strategy_storage_service
     
     def _get_redis_client(self):
         """Get Redis client for pub/sub."""
@@ -437,32 +475,36 @@ class SolverServicer(solver_pb2_grpc.SolverServiceServicer):
                     key=self.push_fold_storage.make_strategy_key(stack_depth, position),
                 )
             
-            # For post-flop, use strategy storage
+            # For post-flop, use async StrategyStorageService
+            loop = self._get_or_create_loop()
+            
             # Parse board hash
             board_hash = request.board.replace(" ", "").replace(",", "")
             
             # Bet size (use first if multiple)
             bet_size = request.bet_sizes[0] if request.bet_sizes else 0.0
             
-            # Look up strategy
-            strategy_data = self.strategy_storage.get_strategy_by_params(
-                street=street,
-                board_hash=board_hash,
-                bet_size=bet_size,
-                stack_depth=request.stack_depth,
-                game_type=request.game_type,
-                players=request.players,
-            )
+            async def get_strategy_async():
+                storage = await self._get_strategy_storage_service()
+                return await storage.get_strategy_by_params(
+                    street=street,
+                    board_hash=board_hash,
+                    bet_size=bet_size,
+                    stack_depth=request.stack_depth or 100,
+                    game_type=request.game_type or "nlh",
+                    players=request.players or 2,
+                )
             
-            if strategy_data:
+            # Run async code in sync context
+            strategy_result = loop.run_until_complete(get_strategy_async())
+            
+            if strategy_result:
                 import json
                 return solver_pb2.GetStrategyResponse(
-                    strategy_data=json.dumps(strategy_data),
+                    strategy_data=json.dumps(strategy_result.strategy_data),
                     status="found",
-                    key=self.strategy_storage.make_strategy_key(
-                        street, board_hash, bet_size, request.stack_depth,
-                        request.game_type, request.players
-                    ),
+                    key=strategy_result.key,
+                    created_at=strategy_result.created_at.isoformat() if strategy_result.created_at else "",
                 )
             
             # Strategy not found
@@ -505,13 +547,23 @@ class SolverServicer(solver_pb2_grpc.SolverServiceServicer):
                 if board_len >= 5:
                     street = "river"
             
-            # Get strategy list from storage
-            strategies = self.strategy_storage.list_strategies(
-                game_type=request.game_type if request.game_type else None,
-                players=request.players if request.players > 0 else None,
-                street=street if street else None,
-                limit=request.limit,
-            )
+            # Use async StrategyStorageService
+            loop = self._get_or_create_loop()
+            
+            async def list_strategies_async():
+                storage = await self._get_strategy_storage_service()
+                from apps.api.services.strategy_storage import StrategyFilters
+                filters = StrategyFilters(
+                    game_type=request.game_type if request.game_type else None,
+                    players=request.players if request.players > 0 else None,
+                    street=street if street else None,
+                    board_hash=request.board.replace(" ", "").replace(",", "") if request.board else None,
+                    limit=request.limit if request.limit > 0 else 100,
+                )
+                return await storage.list_strategies(filters)
+            
+            # Run async code in sync context
+            strategies = loop.run_until_complete(list_strategies_async())
             
             # Convert to StrategySummary objects
             summaries = []
@@ -538,6 +590,93 @@ class SolverServicer(solver_pb2_grpc.SolverServiceServicer):
             return solver_pb2.ListStrategiesResponse(
                 strategies=[],
                 total=0,
+            )
+    
+    def LookupStrategy(self, request, context):
+        """
+        Look up a GTO strategy by specific parameters.
+        
+        Takes game_type, players, board, stack_depth, bet_size, and street
+        to look up a stored strategy. Returns status indicating found/not_found/generating.
+        
+        This is a cleaner API than GetStrategy for programmatic lookups.
+        """
+        try:
+            game_type = request.game_type or "nlh"
+            players = request.players or 2
+            board = request.board or ""
+            stack_depth = request.stack_depth or 100
+            bet_size = request.bet_size
+            street = request.street or "preflop"
+            
+            # Infer street from board length if not provided
+            if not request.street and board:
+                board_clean = board.replace(" ", "").replace(",", "")
+                board_len = len(board_clean)
+                if board_len >= 3:
+                    street = "flop"
+                if board_len >= 4:
+                    street = "turn"
+                if board_len >= 5:
+                    street = "river"
+            
+            # For preflop, use push/fold storage
+            if street == "preflop":
+                position = request.position if hasattr(request, 'position') and request.position else "BTN"
+                chart = self.push_fold_storage.get_or_generate_chart(stack_depth, position)
+                import json
+                return solver_pb2.LookupStrategyResponse(
+                    strategy_data=json.dumps({
+                        "type": "push_fold",
+                        "stack_depth": stack_depth,
+                        "position": position,
+                        "actions": chart,
+                    }),
+                    status="found",
+                    key=self.push_fold_storage.make_strategy_key(stack_depth, position),
+                )
+            
+            # For post-flop, use async StrategyStorageService
+            loop = self._get_or_create_loop()
+            board_hash = board.replace(" ", "").replace(",", "")
+            
+            async def lookup_strategy_async():
+                storage = await self._get_strategy_storage_service()
+                return await storage.get_strategy_by_params(
+                    street=street,
+                    board_hash=board_hash,
+                    bet_size=bet_size,
+                    stack_depth=stack_depth,
+                    game_type=game_type,
+                    players=players,
+                )
+            
+            # Run async code in sync context
+            strategy_result = loop.run_until_complete(lookup_strategy_async())
+            
+            if strategy_result:
+                import json
+                return solver_pb2.LookupStrategyResponse(
+                    strategy_data=json.dumps(strategy_result.strategy_data),
+                    status="found",
+                    key=strategy_result.key,
+                    created_at=strategy_result.created_at.isoformat() if strategy_result.created_at else "",
+                )
+            
+            # Strategy not found
+            return solver_pb2.LookupStrategyResponse(
+                strategy_data="{}",
+                status="not_found",
+                key="",
+            )
+            
+        except Exception as e:
+            logger.error(f"Error looking up strategy: {e}")
+            return solver_pb2.LookupStrategyResponse(
+                strategy_data="{}",
+                status="error",
+                key="",
+                error=str(e),
             )
     
     def StreamProgress(self, request, context):

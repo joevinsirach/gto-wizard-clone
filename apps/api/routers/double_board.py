@@ -78,8 +78,8 @@ async def calculate_double_board_equity(request: DoubleBoardEquityRequest):
     return DoubleBoardEquityResponse(
         hand1=request.hand1,
         hand2=request.hand2,
-        equity1=round(eq1, 2),
-        equity2=round(eq2, 2),
+        equity1=round(eq1 * 100, 2),
+        equity2=round(eq2 * 100, 2),
         samples=tracker.total_sims,
         scoop_stats=scoop_stats
     )
@@ -106,8 +106,8 @@ async def evaluate_double_board_hand(
             "board2": board2,
             "rank1": rank1,
             "rank2": rank2,
-            "strength1_percent": round((rank1 / 7462) * 100, 2),
-            "strength2_percent": round((rank2 / 7462) * 100, 2)
+            "strength1_percent": round((7462 - rank1) / 7462 * 100, 2),
+            "strength2_percent": round((7462 - rank2) / 7462 * 100, 2)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -145,7 +145,7 @@ async def evaluate_showdown(
             "hands": hands,
             "board1": board1,
             "board2": board2,
-            "equities": [round(eq, 4) for eq in equities],
+            "equities": [round(eq * 100, 2) for eq in equities],
             "winner": equities.index(max(equities)) if equities else 0
         }
     except Exception as e:
