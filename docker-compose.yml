@@ -79,21 +79,6 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     command: celery -A apps.worker.celery_app worker --loglevel=info --concurrency=4
 
-  solver:
-    build:
-      context: .
-      dockerfile: apps/solver/Dockerfile
-    ports:
-      - "50051:50051"
-    networks:
-      - gto-network
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      REDIS_URL: redis://redis:6379/0
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
-
   web:
     build:
       context: .
