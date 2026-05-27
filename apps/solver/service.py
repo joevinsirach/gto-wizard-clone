@@ -36,7 +36,7 @@ from gto_poker.icm import (
 from strategy.storage import StrategyStorage, PushFoldStorage
 
 
-class SolverServicer(solver_pb2_grpc.SolverServicer):
+class SolverServicer(solver_pb2_grpc.SolverServiceServicer):
     """
     gRPC service for GTO solver.
     
@@ -264,6 +264,43 @@ class SolverServicer(solver_pb2_grpc.SolverServicer):
                 except Exception:
                     pass
     
+    def HealthCheck(self, request, context):
+        """
+        Health check endpoint for the solver service.
+        
+        Returns service status and availability of dependencies.
+        """
+        import os
+        
+        # Check Redis connectivity
+        redis_status = "unknown"
+        try:
+            redis_client = self._get_redis_client()
+            redis_client.ping()
+            redis_status = "connected"
+        except Exception as e:
+            redis_status = f"error: {str(e)[:50]}"
+        
+        # Check strategy storage
+        storage_status = "unknown"
+        try:
+            # Try to access storage
+            _ = self.strategy_storage
+            storage_status = "available"
+        except Exception as e:
+            storage_status = f"error: {str(e)[:50]}"
+        
+        return solver_pb2.HealthResponse(
+            healthy=True,
+            status="ok",
+            details={
+                "redis": redis_status,
+                "strategy_storage": storage_status,
+                "celery": "available" if self._celery_app else "disabled",
+                "service": "solver",
+            },
+        )
+
     def CalculateICM(self, request, context):
         """
         Calculate ICM equity for tournament players.
@@ -282,10 +319,14 @@ class SolverServicer(solver_pb2_grpc.SolverServicer):
         else:
             prizes = get_standard_prizes(len(stacks), prize_pool)
         
+        # Build player list
+        players = [f"Player{i+1}" for i in range(len(stacks))]
+        
         # Run ICM calculation
         results = icm_calculate(
             stacks=stacks,
             prizes=prizes,
+            players=players,
             n_simulations=100_000,
         )
         

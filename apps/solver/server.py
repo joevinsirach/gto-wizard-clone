@@ -41,7 +41,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=MAX_WORKERS))
     
     # Add servicer
-    solver_pb2_grpc.add_SolverServicer_to_server(
+    solver_pb2_grpc.add_SolverServiceServicer_to_server(
         SolverServicer(),
         server
     )
