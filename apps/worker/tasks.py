@@ -20,17 +20,11 @@ from apps.worker.celery_app import celery_app, get_progress_channel
 
 logger = logging.getLogger(__name__)
 
-# Redis connection pool for pub/sub
-_redis_pool = redis.ConnectionPool.from_url(
-    celery_app.conf.broker_url or "redis://localhost:6379/0",
-    max_connections=50,
-    decode_responses=True,
-)
 
-
-def get_redis_client() -> redis.Redis:
-    """Get Redis client from connection pool."""
-    return redis.Redis(connection_pool=_redis_pool)
+def get_redis_client():
+    """Get Redis client for pub/sub."""
+    import redis
+    return redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
 
 
 def publish_progress(job_id: str, progress: int, status: str, data: Optional[Dict] = None):
