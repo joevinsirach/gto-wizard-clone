@@ -1,7 +1,7 @@
 {
-  "name": "GTO Wizard",
+  "name": "GTO Wizard Clone",
   "short_name": "GTO Wizard",
-  "description": "A GTO poker training and analysis tool",
+  "description": "A GTO poker training and analysis tool with ICM calculator, push/fold charts, and GTO strategy training",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",
@@ -31,14 +31,24 @@
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "Equity Calculator",
-      "url": "/equity",
-      "description": "Calculate poker hand equity"
+      "name": "ICM Calculator",
+      "url": "/icm",
+      "description": "Calculate tournament equity using ICM"
+    },
+    {
+      "name": "Courses",
+      "url": "/courses",
+      "description": "Learn poker strategy with structured courses"
+    },
+    {
+      "name": "Community Spots",
+      "url": "/spots",
+      "description": "Browse and share GTO strategy spots"
     },
     {
       "name": "Training Mode",
       "url": "/train",
-      "description": "Practice GTO strategies"
+      "description": "Practice GTO decisions with quizzes"
     }
   ]
 }
