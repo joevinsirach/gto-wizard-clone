@@ -98,6 +98,20 @@ services:
       - /app/node_modules
     command: npm run dev
 
+  solver:
+    build:
+      context: .
+      dockerfile: apps/solver/Dockerfile
+    ports:
+      - "50051:50051"
+    networks:
+      - gto-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
 networks:
   gto-network:
     driver: bridge
