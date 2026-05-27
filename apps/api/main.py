@@ -15,6 +15,7 @@ from routers import equity, solver, auth, hh, strategy, quiz
 from routers import plo4_equity, plo4_ranges, omaha
 from routers import double_board, bomb_pot, spots
 from routers.quiz_ws import websocket_handler
+from apps.api.services.redis_bridge import start_redis_bridge, stop_redis_bridge
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +42,14 @@ def init_redis(app: FastAPI):
 @app.on_event("startup")
 async def startup_event():
     init_redis(app)
+    # Start Redis-to-WebSocket bridge for solver progress streaming
+    await start_redis_bridge()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Stop Redis-to-WebSocket bridge
+    stop_redis_bridge()
 
 
 # CORS middleware
