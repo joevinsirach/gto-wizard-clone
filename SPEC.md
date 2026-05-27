@@ -53,6 +53,40 @@ Key routers: `equity.py`, `solver.py`, `quiz.py`, `hh.py`, `plo.py`, `double_boa
 
 ### `apps/solver` — GTO Solver (Python MCCFR)
 
+```
+apps/solver/cfr/
+├── engine.py          # MCCFR engine with chance sampling for multi-street solving
+│                      # Supports: preflop → flop → turn → river → showdown
+│                      # Features: regret matching, infoset management, terminal state caching
+├── flop_solver.py     # Flop street solver with chance sampling for turn/river cards
+│                      # Functions: solve_flop(), solve_flop_basic(), create_flop_state()
+├── turn_solver.py     # Turn street solver with chance sampling for river card
+│                      # Functions: solve_turn(), solve_turn_basic(), create_turn_state()
+├── river_solver.py    # River street solver (all cards known, no chance sampling)
+│                      # Functions: solve_river_spot(), solve_multiway_river(), get_river_action()
+└── __init__.py        # Exports: CFREngine, solve_flop/turn/river functions
+```
+
+**Street Progression:**
+- `street=0`: Preflop (hole cards known, board empty → sample flop via chance)
+- `street=1`: Flop (3 board cards → sample turn via chance)
+- `street=2`: Turn (4 board cards → sample river via chance)
+- `street=3`: River (5 board cards, betting round ends → showdown)
+
+**Chance Sampling:** When `sample_chance=True`, the CFR engine samples unknown cards at each street to resolve the hand. This enables solving flop and turn spots with incomplete information.
+
+**API:**
+```python
+# River solving (all cards known)
+strategies, game, state = solve_river_spot(p0_cards, p1_cards, board, pot, stacks)
+
+# Flop solving (samples turn/river via chance)
+strategies, game, state = solve_flop(p0_cards, p1_cards, flop, pot, stacks)
+
+# Turn solving (samples river via chance)
+strategies, game, state = solve_turn(p0_cards, p1_cards, flop, turn, pot, stacks)
+```
+
 ### `packages/poker-core` — Shared Poker Logic
 `deck.py`, `hand.py`, `equity.py`, `range.py`, `plo4.py`, `omaha_hi_lo.py`, `shortdeck.py`, `double_board.py`, `bomb_pot.py`
 
