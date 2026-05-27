@@ -12,7 +12,7 @@ import asyncio
 import json
 import logging
 from typing import Dict, Set, Optional, Any, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import WebSocket, WebSocketDisconnect
 
