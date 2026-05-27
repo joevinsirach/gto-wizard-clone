@@ -1,0 +1,1 @@
+# Proto package for solver gRPC definitions
