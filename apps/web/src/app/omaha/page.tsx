@@ -49,10 +49,10 @@ const TAB_CONFIGS = {
     title: "Shortdeck Equity Calculator",
     description: "6+ Hold'em (Shortdeck) equity calculator",
     endpoint: "/api/omaha/shortdeck/equity",
-    cardCount: 4,
+    cardCount: 2,
     tips: [
-      "• Shortdeck uses 4 hole cards (like regular Omaha)",
-      "• Deck is 36 cards (9-A in each suit, 6s removed)",
+      "• Shortdeck uses 2 hole cards (like regular Hold'em)",
+      "• Deck is 36 cards (6-A in each suit, 2-5 removed)",
       "• Flush beats a full house (like PLO)",
       "• A♥6♥7♥8♥9♥ beats K♥K♥K♥Q♥Q♥",
       "• Straights are more common, high pairs less dominant",
