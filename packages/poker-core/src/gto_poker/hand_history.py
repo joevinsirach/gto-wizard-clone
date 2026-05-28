@@ -298,11 +298,11 @@ def parse_winamax_hh(text: str) -> ParsedHand:
         action_patterns = [
             (r"(\S+):\s+folds", 'fold', None),
             (r"(\S+):\s+checks", 'check', None),
-            (r"(\S+):\s+calls\s+([\d,.\s]+)", 'call', None),
-            (r"(\S+):\s+bets\s+([\d,.\s]+)", 'bet', None),
-            (r"(\S+):\s+raises\s+to\s+([\d,.\s]+)", 'raise', None),
-            (r"(\S+):\s+allin", 'allin', None),
-            (r"(\S+):\s+allin\s+([\d,.\s]+)", 'allin', None),
+            (r"(\S+):\s+calls\s+([\d,.\s€$]+)", 'call', None),
+            (r"(\S+):\s+bets\s+([\d,.\s€$]+)", 'bet', None),
+            (r"(\S+):\s+raises\s+to\s+([\d,.\s€$]+)", 'raise', None),
+            (r"(\S+):\s+all[- ]?in\s+([\d,.\s€$]+)", 'allin', None),
+            (r"(\S+):\s+all[- ]?in", 'allin', None),
         ]
         
         for pattern, action_type, _ in action_patterns:
@@ -518,18 +518,21 @@ def parse_pokerstars_hh(text: str) -> ParsedHand:
                 hand.actions['showdown'] = []
             continue
 
-        # Parse actions
+        # Parse actions — strip currency symbols for robust matching
+        line_clean = line.replace('$', '').replace('€', '')
         action_patterns = [
             (r'(\S+):\s+folds', 'fold', None),
             (r'(\S+):\s+checks', 'check', None),
             (r'(\S+):\s+calls\s+([\d.]+)', 'call', None),
             (r'(\S+):\s+bets\s+([\d.]+)', 'bet', None),
-            (r'(\S+):\s+raises\s+to\s+([\d.]+)', 'raise', None),
-            (r'(\S+):\s+allin', 'allin', None),
+            (r'(\S+):\s+raises\s+[\d.]+\s+to\s+([\d.]+)', 'raise', None),  # "raises X to Y" (PS format)
+            (r'(\S+):\s+raises\s+to\s+([\d.]+)', 'raise', None),          # "raises to X" (Winamax format)
+            (r'(\S+):\s+all[- ]?in\s+([\d.]+)', 'allin', None),
+            (r'(\S+):\s+all[- ]?in', 'allin', None),
         ]
 
         for pattern, action_type, _ in action_patterns:
-            match = re.search(pattern, line, re.IGNORECASE)
+            match = re.search(pattern, line_clean, re.IGNORECASE)
             if match:
                 player = match.group(1)
                 amount = None
@@ -545,7 +548,7 @@ def parse_pokerstars_hh(text: str) -> ParsedHand:
 
         # Parse winners
         if 'wins' in line:
-            match = re.search(r'(\S+)\s+wins\s+([\d.]+)', line, re.IGNORECASE)
+            match = re.search(r'(\S+)\s+wins\s+([\d.]+)', line_clean, re.IGNORECASE)
             if match:
                 winner = match.group(1)
                 amount = float(match.group(2))
@@ -720,18 +723,21 @@ def parse_ggpoker_hh(text: str) -> ParsedHand:
                 hand.actions['showdown'] = []
             continue
 
-        # Parse actions
+        # Parse actions — strip currency symbols for robust matching
+        line_clean = line.replace('$', '').replace('€', '')
         action_patterns = [
             (r'(\S+):\s*folds', 'fold', None),
             (r'(\S+):\s*checks', 'check', None),
             (r'(\S+):\s*calls\s+([\d.]+)', 'call', None),
             (r'(\S+):\s*bets\s+([\d.]+)', 'bet', None),
-            (r'(\S+):\s*raises\s+(?:to\s+)?([\d.]+)', 'raise', None),
-            (r'(\S+):\s*allin', 'allin', None),
+            (r'(\S+):\s*raises\s+[\d.]+\s+to\s+([\d.]+)', 'raise', None),  # "raises X to Y" (GG format)
+            (r'(\S+):\s*raises\s+(?:to\s+)?([\d.]+)', 'raise', None),      # "raises X" or "raises to X"
+            (r'(\S+):\s*all[- ]?in\s+([\d.]+)', 'allin', None),
+            (r'(\S+):\s*all[- ]?in', 'allin', None),
         ]
 
         for pattern, action_type, _ in action_patterns:
-            match = re.search(pattern, line, re.IGNORECASE)
+            match = re.search(pattern, line_clean, re.IGNORECASE)
             if match:
                 player = match.group(1)
                 amount = None
@@ -745,9 +751,9 @@ def parse_ggpoker_hh(text: str) -> ParsedHand:
                     hand.actions[current_street].append(act)
                 break
 
-        # Parse winners
+        # Parse winners — GGPoker uses "Player collected $X" format
         if 'collected' in line:
-            match = re.search(r'(\S+)\s+collected\s+([\d.]+)', line, re.IGNORECASE)
+            match = re.search(r'(\S+)\s+collected\s+([\d.]+)', line_clean, re.IGNORECASE)
             if match:
                 winner = match.group(1)
                 amount = float(match.group(2))
@@ -756,10 +762,11 @@ def parse_ggpoker_hh(text: str) -> ParsedHand:
 
         # Parse summary
         if 'Total Pot' in line or 'Total pot' in line:
-            match = re.search(r'([\d.]+)', line.split('Total')[-1])
+            line_clean = line.replace('$', '').replace('€', '')
+            match = re.search(r'([\d.]+)', line_clean.split('Total')[-1])
             if match:
                 hand.pot = float(match.group(1))
-            match = re.search(r'Rake[\s:]+([\d.]+)', line)
+            match = re.search(r'Rake[\s:]+([\d.]+)', line_clean)
             if match:
                 hand.rake = float(match.group(1))
             continue
