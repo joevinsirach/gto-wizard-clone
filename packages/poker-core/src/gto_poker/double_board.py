@@ -63,8 +63,16 @@ class DoubleBoardEvaluator:
     We evaluate best 2-of-4 + best 3-of-5 for each board independently.
     """
 
-    def __init__(self):
+    def __init__(self, seed: Optional[int] = None):
         self._cache = {}
+        self._random = random.Random(seed)
+
+    def _fill_board(self, board: List[str], remaining: List[str]) -> List[str]:
+        """Fill a board to 5 cards by drawing from remaining deck."""
+        result = board.copy()
+        while len(result) < 5 and remaining:
+            result.append(remaining.pop())
+        return result
 
     def evaluate(self, hole: List[str], board1: List[str], board2: List[str]) -> Tuple[int, int]:
         """
@@ -81,24 +89,19 @@ class DoubleBoardEvaluator:
         if len(hole) != 4:
             raise ValueError(f"Need exactly 4 hole cards, got {len(hole)}")
 
-        # Pad boards to 5 cards if needed
-        b1 = board1.copy()
-        b2 = board2.copy()
+        # Build remaining deck excluding known cards
+        used = set(hole + board1 + board2)
+        remaining = []
+        for r in RANKS:
+            for s in SUITS:
+                c = r + s
+                if c not in used:
+                    remaining.append(c)
 
-        if len(b1) < 5 or len(b2) < 5:
-            # Need to fill from remaining deck
-            used = set(hole + b1 + b2)
-            remaining = []
-            for r in RANKS:
-                for s in SUITS:
-                    c = r + s
-                    if c not in used:
-                        remaining.append(c)
+        self._random.shuffle(remaining)
 
-            while len(b1) < 5 and remaining:
-                b1.append(remaining.pop(random.randint(0, len(remaining) - 1)))
-            while len(b2) < 5 and remaining:
-                b2.append(remaining.pop(random.randint(0, len(remaining) - 1)))
+        b1 = self._fill_board(board1, remaining)
+        b2 = self._fill_board(board2, remaining)
 
         rank1 = self._evaluate_single_board(hole, b1)
         rank2 = self._evaluate_single_board(hole, b2)
@@ -309,3 +312,11 @@ class DoubleBoardEquity:
 
 
 __all__ = ["DoubleBoardEvaluator", "DoubleBoardEquity", "ScoopTracker"]
+
+
+# Convenience function for CI/compatibility
+def simulate_double_board(hand1, hand2, board1, board2, samples=10000, seed=None):
+    """Simulate double board equity — convenience wrapper around DoubleBoardEquity."""
+    dbe = DoubleBoardEquity(seed=seed)
+    eq1, eq2, tracker = dbe.calculate(hand1, hand2, board1, board2, samples)
+    return eq1, eq2, tracker

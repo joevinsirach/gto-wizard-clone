@@ -183,20 +183,33 @@ class PLO5Equity:
         hand2: List[str],
         board: List[str],
     ) -> Tuple[float, float]:
-        """Exact equity when 5 board cards are known."""
+        """Exact equity when 5 board cards are known.
+        
+        In PLO5, each player uses exactly 2 hole cards + 3 board cards.
+        We enumerate all C(5,2)*C(5,3) combos for each hand and find the best.
+        """
         wins1 = 0
         wins2 = 0
         ties = 0
         
         # Evaluate each player's best 2-card + 3-board combo
         for h1_combo in combinations(hand1, 2):
+            best_rank1 = 999999
+            for board_combo in combinations(board, 3):
+                rank = evaluate_cards(*h1_combo, *board_combo)
+                if rank < best_rank1:
+                    best_rank1 = rank
+            
             for h2_combo in combinations(hand2, 2):
-                rank1 = evaluate_cards(*h1_combo, *board)
-                rank2 = evaluate_cards(*h2_combo, *board)
+                best_rank2 = 999999
+                for board_combo in combinations(board, 3):
+                    rank = evaluate_cards(*h2_combo, *board_combo)
+                    if rank < best_rank2:
+                        best_rank2 = rank
                 
-                if rank1 < rank2:
+                if best_rank1 < best_rank2:
                     wins1 += 1
-                elif rank2 < rank1:
+                elif best_rank2 < best_rank1:
                     wins2 += 1
                 else:
                     ties += 1
@@ -294,4 +307,9 @@ class PLO5Equity:
         return (wins1 / total) * 100, (wins2 / total) * 100
 
 
-__all__ = ["PLO5Evaluator", "PLO5Equity", "plo5_hand_rank_to_percentage"]
+# Convenience function for CI/compatibility
+def evaluate_plo5(*args):
+    """Evaluate a PLO5 hand — convenience wrapper around PLO5Evaluator."""
+    return PLO5Evaluator().evaluate(*args)
+
+__all__ = ["PLO5Evaluator", "PLO5Equity", "evaluate_plo5", "plo5_hand_rank_to_percentage"]

@@ -35,7 +35,7 @@ class ActionType(Enum):
     CALL = "call"
     RAISE = "raise"
     CHECK = "check"
-    # No FOLD in straddle round!
+    FOLD = "fold"  # Only available post-flop (not in straddle round)
 
 
 @dataclass
@@ -79,6 +79,24 @@ class BombPotGameState:
     @property
     def player_count(self) -> int:
         return len(self.positions)
+
+    def get_action_space(self) -> List[ActionType]:
+        """
+        Returns the list of legal actions for the current street/phase.
+        
+        - STRADDLE_ROUND: straddle, call, raise, check (no fold)
+        - FLOP/TURN/RIVER: call, raise, check, fold (standard post-flop)
+        - SHOWDOWN: no actions
+        
+        Returns:
+            List of ActionType values valid for the current phase
+        """
+        if self.phase == Phase.STRADDLE_ROUND:
+            return [ActionType.STRADDLE, ActionType.CALL, ActionType.RAISE, ActionType.CHECK]
+        elif self.phase in (Phase.FLOP, Phase.TURN, Phase.RIVER):
+            return [ActionType.CALL, ActionType.RAISE, ActionType.CHECK, ActionType.FOLD]
+        else:
+            return []
 
 
 class BombPotGameModel:
@@ -146,6 +164,7 @@ class BombPotGameModel:
         Get legal actions for a player in current state.
 
         In straddle round, NO FOLD option exists.
+        Post-flop, all standard actions including fold are available.
         """
         if state.phase == Phase.STRADDLE_ROUND:
             # In straddle round, only straddle/call/raise/check allowed
@@ -157,8 +176,8 @@ class BombPotGameModel:
 
             return actions
 
-        # Post-flop: standard actions
-        return [ActionType.CALL, ActionType.RAISE, ActionType.CHECK]
+        # Post-flop: standard actions including fold
+        return [ActionType.CALL, ActionType.RAISE, ActionType.CHECK, ActionType.FOLD]
 
     def resolve_preflop(
         self,
@@ -332,4 +351,9 @@ __all__ = [
     "BombPotGameState",
     "BombPotGameModel",
     "BombPotEquity",
+    "BombPotState",
 ]
+
+
+# Alias for backwards compatibility
+BombPotState = BombPotGameState

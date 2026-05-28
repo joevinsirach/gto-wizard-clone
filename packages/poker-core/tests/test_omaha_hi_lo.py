@@ -258,13 +258,14 @@ class TestOmahaHiLoIntegration:
         
         p1_hole = [Card('A', 'h'), Card('2', 'd'), Card('3', 'c'), Card('4', 's')]
         p2_hole = [Card('9', 'h'), Card('9', 'd'), Card('9', 'c'), Card('9', 's')]
-        board = [Card('5', 'h'), Card('5', 'd'), Card('7', 'c'), Card('K', 's'), Card('Q', 'd')]
+        # Board with 3 distinct low ranks (5, 6, 7) plus two high cards
+        # P1 can make A-2-5-6-7 (A+2 from hole, 5+6+7 from board) = valid low
+        # P2 has no low (9s are too high)
+        board = [Card('5', 'h'), Card('6', 'd'), Card('7', 'c'), Card('K', 's'), Card('Q', 'd')]
         
         r1 = eval.evaluate(p1_hole, board)
         r2 = eval.evaluate(p2_hole, board)
         
-        # P1 has best low (wheel), P2 has trips
-        # r1 should have the low since they can make A-2-3-4-5
+        # P1 has best low (A-2-5-6-7), P2 has trips (9999)
         assert r1.has_low is True
-        # P1 has no pair, P2 has trips so P2 wins high
-        # But P1 wins low
+        assert r2.can_win_low is False

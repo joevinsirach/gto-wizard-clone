@@ -162,17 +162,22 @@ class OmahaHiLoEvaluator:
         Check if 5 cards make a valid low hand (8-or-better).
         All cards must be 8 or lower in rank (A-2-3-4-5-6-7-8).
         Ace plays as 1 (low).
+        Must have 5 unique ranks (no pairs allowed in qualifying low).
         """
         if len(cards) != 5:
             return False
         
-        # Rank indices where A=0 (plays low), 2=1, 3=2, ..., 8=7
-        # Cards with rank_index > 7 (9,T,J,Q,K,A) cannot be in a low hand
+        seen_ranks = set()
         for card in cards:
             ri = card.rank_index
-            # A (12) is OK for low (plays as 0), 9 (7) and above are not
+            # A (12) is OK for low (plays as 1), 9 (rank_index 7) and above are not
             if ri > 7 and ri != 12:  # 12 is Ace
                 return False
+            # Map to low-ace value: A=1, 2=2, 3=3, ..., 8=8
+            low_val = 1 if ri == 12 else ri + 2  # ri=0(2)→2, ri=1(3)→3, ..., ri=6(8)→8
+            if low_val in seen_ranks:
+                return False  # Duplicate rank disqualifies
+            seen_ranks.add(low_val)
         
         return True
     
@@ -244,7 +249,7 @@ def omaha_hi_lo_rank_key(cards: List[Card]) -> Tuple:
         if ri == 12:  # Ace
             low_ranks.append(1)
         elif ri <= 7:  # 2-8
-            low_ranks.append(ri + 1)  # 2->2, 3->3, ..., 8->8
+            low_ranks.append(ri + 2)  # 2→2, 3→3, ..., 8→8
         # 9,T,J,Q,K (ri > 7 and != 12) should not be included in valid low
     
     # Sort ascending (best low has lowest cards)
@@ -479,5 +484,11 @@ class OmahaHiLoEquity:
 
 __all__ = [
     "OmahaHiLoResult", "OmahaHiLoEvaluator", "OmahaHiLoEquity",
-    "omaha_hi_lo_rank_key"
+    "omaha_hi_lo_rank_key", "evaluate_omaha_hi_lo"
 ]
+
+
+# Convenience function for CI/compatibility
+def evaluate_omaha_hi_lo(hole_cards, board):
+    """Evaluate Omaha Hi/Lo — convenience wrapper around OmahaHiLoEvaluator."""
+    return OmahaHiLoEvaluator().evaluate(hole_cards, board)
