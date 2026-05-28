@@ -11,6 +11,9 @@ import numpy as np
 import random
 import sys
 
+import sys
+sys.setrecursionlimit(10000)
+
 sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
 from gto_poker.deck import Deck, Card
 from gto_poker.hand import Hand, HandEvaluator
@@ -188,6 +191,7 @@ class CFREngine:
         # Reset betting state for new street
         new_state.bet_to_call = 0.0
         new_state.last_bettor = -1
+        new_state.street_actions = 0
         
         return new_state
     
@@ -225,8 +229,10 @@ class CFREngine:
             self._terminal_cache[cache_key] = result
             return result
 
-        # Handle all players all-in: go straight to showdown
-        if all(stack == 0 for stack in state.stacks):
+        # Handle all active (non-folded) players all-in: go straight to showdown
+        non_folded = [i for i in range(state.n_players)
+                      if not any(a.player == i and a.action_type == ActionType.FOLD for a in state.action_history)]
+        if non_folded and all(state.stacks[p] == 0 for p in non_folded):
             return self._handle_showdown(state)
 
         # Check if betting round is complete and we need to advance to next street
@@ -326,22 +332,50 @@ class CFREngine:
         """
         Check if the current betting round is complete.
 
-        A betting round is complete when either:
-        1. There's no active bet to call (bet_to_call == 0)
-        2. Only one player remains (all others folded)
-
-        We also need at least 1 action to have occurred.
+        A betting round is complete when:
+        1. All active (non-folded) players have acted in the current round
+        2. All active players have matched the current bet level (equal contributions)
+        3. Only one player remains (all others folded)
         """
         if len(state.action_history) == 0:
             return False
 
-        # Check if only one player remains
-        remaining = [i for i in range(state.n_players) if state.stacks[i] > 0]
-        if len(remaining) <= 1:
+        # Check if only one non-folded player remains
+        non_folded = [i for i in range(state.n_players)
+                      if not any(a.player == i and a.action_type == ActionType.FOLD for a in state.action_history)]
+        if len(non_folded) <= 1:
             return True
 
-        # Betting round is complete when there's no active bet to call
-        return state.bet_to_call == 0
+        # Multi-way: ensure all active players have acted in the current round
+        active = non_folded  # non-folded players
+
+        # Find the last bet/raise/all_in action
+        last_aggressive = -1
+        for i in range(len(state.action_history) - 1, -1, -1):
+            if state.action_history[i].action_type in (ActionType.BET, ActionType.RAISE, ActionType.ALL_IN):
+                last_aggressive = i
+                break
+
+        # Get actions since the last aggressive action
+        round_actions = state.action_history[last_aggressive:] if last_aggressive >= 0 else state.action_history
+
+        # Count distinct active players who have acted in this round
+        acted = set()
+        for action in round_actions:
+            if action.action_type != ActionType.FOLD and action.player in active:
+                acted.add(action.player)
+
+        # All active players must have acted
+        if len(acted) < len(active):
+            return False
+
+        # Check that all active players have matched the current bet level
+        # (no outstanding bet to call)
+        active_contributions = [state.contributions[p] for p in active]
+        if max(active_contributions) != min(active_contributions):
+            return False
+
+        return True
     
     def _handle_showdown(self, state: GameState) -> List[float]:
         """

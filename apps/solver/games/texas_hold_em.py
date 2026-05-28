@@ -107,6 +107,9 @@ class GameState:
     # Amount of the last bet (for showdown detection)
     last_bet_amount: float = 0.0
 
+    # Number of actions taken on the current street (for multi-way betting round detection)
+    street_actions: int = 0
+
     # Whether the hand is over
     terminal: bool = False
     terminal_reason: str = ""
@@ -152,6 +155,7 @@ class GameState:
             bet_to_call=self.bet_to_call,
             last_bettor=self.last_bettor,
             last_bet_amount=self.last_bet_amount,
+            street_actions=self.street_actions,
             terminal=self.terminal,
             terminal_reason=self.terminal_reason
         )
@@ -270,6 +274,9 @@ class TexasHoldEm:
 
         new_state.action_history.append(action)
 
+        # Increment street action counter for multi-way betting round detection
+        new_state.street_actions += 1
+
         # Find next active player (not folded, has chips)
         next_player = self._get_next_active_player(state, player)
         new_state.current_player = next_player
@@ -297,10 +304,15 @@ class TexasHoldEm:
             new_state.stacks[player] -= call_amount
             new_state.pot += call_amount
 
-            # If player called a bet (not just checking when no bet), betting round ends
+            # If player called a bet (not just checking when no bet), update bet to call
+            # for remaining players in multi-way pots
             if amount_to_call > 0:
-                new_state.bet_to_call = 0.0
-                new_state.last_bettor = -1  # Betting round complete
+                # Keep bet_to_call at the highest contribution level so that
+                # other players who haven't acted yet still need to call
+                # (For 2-player this effectively ends the round; for multi-way
+                #  it ensures remaining players can still call/raise)
+                new_state.bet_to_call = max(new_state.contributions)
+                new_state.last_bettor = -1  # Betting round complete for this player
             # If no active bet (amount_to_call == 0), this is effectively checking
             # last_bettor stays at -1 if it was -1, or stays at last value (meaning round isn't complete)
 
@@ -320,8 +332,8 @@ class TexasHoldEm:
             new_state.pot += total_cost
 
             # After this action, what do other players need to call?
-            max_contribution = max(new_state.contributions)
-            new_state.bet_to_call = max(0, max_contribution - new_state.contributions[player])
+            # bet_to_call should be the highest contribution level for others to match
+            new_state.bet_to_call = max(new_state.contributions)
             new_state.last_bettor = player
 
         elif action_str.startswith("all_in:"):
@@ -336,8 +348,8 @@ class TexasHoldEm:
             new_state.pot += total_cost
 
             # After all-in, others need to call the difference
-            max_contribution = max(new_state.contributions)
-            new_state.bet_to_call = max(0, max_contribution - new_state.contributions[player])
+            # bet_to_call should be the highest contribution level for others to match
+            new_state.bet_to_call = max(new_state.contributions)
             new_state.last_bettor = player
 
             # Check if all active players are all-in (trigger showdown)
@@ -420,11 +432,12 @@ class TexasHoldEm:
 
     def _betting_round_complete(self, state: GameState) -> bool:
         """
-        Check if betting round is complete (no active bet to call).
+        Check if betting round is complete.
 
-        A betting round is complete when there is no active bet to call
-        (bet_to_call == 0) AND at least two actions have been taken.
-        This works for both check-check and bet-call cases.
+        A betting round is complete when:
+        - All active (non-folded) players have acted in the current betting round
+        - All active players have contributed equal amounts (no outstanding bet to call)
+        - In multi-way pots, this correctly handles sequential action across 3+ players
         """
         if len(state.action_history) == 0:
             return False
@@ -433,8 +446,38 @@ class TexasHoldEm:
         if len(state.action_history) < 2:
             return False
 
-        # Betting round is complete only when there's no active bet to call
-        return state.bet_to_call == 0
+        # Get active (non-folded) players
+        active = self._get_active_players(state)
+        if len(active) <= 1:
+            return True
+
+        # Find the last bet/raise/all_in action that set the current bet level
+        last_aggressive = -1
+        for i in range(len(state.action_history) - 1, -1, -1):
+            if state.action_history[i].action_type in (ActionType.BET, ActionType.RAISE, ActionType.ALL_IN):
+                last_aggressive = i
+                break
+
+        # Get actions since the last aggressive action (or all actions if none)
+        round_actions = state.action_history[last_aggressive:] if last_aggressive >= 0 else state.action_history
+
+        # Count distinct active players who have acted (non-folding) in this round
+        acted = set()
+        for action in round_actions:
+            if action.action_type != ActionType.FOLD and action.player in active:
+                acted.add(action.player)
+
+        # All active players must have acted in the current betting round
+        if len(acted) < len(active):
+            return False
+
+        # Check that all active players have matched the current bet level
+        # (no outstanding bet to call — bet_to_call = max(contributions) after a call)
+        active_contributions = [state.contributions[p] for p in active]
+        if max(active_contributions) != min(active_contributions):
+            return False
+
+        return True
     
     def is_terminal(self, state: GameState) -> bool:
         """Check if state is terminal."""
@@ -459,20 +502,22 @@ class TexasHoldEm:
 
         # Find the winning hand(s)
         best_hand_index = -1
-        best_hand_value = None
         winners = []
 
         for i in range(n_players):
-            result = self.evaluator.compare(player_hands[i], player_hands[best_hand_index] if best_hand_index >= 0 else player_hands[i])
             if best_hand_index == -1:
                 best_hand_index = i
-                best_hand_value = player_hands[i]
-            elif result == 1:  # Current player beats best
-                best_hand_index = i
-                best_hand_value = player_hands[i]
                 winners = [i]
-            elif result == 0:  # Tie with best
-                winners.append(i)
+            else:
+                result = self.evaluator.compare(player_hands[i], player_hands[best_hand_index])
+                if result == 1:  # Current player beats best
+                    best_hand_index = i
+                    winners = [i]
+                elif result == 0:  # Tie with best
+                    if best_hand_index not in winners:
+                        winners.append(best_hand_index)
+                    winners.append(i)
+            # result == -1: current loses to best, no action needed
 
         if not winners:
             winners = [best_hand_index]
