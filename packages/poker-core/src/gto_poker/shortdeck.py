@@ -14,6 +14,12 @@ SHORTDECK_RANK_ORDER = {r: i for i, r in enumerate(SHORTDECK_RANKS)}  # 6=0, A=8
 # Shortdeck hand type indices (for comparison, higher wins)
 # Note: These are NOT the same as standard poker hand indices
 # Shortdeck: SF > 4K > Flush > FullHouse > Straight > 3K > 2P > 1P > HC
+# Convenience function for CI/compatibility
+def evaluate_shortdeck(hole_cards, board):
+    """Evaluate a Shortdeck hand — convenience wrapper around ShortdeckHand."""
+    return ShortdeckHand(hole_cards + board)
+
+
 SHORTDECK_HAND_NAMES = {
     9: "Straight Flush",
     8: "Four of a Kind",
@@ -167,7 +173,7 @@ class ShortdeckHand:
         """
         Evaluate a 5-card Shortdeck hand.
         Returns: (hand_type, rank_list, kickers)
-        
+
         Shortdeck hand types:
         - Straight Flush: [9, high_rank]
         - Four of a Kind: [8, quad_rank, kicker]
@@ -179,9 +185,24 @@ class ShortdeckHand:
         - One Pair: [2, pair_rank, kickers]
         - High Card: [1, sorted_ranks]
         """
-        ranks = [c.rank_index for c in cards]
+        # Convert standard Card rank_index (0-12, 2=A) to shortdeck rank_index (0-8, 6=A)
+        # This allows both ShortdeckCard and regular Card objects to work
+        ranks = []
+        for c in cards:
+            ri = c.rank_index
+            if isinstance(c, ShortdeckCard):
+                # ShortdeckCard already returns 0-8 indices
+                ranks.append(ri)
+            elif 4 <= ri <= 11:  # 6-K in standard (rank_index 4-11)
+                ranks.append(ri - 4)  # 6→0, 7→1, ..., K→7
+            elif ri == 12:  # Ace in standard
+                ranks.append(8)  # A→8
+            else:
+                # 2-5 shouldn't appear in valid shortdeck, but handle gracefully
+                ranks.append(ri)
+
         suits = [c.suit for c in cards]
-        
+
         from collections import Counter
         rank_counts = Counter(ranks)
         

@@ -18,9 +18,82 @@ from gto_poker.bomb_pot import (
     BombPotAction,
     BombPotGameModel,
     BombPotEquity,
+    BombPotState,
     Phase,
     ActionType,
 )
+
+
+class TestBombPotActionSpace:
+    """Test BombPotState.get_action_space() for each street/phase."""
+
+    def test_get_action_space_exists(self):
+        """BombPotState should have get_action_space method."""
+        state = BombPotGameState(positions=["p0", "p1"])
+        assert hasattr(state, "get_action_space"), "get_action_space() must exist"
+        # Also test via the BombPotState alias
+        assert BombPotState.get_action_space is BombPotGameState.get_action_space, \
+            "BombPotState alias should share get_action_space"
+
+    def test_straddle_round_no_fold(self):
+        """STRADDLE_ROUND: straddle, call, raise, check — NO fold."""
+        state = BombPotGameState(
+            positions=["p0", "p1", "p2", "p3"],
+            phase=Phase.STRADDLE_ROUND,
+        )
+        actions = state.get_action_space()
+        expected = {ActionType.STRADDLE, ActionType.CALL, ActionType.RAISE, ActionType.CHECK}
+        assert set(actions) == expected, f"Expected {expected}, got {set(actions)}"
+        assert ActionType.FOLD not in actions, "Fold should not be available in straddle round"
+
+    def test_flop_has_fold(self):
+        """FLOP: call, raise, check, fold."""
+        state = BombPotGameState(
+            positions=["p0", "p1", "p2", "p3"],
+            phase=Phase.FLOP,
+        )
+        actions = state.get_action_space()
+        expected = {ActionType.CALL, ActionType.RAISE, ActionType.CHECK, ActionType.FOLD}
+        assert set(actions) == expected, f"Expected {expected}, got {set(actions)}"
+        assert ActionType.STRADDLE not in actions, "Straddle should not be available post-flop"
+
+    def test_turn_has_fold(self):
+        """TURN: call, raise, check, fold."""
+        state = BombPotGameState(
+            positions=["p0", "p1", "p2", "p3"],
+            phase=Phase.TURN,
+        )
+        actions = state.get_action_space()
+        expected = {ActionType.CALL, ActionType.RAISE, ActionType.CHECK, ActionType.FOLD}
+        assert set(actions) == expected
+
+    def test_river_has_fold(self):
+        """RIVER: call, raise, check, fold."""
+        state = BombPotGameState(
+            positions=["p0", "p1", "p2", "p3"],
+            phase=Phase.RIVER,
+        )
+        actions = state.get_action_space()
+        expected = {ActionType.CALL, ActionType.RAISE, ActionType.CHECK, ActionType.FOLD}
+        assert set(actions) == expected
+
+    def test_showdown_empty_actions(self):
+        """SHOWDOWN: no actions available."""
+        state = BombPotGameState(
+            positions=["p0", "p1", "p2", "p3"],
+            phase=Phase.SHOWDOWN,
+        )
+        actions = state.get_action_space()
+        assert actions == [], f"Showdown should have no actions, got {actions}"
+
+    def test_bomb_pot_state_alias_works(self):
+        """BombPotState alias should have the same interface."""
+        state = BombPotState(  # noqa: F841 (using imported alias)
+            positions=["p0", "p1"],
+            phase=Phase.FLOP,
+        )
+        # Just verify the class is the same
+        assert BombPotState is BombPotGameState
 
 
 class TestBombPotGameState:

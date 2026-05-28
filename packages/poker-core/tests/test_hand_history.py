@@ -237,7 +237,7 @@ class TestParsedHandStructure:
         hand = ParsedHand(hand_id='test123')
         
         assert hand.hand_id == 'test123'
-        assert hand.site == 'winamax'
+        assert hand.site == 'unknown'
         assert hand.game_type == "No Limit Hold'em"
         assert hand.limit_type == 'No Limit'
         assert hand.stakes is None

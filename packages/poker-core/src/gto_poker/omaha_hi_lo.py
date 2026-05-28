@@ -171,7 +171,7 @@ class OmahaHiLoEvaluator:
         for card in cards:
             ri = card.rank_index
             # A (12) is OK for low (plays as 1), 9 (rank_index 7) and above are not
-            if ri > 7 and ri != 12:  # 12 is Ace
+            if ri >= 7 and ri != 12:  # 12 is Ace, ri=7 is 9 (not low-eligible)
                 return False
             # Map to low-ace value: A=1, 2=2, 3=3, ..., 8=8
             low_val = 1 if ri == 12 else ri + 2  # ri=0(2)→2, ri=1(3)→3, ..., ri=6(8)→8
@@ -248,7 +248,7 @@ def omaha_hi_lo_rank_key(cards: List[Card]) -> Tuple:
         ri = card.rank_index
         if ri == 12:  # Ace
             low_ranks.append(1)
-        elif ri <= 7:  # 2-8
+        elif ri <= 6:  # 2-8 (ri=6 is 8, ri=7 is 9 which is not low-eligible)
             low_ranks.append(ri + 2)  # 2→2, 3→3, ..., 8→8
         # 9,T,J,Q,K (ri > 7 and != 12) should not be included in valid low
     

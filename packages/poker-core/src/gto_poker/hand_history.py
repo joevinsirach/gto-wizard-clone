@@ -44,7 +44,7 @@ class Player:
     name: str
     seat: int
     stack: float
-    position: str = ""  # "BTN", "SB", "BB", "UTG", etc.
+    position: Optional[str] = None  # "BTN", "SB", "BB", "UTG", etc.
     hole_cards: Optional[List[str]] = None
 
 
@@ -186,9 +186,12 @@ def parse_winamax_hh(text: str) -> ParsedHand:
     i = 0
     while i < len(lines):
         line = lines[i].strip()
+        i += 1  # increment BEFORE continue statements
         
         # Parse header: "Winamax 8-Game - 2026-05-25" or "Winamax Hold'em - 2026-05-25"
         if line.startswith('Winamax'):
+            # Set site
+            hand.site = 'winamax'
             # Extract game type and date
             # Format: "Winamax [GameType] - YYYY-MM-DD"
             parts = line.split(' - ')
@@ -357,10 +360,7 @@ def parse_winamax_hh(text: str) -> ParsedHand:
         
         # Generate hand_id from table name and line content if not found
         if not hand.hand_id and hand.table_name:
-            # Create a deterministic ID from table name and first few lines
             hand.hand_id = f"{hand.table_name}_{hash(text[:100])}"
-        
-        i += 1
     
     # Ensure all streets exist in actions
     for street in ['preflop', 'flop', 'turn', 'river', 'showdown']:

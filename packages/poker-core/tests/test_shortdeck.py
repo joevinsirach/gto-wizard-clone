@@ -269,7 +269,6 @@ class TestShortdeckLowStraights:
 
 class TestShortdeckBest5Selection:
     """Tests for best 5-card selection from 6/7 cards in Shortdeck"""
-
     def test_six_card_hand_selects_best_5(self):
         """Test 6-card Shortdeck hand selects best 5 cards"""
         from gto_poker.deck import Card
@@ -305,7 +304,6 @@ class TestShortdeckBest5Selection:
 
 class TestShortdeckHandEquality:
     """Tests for Shortdeck hand equality and comparison"""
-
     def test_equal_hands_tie(self):
         """Test two identical hands tie"""
         from gto_poker.deck import Card
@@ -332,3 +330,70 @@ class TestShortdeckHandEquality:
         hand = ShortdeckHand(cards)
         s = str(hand)
         assert "Straight Flush" in s
+
+
+class TestShortdeckEdgeCases:
+    """Edge case tests for Shortdeck hand evaluation and comparison.
+
+    Shortdeck ranking: SF > 4K > Flush > FH > Straight > 3K > 2P > 1P > HC
+    """
+
+    def test_shortdeck_wheel_straight(self):
+        """A-6-7-8-9 is the shortdeck 'wheel' (Ace plays low)"""
+        from gto_poker.deck import Card
+        cards = [Card('A', 'h'), Card('6', 's'), Card('7', 'd'), Card('8', 'c'), Card('9', 'h')]
+        hand = ShortdeckHand(cards)
+        assert hand.hand_type == 5, f"Expected straight (5), got {hand.hand_type}"
+        assert hand.name == "Straight"
+
+    def test_flush_beats_fh_from_seven_cards(self):
+        """With 7 cards, the best 5 should be flush over full house.
+        
+        Need 5 cards of the same suit for a flush. Only 4 hearts won't cut it."""
+        from gto_poker.deck import Card
+        # 5 hearts (possible flush) + 3 cards making full house
+        cards = [
+            Card('A', 'h'), Card('K', 'h'), Card('Q', 'h'), Card('J', 'h'), Card('9', 'h'),  # 5 hearts = flush
+            Card('A', 's'), Card('A', 'd'),  # makes AAA-KK... but only 4 hearts used for flush
+        ]
+        # With 7 cards: flush (5 hearts) beats full house (AAA from As,Ad,Ah + KK...)
+        # Best flush: Ah, Kh, Qh, Jh, 9h = A-K-Q-J-9 hearts flush
+        hand = ShortdeckHand(cards)
+        assert hand.hand_type == 7, f"Should select flush (7) over full house, got {hand.hand_type}"
+        assert hand.name == "Flush"
+
+    def test_straight_flush_always_best_from_7(self):
+        """With 7 cards including straight flush, it should be selected"""
+        from gto_poker.deck import Card
+        cards = [
+            Card('T', 'h'), Card('J', 'h'), Card('Q', 'h'), Card('K', 'h'),  # 4 hearts for SF
+            Card('9', 'h'),  # completes 9-T-J-Q-K hearts straight flush
+            Card('A', 's'), Card('A', 'd'),  # aces pair (weaker)
+        ]
+        hand = ShortdeckHand(cards)
+        assert hand.hand_type == 9, f"Should select straight flush (9), got {hand.hand_type}"
+
+    def test_higher_flush_ranked_correctly(self):
+        """Ace-high flush beats King-high flush even with 7 cards.
+        
+        Avoid accidentally creating straight flushes — use non-consecutive cards."""
+        from gto_poker.deck import Card
+        ace_flush = ShortdeckHand([
+            Card('A', 'h'), Card('K', 'h'), Card('Q', 'h'), Card('T', 'h'), Card('8', 'h')
+        ])
+        king_flush = ShortdeckHand([
+            Card('K', 's'), Card('Q', 's'), Card('J', 's'), Card('T', 's'), Card('8', 's')
+        ])
+        assert ace_flush > king_flush
+
+    def test_fh_vs_straight_via_seven_cards(self):
+        """Full house beats straight when both possible from 7 cards"""
+        from gto_poker.deck import Card
+        # 4 cards make a full house, 3 make a straight
+        cards = [
+            Card('A', 's'), Card('A', 'd'), Card('A', 'c'),  # AAA trips
+            Card('K', 's'), Card('K', 'd'),  # KK pair -> AAA-KK full house
+            Card('Q', 'h'), Card('J', 'h'),  # extra broadway cards
+        ]
+        hand = ShortdeckHand(cards)
+        assert hand.hand_type == 6, f"Full house (6) should beat straight (5), got {hand.hand_type}"

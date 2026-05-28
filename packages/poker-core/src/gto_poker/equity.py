@@ -221,8 +221,8 @@ class EquityCalculator:
         Only works when remaining cards are few (e.g., river: 0 cards left, turn: 1 card).
         """
         remaining = 5 - len(board)  # cards to come
-        if remaining > 5:
-            raise ValueError(f"Too many cards remaining: {remaining}")
+        if remaining > 2:
+            raise ValueError(f"Too many cards remaining: {remaining}. Exact enumeration only supports river (0), turn (1), or flop (2) remaining cards.")
         
         # Create deck without hero, villain, board, dead cards
         exclude = (dead_cards or []) + hero_cards + villain_cards + board

@@ -16,6 +16,43 @@ from gto_poker.double_board import (
 )
 
 
+class TestDoubleBoardValidation:
+    """Test input validation for DoubleBoardEvaluator."""
+
+    def test_rejects_overlapping_boards(self):
+        """evaluate() must reject boards that share cards."""
+        eval = DoubleBoardEvaluator()
+        hole = ["Ah", "Kh", "Qh", "Jh"]
+        board1 = ["Td", "9d", "8d"]
+        board2 = ["8d", "7c", "6c"]  # 8d overlaps with board1... wait, no it doesn't
+        # Let me use a clear overlap
+        board1 = ["Td", "9d", "8d"]
+        board2 = ["8d", "7c", "6c"]  # 8d appears in both
+
+        with pytest.raises(ValueError, match="share cards"):
+            eval.evaluate(hole, board1, board2)
+
+    def test_rejects_hole_overlap_with_board(self):
+        """evaluate() must reject hole cards that overlap with boards."""
+        eval = DoubleBoardEvaluator()
+        hole = ["Ah", "Kh", "Qh", "Jh"]
+        board1 = ["Ah", "Td", "9d"]  # Ah appears in both hole and board1
+        board2 = ["7c", "6c", "5c"]
+
+        with pytest.raises(ValueError, match="overlap with board 1"):
+            eval.evaluate(hole, board1, board2)
+
+    def test_rejects_hole_overlap_with_board2(self):
+        """evaluate() must reject hole cards that overlap with board2."""
+        eval = DoubleBoardEvaluator()
+        hole = ["Ah", "Kh", "Qh", "Jh"]
+        board1 = ["Td", "9d", "8d"]
+        board2 = ["Ah", "7c", "6c"]  # Ah appears in both hole and board2
+
+        with pytest.raises(ValueError, match="overlap with board 2"):
+            eval.evaluate(hole, board1, board2)
+
+
 class TestDoubleBoardEvaluator:
     """Test DoubleBoardEvaluator on two independent boards."""
 

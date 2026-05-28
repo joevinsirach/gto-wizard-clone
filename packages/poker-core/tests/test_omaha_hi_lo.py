@@ -119,6 +119,45 @@ class TestOmahaHiLoLowHand:
         # 2-3-4-5-6 should beat A-2-3-4-8 wrong way - need to test proper
         pass  # Placeholder
 
+    def test_rejects_9_in_low_hand(self):
+        """Rank 9 is NOT a qualifying low card (8-or-better means 8 is max)"""
+        eval = OmahaHiLoEvaluator()
+        # 5 cards containing a 9 and four low cards
+        from gto_poker.deck import Card
+        low_with_9 = [Card('A', 'h'), Card('2', 'd'), Card('3', 'c'), Card('4', 's'), Card('9', 'h')]
+        assert eval.can_make_low(low_with_9) is False, "9 should not qualify as low"
+
+        # Same cards but with 8 instead of 9 should qualify
+        low_with_8 = [Card('A', 'h'), Card('2', 'd'), Card('3', 'c'), Card('4', 's'), Card('8', 'h')]
+        assert eval.can_make_low(low_with_8) is True, "8 should qualify as low"
+
+    def test_paired_board_still_allows_low(self):
+        """A paired board (e.g., A-2-3-4-4) can still produce a qualifying low
+        if the player has low cards to fill the missing ranks.
+        
+        The evaluator selects 3 of 5 board cards, so it can avoid the pair."""
+        eval = OmahaHiLoEvaluator()
+        # Board has pair of 4s
+        board = [Card('A', 's'), Card('2', 's'), Card('3', 's'), Card('4', 's'), Card('4', 'h')]
+        # Hole has 5, 6
+        hole = [Card('5', 'h'), Card('6', 'd'), Card('K', 'c'), Card('Q', 's')]
+        result = eval.evaluate(hole, board)
+        # Should have a low: use 5-6 from hole + A-2-3 from board = A-2-3-5-6
+        assert result.has_low is True
+
+    def test_paired_board_no_low_when_no_cards(self):
+        """A paired board with no low fillers in hole produces no low"""
+        eval = OmahaHiLoEvaluator()
+        # Board has pair of 4s, and only A-2-3 below 9
+        board = [Card('A', 's'), Card('2', 's'), Card('3', 's'), Card('4', 's'), Card('4', 'h')]
+        # Hole has 9, T - no low cards
+        hole = [Card('9', 'h'), Card('T', 'd'), Card('K', 'c'), Card('Q', 's')]
+        result = eval.evaluate(hole, board)
+        # Best low would be A-2-3-9-T... 9 is not qualifying
+        # Or A-2-4-9-T... still has 9
+        # So no qualifying low
+        assert result.has_low is False
+
 
 class TestOmahaHiLoSplitPot:
     """Tests for pot splitting in Omaha Hi/Lo"""
@@ -186,36 +225,38 @@ class TestOmahaHiLoCompare:
     def test_best_low_wins_low_half(self):
         """Best low hand wins the low half of pot"""
         eval = OmahaHiLoEvaluator()
-        
-        # Player 1: 2-3-4-5-7 low 
-        p1_hole = [Card('2', 'h'), Card('3', 'd'), Card('4', 'c'), Card('7', 's')]
-        # Player 2: 2-3-4-5-6 low (better, lower)
-        p2_hole = [Card('2', 'h'), Card('3', 'd'), Card('4', 'c'), Card('6', 's')]
-        board = [Card('5', 'h'), Card('8', 'd'), Card('9', 'c'), Card('K', 's'), Card('K', 'd')]
-        
+
+        # Player 1: 2-3-4-5-7 low (use 2-3 from hole + 4-5-7 from board)
+        p1_hole = [Card('2', 'h'), Card('3', 'd'), Card('8', 'c'), Card('K', 's')]
+        # Player 2: 2-3-4-5-6 low (better, lower — use 2-3 from hole + 4-5-6 from board)
+        p2_hole = [Card('2', 'h'), Card('3', 'd'), Card('6', 'c'), Card('K', 's')]
+        # Board has 3 low cards (4,5,7) — note: 8 and K are too high for low
+        board = [Card('4', 'h'), Card('5', 'd'), Card('7', 'c'), Card('8', 's'), Card('K', 'd')]
+
         r1 = eval.evaluate(p1_hole, board)
         r2 = eval.evaluate(p2_hole, board)
-        
+
         # Check that both have valid low
-        assert r1.has_low is True
-        assert r2.has_low is True
+        assert r1.has_low is True, f"P1 should have low: {r1}"
+        assert r2.has_low is True, f"P2 should have low: {r2}"
 
     def test_wheel_beats_other_lows(self):
         """The wheel (A-2-3-4-5) beats all other lows"""
         eval = OmahaHiLoEvaluator()
-        
-        # Player 1: wheel A-2-3-4-5
-        p1_hole = [Card('A', 'h'), Card('2', 'd'), Card('3', 'c'), Card('4', 's')]
-        # Player 2: 2-3-4-5-6
-        p2_hole = [Card('2', 'h'), Card('3', 'd'), Card('4', 'c'), Card('6', 's')]
-        board = [Card('5', 'h'), Card('7', 'd'), Card('9', 'c'), Card('K', 's'), Card('Q', 'd')]
-        
+
+        # Player 1: wheel A-2-3-4-5 (using A-2 from hole + 3-4-5 from board)
+        p1_hole = [Card('A', 'h'), Card('2', 'd'), Card('K', 'c'), Card('Q', 's')]
+        # Player 2: 2-3-4-5-6 (using 2-3 from hole + 4-5-6 from board)
+        p2_hole = [Card('2', 'h'), Card('3', 'd'), Card('6', 'c'), Card('K', 's')]
+        # Board has 3-4-5 (low) + two high cards
+        board = [Card('3', 'h'), Card('4', 'd'), Card('5', 'c'), Card('T', 's'), Card('Q', 'd')]
+
         r1 = eval.evaluate(p1_hole, board)
         r2 = eval.evaluate(p2_hole, board)
-        
+
         # Both should have low
-        assert r1.has_low is True
-        assert r2.has_low is True
+        assert r1.has_low is True, f"P1 should have wheel low: {r1}"
+        assert r2.has_low is True, f"P2 should have low: {r2}"
 
 
 class TestOmahaHiLoRankKey:

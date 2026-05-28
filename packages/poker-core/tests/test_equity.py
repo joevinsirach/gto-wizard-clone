@@ -66,13 +66,14 @@ class TestCalculateEquityExact:
     """Tests for calculate_equity_exact method"""
 
     def test_aa_vs_kk_preflop(self):
-        """Test AA vs KK preflop equity is approximately correct"""
-        calc = EquityCalculator()
+        """Test AA vs KK preflop equity is approximately correct using Monte Carlo"""
+        calc = EquityCalculator(seed=42)
         aa = [Card('A', 's'), Card('A', 'd')]
         kk = [Card('K', 's'), Card('K', 'd')]
         
-        # With 5 cards to come, enumerate all
-        equity = calc.calculate_equity_exact(aa, kk, [])
+        # Use Monte Carlo for preflop (5 cards to come is too many for exact)
+        result = calc.calculate_equity_monte_carlo(aa, kk, [], iterations=10000)
+        equity = result['equity']
         
         # AA vs KK should be around 81%
         assert 0.75 < equity < 0.85
@@ -113,14 +114,14 @@ class TestCalculateEquityExact:
         assert equity == 0.5
 
     def test_too_many_cards_raises(self):
-        """Test too many remaining cards raises"""
+        """Test too many remaining cards raises (preflop with 5 cards to come)"""
         calc = EquityCalculator()
         aa = [Card('A', 's'), Card('A', 'd')]
         kk = [Card('K', 's'), Card('K', 'd')]
-        board = [Card('T', 'h')]  # Only 4 cards total, 4 to come
         
+        # Preflop has 5 remaining cards — too many for exact enumeration
         with pytest.raises(ValueError, match="Too many cards"):
-            calc.calculate_equity_exact(aa, kk, board)
+            calc.calculate_equity_exact(aa, kk, [])
 
 
 class TestCalculateEquityMonteCarlo:

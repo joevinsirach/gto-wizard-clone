@@ -89,6 +89,22 @@ class DoubleBoardEvaluator:
         if len(hole) != 4:
             raise ValueError(f"Need exactly 4 hole cards, got {len(hole)}")
 
+        # Ensure no card overlap between boards
+        h1_set = set(board1)
+        h2_set = set(board2)
+        overlap = h1_set & h2_set
+        if overlap:
+            raise ValueError(f"Board 1 and Board 2 share cards: {overlap}")
+
+        # Ensure hole cards don't overlap with boards
+        hole_set = set(hole)
+        b1_intersection = hole_set & h1_set
+        b2_intersection = hole_set & h2_set
+        if b1_intersection:
+            raise ValueError(f"Hole cards overlap with board 1: {b1_intersection}")
+        if b2_intersection:
+            raise ValueError(f"Hole cards overlap with board 2: {b2_intersection}")
+
         # Build remaining deck excluding known cards
         used = set(hole + board1 + board2)
         remaining = []
