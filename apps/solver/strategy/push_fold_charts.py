@@ -52,7 +52,7 @@ class PushFoldCharts:
         r1_idx = RANK_INDICES[rank1]
         r2_idx = RANK_INDICES[rank2]
         if r1_idx > r2_idx:
-            return (rank2, rank1) if suited else (rank2, rank1)
+            return (rank1, rank2) if suited else (rank2, rank1)
         return (rank1, rank2)
     
     @classmethod

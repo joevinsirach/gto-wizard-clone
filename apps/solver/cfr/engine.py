@@ -156,7 +156,7 @@ class CFREngine:
         # Street 2: deal 1 (river)
         # Street 3: no more
         cards_needed = {
-            0: 3,  # Preflop: sample flop (3 cards)
+            0: 5,  # Preflop: sample ALL community cards (flop 3 + turn 1 + river 1)
             1: 1,  # Flop: sample turn (1 card)
             2: 1,  # Turn: sample river (1 card)
             3: 0   # River: no more
@@ -184,32 +184,6 @@ class CFREngine:
             return new_state  # Already at river or beyond
         
         new_state.street += 1
-        
-        # Deal exactly ONE more community card for this street
-        # Street 1 (flop has 3): advance to turn → deal 1 card (4th)
-        # Street 2 (turn has 4): advance to river → deal 1 card (5th)
-        board_before = len(new_state.board)
-        cards_to_deal = 1 if board_before < 5 else 0
-        
-        if cards_to_deal > 0:
-            dealt = set()
-            for card in new_state.hole_cards:
-                dealt.add(str(card))
-            for card in new_state.board:
-                dealt.add(str(card))
-            
-            all_cards = []
-            for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]:
-                for suit in ["h", "d", "c", "s"]:
-                    card_str = f"{rank}{suit}"
-                    if card_str not in dealt:
-                        all_cards.append(card_str)
-            
-            if len(all_cards) >= cards_to_deal:
-                sampled = random.sample(all_cards, cards_to_deal)
-                deck = Deck()
-                for card_str in sampled:
-                    new_state.board.append(deck.parse(card_str))
         
         # Reset betting state for new street
         new_state.bet_to_call = 0.0

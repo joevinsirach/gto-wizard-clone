@@ -329,7 +329,7 @@ class TexasHoldEm:
             player_stack = state.stacks[player]
             amount_to_call = max(0, state.bet_to_call - state.contributions[player])
 
-            total_cost = min(amount_to_call + player_stack, player_stack)
+            total_cost = player_stack
 
             new_state.contributions[player] += total_cost
             new_state.stacks[player] -= total_cost
@@ -362,7 +362,7 @@ class TexasHoldEm:
 
             # After a bet, others need to call to stay in
             # bet_to_call should be the amount needed to call the bet
-            amount_to_call = bet_size  # When no prior bet exists, bet_size is the amount to call
+            amount_to_call = total_cost  # When no prior bet exists, bet_size is the amount to call
             new_state.bet_to_call = amount_to_call
             new_state.last_bettor = player
 
