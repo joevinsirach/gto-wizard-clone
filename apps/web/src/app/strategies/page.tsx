@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ICMAwareStrategy } from "@/components/strategy/ICMAwareStrategy";
 import { cn } from "@/lib/utils";
-import type { StrategyCell, Street } from "@/components/ui/StrategyHeatmap";
+import type { StrategyCell } from "@/components/ui/StrategyHeatmap";
 import dynamic from "next/dynamic";
 
 // Define StrategyCell locally to avoid TS issues with dynamic import
@@ -15,13 +15,7 @@ interface StrategyCellLocal {
 
 // Dynamic import for heavy StrategyHeatmap component
 const StrategyHeatmap = dynamic(
-  () => import("@/components/ui/StrategyHeatmap").then((mod) => mod.StrategyHeatmap) as React.ComponentType<{
-    strategy: Record<string, StrategyCellLocal>;
-    boardCards?: string;
-    position?: string;
-    street?: Street;
-    actionType?: "push_fold" | "bet_call_check" | "raise_call_fold" | "bet_raise_call_check";
-  }>,
+  () => import("@/components/ui/StrategyHeatmap").then((mod) => mod.StrategyHeatmap) as any,
   {
     loading: () => (
       <div className="border border-gray-800 rounded-lg p-8 bg-gray-900/50 flex items-center justify-center min-h-[12rem]">

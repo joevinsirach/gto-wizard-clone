@@ -12,7 +12,7 @@ interface CommunitySpot {
   id: string;
   board: string;
   board_type: string;
-  position: string;
+  position: Position;
   pot_size: number;
   stack_depth: number;
   title: string;

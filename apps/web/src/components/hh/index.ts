@@ -15,6 +15,7 @@ export {
   type BoardCards,
 } from "./BoardDisplay";
 export { HandTable, type HandRecord, type Column } from "./HandTable";
+export { exportHandsToCSV, generateExportFilename } from "./csvExport";
 export type {
   HandViewerProps,
   HandHistory,
@@ -36,4 +37,4 @@ export type {
 } from "./HandPlayback";
 export { HandPlayback } from "./HandPlayback";
 export type { LeakEntry } from "./LeakChart";
-export { LeakChart } from "./LeakChart";
+export { LeakChart, MOCK_LEAKS } from "./LeakChart";

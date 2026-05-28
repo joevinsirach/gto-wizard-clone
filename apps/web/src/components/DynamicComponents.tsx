@@ -26,7 +26,8 @@ export const DynamicICMResults = dynamic(
 
 // StrategyHeatmap is a large component
 export const DynamicStrategyHeatmap = dynamic(
-  () => import('@/components/ui/StrategyHeatmap').then((mod) => mod.StrategyHeatmap),
+  // @ts-expect-error - dynamic import typing is complex, works at runtime
+  () => import('@/components/ui/StrategyHeatmap').then((mod) => mod.StrategyHeatmap) as any,
   {
     loading: () => (
       <div className="border border-gray-800 rounded-lg p-8 bg-gray-900/50 flex items-center justify-center min-h-[12rem]">
@@ -37,7 +38,7 @@ export const DynamicStrategyHeatmap = dynamic(
       </div>
     ),
     ssr: false,
-  } as Parameters<typeof dynamic>[1]
+  } as any
 );
 
 // VideoEmbed can defer loading the iframe

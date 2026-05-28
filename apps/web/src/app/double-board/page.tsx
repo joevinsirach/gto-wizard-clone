@@ -15,6 +15,8 @@ interface EquityResult {
   equity2: number;
   samples: number;
   scoop_stats: ScoopStats;
+  hand1: string[];
+  hand2: string[];
 }
 
 const CARD_OPTIONS = [
