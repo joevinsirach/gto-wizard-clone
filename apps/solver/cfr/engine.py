@@ -415,10 +415,14 @@ class CFREngine:
         if state.terminal_reason == "fold":
             # Fold: remaining player(s) get the pot
             # If multiple players remain (multi-way fold), they split the pot
-            folder = state.action_history[-1].player if state.action_history else 0
 
-            # Find active players (not the folder)
-            active = [i for i in range(n_players) if i != folder and state.stacks[i] >= 0]
+            # Find all players who have folded across the entire action history
+            folded = {a.player for a in state.action_history
+                      if a.action_type == ActionType.FOLD}
+
+            # Find active players (not folded, have chips or are still in)
+            active = [i for i in range(n_players)
+                      if i not in folded and state.stacks[i] >= 0]
 
             if len(active) == 1:
                 # Single winner

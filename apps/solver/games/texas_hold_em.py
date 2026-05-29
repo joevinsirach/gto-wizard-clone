@@ -373,9 +373,8 @@ class TexasHoldEm:
             new_state.pot += total_cost
 
             # After a bet, others need to call to stay in
-            # bet_to_call should be the amount needed to call the bet
-            amount_to_call = total_cost  # When no prior bet exists, bet_size is the amount to call
-            new_state.bet_to_call = amount_to_call
+            # bet_to_call should be the highest contribution level for others to match
+            new_state.bet_to_call = max(new_state.contributions)
             new_state.last_bettor = player
 
         elif action_str == "check":
@@ -528,11 +527,8 @@ class TexasHoldEm:
         for w in winners:
             payoffs[w] = win_amount
 
-        # Set payoffs as negative for losers (their loss)
-        for i in range(n_players):
-            if i not in winners:
-                payoffs[i] = -state.contributions[i]
-
+        # Losers get 0 — their contribution is already reflected in their reduced stack
+        # (payoffs are initialized to 0.0 above; no additional adjustment needed)
         return payoffs
 
     def resolve(self, state: GameState) -> List[float]:

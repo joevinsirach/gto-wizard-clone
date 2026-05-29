@@ -593,7 +593,7 @@ class TestPushFoldChartsICM:
             position="SB",
             stacks=[10.0, 100.0, 100.0, 100.0],
         )
-        assert len(result) == 91  # 169 combos deduped to 91 unique
+        assert len(result) == 169  # Full 13x13 matrix (all combos distinct)
         # AA should still be push even with ICM
         assert result[("A", "A")]["action"] == "push"
 

@@ -437,7 +437,7 @@ class PushFoldCharts:
         # Hands to check - iterate through 13x13
         for r1_idx, r1 in enumerate(RANKS):
             for r2_idx, r2 in enumerate(RANKS):
-                key = (r1, r2) if r1_idx >= r2_idx else (r2, r1)
+                key = (r1, r2)  # (row, col) = suited above diag, offsuit below, pairs on diag
                 base_action = base_chart.get(key, "fold")
                 
                 # Adjust based on bubble factor
@@ -537,7 +537,7 @@ class PushFoldCharts:
         
         # Final recommendation
         if result["bubble_factor"] > 1.3:
-            result["recommended_action"] = "fold" if stack_bb < 20 else "fold"
+            result["recommended_action"] = "fold"
             result["icm_note"] = "High bubble - play tight"
         elif result["bubble_factor"] > 1.1:
             result["recommended_action"] = base_action
