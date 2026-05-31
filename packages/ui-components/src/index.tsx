@@ -171,9 +171,3 @@ export function StrategyMatrix({ data }: StrategyMatrixProps) {
   )
 }
 
-function getHand(row: number, col: number): string {
-  const rank1 = RANKS[row]
-  const rank2 = RANKS[col]
-  if (row === col) return `${rank1}${rank2}`
-  return `${rank1}${rank2}o`
-}

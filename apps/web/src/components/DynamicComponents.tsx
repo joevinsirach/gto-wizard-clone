@@ -26,7 +26,6 @@ export const DynamicICMResults = dynamic(
 
 // StrategyHeatmap is a large component
 export const DynamicStrategyHeatmap = dynamic(
-  // @ts-expect-error - dynamic import typing is complex, works at runtime
   () => import('@/components/ui/StrategyHeatmap').then((mod) => mod.StrategyHeatmap) as any,
   {
     loading: () => (

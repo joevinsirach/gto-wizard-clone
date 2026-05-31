@@ -189,7 +189,7 @@ function BoardView({ cards, street }: BoardViewProps) {
             <span className="text-xs text-muted-foreground w-10 font-mono uppercase">{labels["flop"]}</span>
             <div className="flex gap-1.5">
               {[0, 1, 2].map((i) => (
-                <CardSlot key={`flop-${i}`} card={cards[i]} hidden={street === "preflop"} />
+                <CardSlot key={`flop-${i}`} card={cards[i]} hidden={false} />
               ))}
             </div>
           </div>
@@ -198,7 +198,7 @@ function BoardView({ cards, street }: BoardViewProps) {
           {street !== "flop" && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground w-10 font-mono uppercase">{labels["turn"]}</span>
-              <CardSlot card={cards[3]} hidden={street === "preflop" || street === "flop"} />
+              <CardSlot card={cards[3]} hidden={false} />
             </div>
           )}
 
@@ -337,21 +337,19 @@ export function HandPlayback({ handId }: HandPlaybackProps) {
     setError(null);
 
     api.getHand(handId).then(
-      (hand: HHHand) => {
-        if (cancelled) return;
+      (hand: HHHand | null) => {
+        if (cancelled || !hand) return;
 
         // Build the full detail from the HHHand response
         // The backend returns flat hand data; reconstruct detailed structure
         const detail: HandDetail = {
           id: hand.hand_id,
           hand_id: hand.hand_id,
-          gameType: hand.game_type ?? "No Limit Hold'em",
-          limit: hand.stakes_small != null && hand.stakes_big != null
-            ? `$${hand.stakes_small}/${hand.stakes_big}`
-            : "—",
-          date: hand.timestamp ?? hand.created_at ?? "",
-          hero: hand.hero_name ?? "",
-          buttonSeat: hand.button_position ?? 0,
+          gameType: hand.gameType ?? "No Limit Hold'em",
+          limit: hand.limit ?? "—",
+          date: hand.date ?? "",
+          hero: hand.players?.find(p => p.isHero)?.name ?? "",
+          buttonSeat: hand.players?.find(p => p.isHero)?.seat ?? 0,
           players: [],  // populated below
           actions: [],
           board: [],
