@@ -23,7 +23,7 @@ export type {
   Player,
   Action,
   ActionType,
-  Card as HHCard,
+  HHCard,
   StreetName,
 } from "./HandViewer";
 export { HandViewer } from "./HandViewer";
@@ -32,7 +32,6 @@ export type {
   HandDetail,
   HHAction,
   HHPlayer,
-  HHCard,
   GTOComparison,
 } from "./HandPlayback";
 export { HandPlayback } from "./HandPlayback";

@@ -364,8 +364,8 @@ export function HandPlayback({ handId }: HandPlaybackProps) {
         return fetch(`/api/v1/hh/hands/${encodeURIComponent(handId)}`, {
           headers: {
             "Content-Type": "application/json",
-            ...(window.__HERMES_SESSION_TOKEN__
-              ? { "X-Hermes-Session-Token": window.__HERMES_SESSION_TOKEN__ }
+            ...(typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_TOKEN
+              ? { "X-API-Token": process.env.NEXT_PUBLIC_API_TOKEN }
               : {}),
           },
         })
@@ -524,10 +524,10 @@ export function HandPlayback({ handId }: HandPlaybackProps) {
 
               {/* Navigation */}
               <div className="flex items-center gap-2">
-                <Button ghost size="sm" onClick={() => setFrameIdx(0)} disabled={frameIdx === 0}>
+                <Button variant="ghost" size="sm" onClick={() => setFrameIdx(0)} disabled={frameIdx === 0}>
                   <SkipBack className="w-4 h-4" />
                 </Button>
-                <Button ghost size="sm" onClick={prevAction} disabled={frameIdx === 0}>
+                <Button variant="ghost" size="sm" onClick={prevAction} disabled={frameIdx === 0}>
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
 
@@ -537,10 +537,10 @@ export function HandPlayback({ handId }: HandPlaybackProps) {
                     : "Start of hand"}
                 </div>
 
-                <Button ghost size="sm" onClick={nextAction} disabled={frameIdx >= totalFrames - 1}>
+                <Button variant="ghost" size="sm" onClick={nextAction} disabled={frameIdx >= totalFrames - 1}>
                   <ChevronRight className="w-4 h-4" />
                 </Button>
-                <Button ghost size="sm" onClick={() => setFrameIdx(totalFrames - 1)} disabled={frameIdx >= totalFrames - 1}>
+                <Button variant="ghost" size="sm" onClick={() => setFrameIdx(totalFrames - 1)} disabled={frameIdx >= totalFrames - 1}>
                   <SkipForward className="w-4 h-4" />
                 </Button>
               </div>

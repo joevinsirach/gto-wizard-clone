@@ -208,6 +208,9 @@ class SocketClient {
 export const socket = SocketClient.getInstance();
 export const quizSocket = SocketClient.getQuizSocket();
 
+/** Type alias for the quiz socket instance, used in useRef<QuizSocket> */
+export type QuizSocket = ReturnType<typeof SocketClient.getQuizSocket>;
+
 // Export convenience methods
 export const connectToQuiz = (quizSessionId: string, userId?: string) => {
   const socket = SocketClient.getQuizSocket();

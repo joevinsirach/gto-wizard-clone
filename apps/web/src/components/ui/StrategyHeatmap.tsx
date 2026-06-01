@@ -411,7 +411,7 @@ function HeatmapCell({
       <span className={cn("truncate", color.text)}>
         {displayValue}
       </span>
-      {isComparisonMode && comparisonData && (
+      {isComparisonMode && comparisonData && data && (
         <span className="absolute inset-0 flex items-center justify-center">
           <span className={cn(
             "w-2 h-2 rounded-full",
@@ -629,7 +629,7 @@ export function StrategyHeatmap({
     e: React.KeyboardEvent,
     currentHand: string
   ) => {
-    const currentIndex = RANKS.indexOf(currentHand[0]);
+    const currentIndex = RANKS.indexOf(currentHand[0] as typeof RANKS[number]);
     const currentRow = RANKS.findIndex(r => 
       RANKS.some((_, colIdx) => getHand(RANKS.indexOf(r), colIdx) === currentHand)
     );

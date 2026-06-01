@@ -15,7 +15,7 @@ export interface ExportColumn {
 function handToCSVRow(hand: HandRecord, columns: ExportColumn[]): string {
   return columns
     .map((col) => {
-      const value = (hand as Record<string, unknown>)[col.key as string];
+      const value = (hand as unknown as Record<string, unknown>)[col.key as string];
       const str = value === null || value === undefined ? "" : String(value);
       // Escape quotes and wrap in quotes if contains comma, newline, or quote
       if (str.includes(",") || str.includes("\n") || str.includes('"')) {

@@ -182,8 +182,8 @@ export function HandTable({
     if (!sortCol || !sortDir) return filtered;
 
     return [...filtered].sort((a, b) => {
-      const aVal = (a as Record<string, unknown>)[sortCol];
-      const bVal = (b as Record<string, unknown>)[sortCol];
+      const aVal = (a as unknown as Record<string, unknown>)[sortCol];
+      const bVal = (b as unknown as Record<string, unknown>)[sortCol];
 
       if (aVal === null || aVal === undefined) return 1;
       if (bVal === null || bVal === undefined) return -1;
@@ -326,7 +326,7 @@ export function HandTable({
                     <td key={col.key as string} className="px-3 py-2">
                       {col.render
                         ? col.render(hand)
-                        : String((hand as Record<string, unknown>)[col.key as string] ?? "")}
+                         : String((hand as unknown as Record<string, unknown>)[col.key as string] ?? "")}
                     </td>
                   ))}
                 </tr>
