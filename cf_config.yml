@@ -1,0 +1,7 @@
+tunnel: 98f50662-4453-4892-b6dd-e0fb44c2e74a
+credentials-file: /home/hermeswebui/.cloudflared/gto-wizard-creds.json
+no-autoupdate: true
+ingress:
+  - hostname: wiz.codeovertcp.com
+    service: http://localhost:8080
+  - service: http_status:404
