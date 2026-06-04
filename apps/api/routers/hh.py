@@ -106,8 +106,7 @@ class HandHistoryResponse(HandHistoryBase):
     created_at: datetime
     tags: Optional[List[str]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class HandHistoryDetailResponse(HandHistoryResponse):
@@ -130,8 +129,7 @@ class HandTagResponse(BaseModel):
     tag: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class UploadResponse(BaseModel):
@@ -144,7 +142,7 @@ class UploadResponse(BaseModel):
 
 class BatchImportRequest(BaseModel):
     """Request for batch import."""
-    hands: List[str] = Field(..., max_items=MAX_BATCH_SIZE)
+    hands: List[str] = Field(..., max_length=MAX_BATCH_SIZE)
 
 
 class BatchImportResponse(BaseModel):

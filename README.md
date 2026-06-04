@@ -63,10 +63,10 @@ docker compose up
 | Phase 2b | PLO4 Support | ✅ Complete |
 | Phase 2c | Omaha Variants + Shortdeck | ✅ Complete |
 | Phase 2d | Double Board + Bomb Pot (novel) | ✅ Complete |
-| Phase 3 | GTO Solver (MCCFR) | 🔄 In progress |
+| Phase 3 | GTO Solver (MCCFR) | ✅ Complete |
 | Phase 4 | Training Mode | ✅ Complete |
 | Phase 5 | Hand History Analysis | ✅ Complete |
-| Phase 6 | ICM + Polish | 🔄 In progress |
+| Phase 6 | ICM + Polish | ✅ Complete |
 
 ## Skills Integration
 
