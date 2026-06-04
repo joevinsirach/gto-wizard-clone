@@ -7,12 +7,17 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
 
 # Database URL from environment
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5432/gto_wizard"
 )
+
+# ORM Declarative Base
+class Base(DeclarativeBase):
+    pass
 
 # Engine singleton
 _engine = None
@@ -45,11 +50,18 @@ def get_session_factory():
     return _session_factory
 
 
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get an async database session as a generator (for FastAPI dependency injection)."""
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        yield session
+
+
 @asynccontextmanager
 async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
     """
     Get an async database session context manager.
-    
+
     Usage:
         async with get_session_context() as session:
             result = await session.execute(...)
@@ -67,7 +79,7 @@ async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
 async def init_db():
     """Initialize database tables."""
     from apps.api.services.models import Base
-    
+
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

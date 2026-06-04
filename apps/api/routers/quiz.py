@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.services.database import async_session_factory
+from apps.api.services.database import get_session_factory as async_session_factory
 from apps.api.services.quiz_models import (
     QuizSpot,
     QuizSubmission,

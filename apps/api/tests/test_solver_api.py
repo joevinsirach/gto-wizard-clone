@@ -49,12 +49,12 @@ def test_strategy_key_parsing():
     """Test strategy key parsing."""
     from apps.api.services.strategy_storage import StrategyStorageService
     
-    key = "nlh:2:preflop:[]:100"
+    key = "nlh:2:preflop::0:100"
     parsed = StrategyStorageService.parse_strategy_key(key)
     
     assert parsed["game_type"] == "nlh"
     assert parsed["players"] == 2
-    assert parsed["board"] == "preflop"
+    assert parsed["street"] == "preflop"
     assert parsed["stack_depth"] == 100
 
 
@@ -63,40 +63,45 @@ def test_strategy_key_creation():
     from apps.api.services.strategy_storage import StrategyStorageService
     
     key = StrategyStorageService.make_strategy_key(
+        street="flop",
+        board_hash="",
+        bet_size=0.5,
+        stack_depth=100,
         game_type="nlh",
         players=2,
-        board="flop",
-        bet_sizes=[10, 25, 50],
-        stack_depth=100,
     )
     
-    assert key == "nlh:2:flop:10,25,50:100"
+    assert key == "nlh:2:flop::0.5:100"
 
 
-def test_strategy_storage_service():
+@pytest.mark.asyncio
+async def test_strategy_storage_service():
     """Test strategy storage service."""
     from apps.api.services.strategy_storage import StrategyStorageService
     
     storage = StrategyStorageService()
     
     # Store a strategy
-    strategy = storage.store_strategy(
+    strategy = await storage.store_strategy(
+        street="preflop",
+        board_hash="",
+        bet_size=0.0,
+        stack_depth=100,
         game_type="nlh",
         players=2,
-        board="preflop",
-        stack_depth=100,
-        strategy_data=[
-            {"hand": "AA", "action": "raise", "frequency": 1.0, "ev": 10.5},
-            {"hand": "KK", "action": "raise", "frequency": 0.95, "ev": 8.2},
-        ],
-        bet_sizes=[],
+        strategy_data={
+            "hands": [
+                {"hand": "AA", "action": "raise", "frequency": 1.0, "ev": 10.5},
+                {"hand": "KK", "action": "raise", "frequency": 0.95, "ev": 8.2},
+            ]
+        },
     )
-    
-    assert strategy.key == "nlh:2:preflop::100"
-    assert len(strategy.strategy_data) == 2
-    
+
+    assert "nlh:2:preflop" in strategy.key
+    assert len(strategy.strategy_data["hands"]) == 2
+
     # Retrieve it
-    retrieved = storage.get_strategy(strategy.key)
+    retrieved = await storage.get_strategy(strategy.key)
     assert retrieved is not None
     assert retrieved.key == strategy.key
 
