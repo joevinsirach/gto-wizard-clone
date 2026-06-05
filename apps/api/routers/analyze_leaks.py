@@ -16,6 +16,7 @@ from apps.api.services.gto_comparison import (
     compare_to_gto,
     summarize_leaks,
 )
+from apps.api.services.gto_comparison import SpotCategory
 from apps.api.services.strategy_storage import get_strategy_storage
 
 logger = logging.getLogger(__name__)
