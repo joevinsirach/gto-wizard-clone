@@ -23,13 +23,13 @@ tracker = ScoopTracker()
 tracker.record(True, False)
 tracker.record(False, True)
 tracker.record(True, True)
-ae = tracker.adjusted_equity()
+ae = tracker.adjusted_equity
 print(f'✓ Double Board equity: {ae:.2f}')
 
 # Verify Bomb Pot
 from gto_poker.bomb_pot import BombPotGameModel, BombPotAction
 model = BombPotGameModel()
-sm = model.create_straddle_map(6, 2)
+sm = model.create_straddle_map([0, 1, 2], {0: 2, 1: 4, 2: 8})
 print(f'✓ Bomb Pot: straddle map has positions={len(sm)}')
 
 # Verify Omaha Hi/Lo

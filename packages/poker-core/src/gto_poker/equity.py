@@ -403,15 +403,15 @@ class EquityCalculator:
                     villain_wins += 1
                     break  # Hero loses, no need to check more
             
-            if villain_wins == 0 and villain_losses < len(villain_combos):
-                # Either hero won vs all or tied
-                if villain_losses == 0:
-                    ties += len(villain_combos)  # Tied vs all
-                else:
+            if villain_wins == 0:
+                # Hero didn't lose to any combo
+                if villain_losses > 0:
+                    # Hero beat at least one combo (including all combos)
                     wins += 1
-            elif villain_wins > 0:
-                # Hero lost against at least one combo
-                pass  # Already counted as loss
+                else:
+                    # Hero tied all combos
+                    ties += 1
+            # If villain_wins > 0, hero lost this iteration (already counted as loss)
             total += 1
         
         # Calculate equity as average win/tie rate per villain combo
