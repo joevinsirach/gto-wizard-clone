@@ -74,13 +74,13 @@ test.describe("PWA Features", () => {
   test("1. Page has valid manifest link", async ({ page }) => {
     await pwaPage.goto();
 
-    // Check for manifest link in head
+    // Check for manifest link in head (head elements are attached but not visible)
     const manifestLink = page.locator('link[rel="manifest"]');
-    await expect(manifestLink).toBeVisible();
+    await expect(manifestLink).toBeAttached();
 
     // Verify href points to manifest.json
     const href = await manifestLink.getAttribute("href");
-    expect(href).toContain("manifest.json");
+    expect(href).toBe("/manifest.json");
   });
 
   test("2. Manifest contains required PWA fields", async ({ page }) => {
@@ -140,9 +140,9 @@ test.describe("PWA Features", () => {
       expect(content).toBeTruthy();
     }
 
-    // Also check viewport meta
+    // Also check viewport meta (head elements are attached but not visible)
     const viewport = page.locator('meta[name="viewport"]');
-    await expect(viewport).toBeVisible();
+    await expect(viewport).toBeAttached();
   });
 
   test("5. Display mode is set to standalone", async ({ page }) => {
@@ -278,26 +278,26 @@ test.describe("PWA Navigation Flows", () => {
   test("can navigate between pages while maintaining app shell", async ({ page }) => {
     // Start at home
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Navigate to ICM
     await page.goto("/icm");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator("h1:has-text('ICM Calculator')")).toBeVisible();
 
     // Navigate to Spots
     await page.goto("/spots");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator("h1:has-text('Community Spots')")).toBeVisible();
 
     // Navigate to Courses
     await page.goto("/courses");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator("h1:has-text('Pre-Built Courses')")).toBeVisible();
 
     // Navigate back to Equity
     await page.goto("/equity");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator("h1:has-text('Equity Calculator')")).toBeVisible();
   });
 });
@@ -305,16 +305,16 @@ test.describe("PWA Navigation Flows", () => {
 test.describe("PWA Installability", () => {
   test("page meets basic installability criteria", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Check HTTPS (required for PWA install)
     const url = page.url();
     // In dev, localhost is allowed; in prod, would need HTTPS
     expect(url.startsWith("http")).toBe(true);
 
-    // Check for manifest
+    // Check for manifest (head elements are attached but not visible)
     const manifest = page.locator('link[rel="manifest"]');
-    await expect(manifest).toBeVisible();
+    await expect(manifest).toBeAttached();
 
     // Check for service worker registration capability
     const swSupport = await page.evaluate(() => 'serviceWorker' in navigator);

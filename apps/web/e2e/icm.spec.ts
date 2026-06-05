@@ -27,17 +27,17 @@ export class ICMPage {
 
   // Prize Pool Panel
   getPrizePoolSection() {
-    return this.page.locator("h2:has-text('Prize Pool')").locator("..");
+    return this.page.locator("div.border").filter({ has: this.page.locator("h3:has-text('Prize Pool Structure')") });
   }
 
   // Chip Stack Panel
   getChipStackSection() {
-    return this.page.locator("h2:has-text('Chip Stacks')").locator("..");
+    return this.page.locator("div.border").filter({ has: this.page.locator("h3:has-text('Chip Stacks')") });
   }
 
-  // ICM Results
+  // ICM Results - dynamically imported, heading is "ICM Analysis"
   getICMResultsSection() {
-    return this.page.locator("h2:has-text('ICM Results')").first().locator("..");
+    return this.page.locator("div.border").filter({ has: this.page.locator("h3:has-text('ICM Analysis')") }).first();
   }
 
   // Tournament buy-in input
@@ -127,12 +127,12 @@ test.describe("ICM Calculator Page", () => {
     const stackSection = icmPage.getChipStackSection();
     await expect(stackSection).toBeVisible();
 
-    // Verify at least 4 default players exist
-    const playerNames = stackSection.locator("text=/Big Stack|Mid Stack|Short Stack|Micro Stack/");
-    const playerCount = await playerNames.count();
+    // Player names are rendered as input elements (editable text fields)
+    const playerNameInputs = stackSection.locator("input[type='text']");
+    const playerCount = await playerNameInputs.count();
     expect(playerCount).toBeGreaterThanOrEqual(4);
 
-    // Verify chip amounts are displayed
+    // Verify chip amounts are displayed (as text next to progress bars)
     const chipTexts = stackSection.locator("text=/\\d{3,}/");
     const chipCount = await chipTexts.count();
     expect(chipCount).toBeGreaterThan(0);
@@ -217,12 +217,12 @@ test.describe("ICM Calculator Page", () => {
   test("8. Quick settings section exists", async ({ page }) => {
     await icmPage.goto();
 
-    // Look for tournament buy-in label
-    const buyInLabel = page.locator("text=/Tournament Buy-in/i");
+    // Look for buy-in label (actual text is "Buy-in:")
+    const buyInLabel = page.locator("label:has-text('Buy-in')").first();
     await expect(buyInLabel).toBeVisible();
 
     // Look for total chips label
-    const totalChipsLabel = page.locator("text=/Total Chips/i");
+    const totalChipsLabel = page.locator("label:has-text('Total Chips')").first();
     await expect(totalChipsLabel).toBeVisible();
   });
 });
