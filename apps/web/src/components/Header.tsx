@@ -2,20 +2,23 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const navLinks = [
   { href: '/equity', label: 'Equity' },
-  { href: '/plo', label: 'PLO4' },
+  { href: '/icm', label: 'ICM' },
   { href: '/train', label: 'Train' },
-  { href: '/analyze', label: 'Analyze' },
-  { href: '/strategies', label: 'Strategies' },
   { href: '/courses', label: 'Courses' },
   { href: '/spots', label: 'Spots' },
+  { href: '/analyze', label: 'Analyze' },
+  { href: '/strategies', label: 'Strategies' },
 ]
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
 
   return (
     <header className="border-b border-gray-800 bg-gray-900/95 backdrop-blur sticky top-0 z-50">
@@ -30,15 +33,23 @@ export default function Header() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link 
-                key={link.href} 
-                href={link.href} 
-                className="text-sm lg:text-base hover:text-poker-gold transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href || pathname.startsWith(link.href + '/')
+              return (
+                <Link 
+                  key={link.href} 
+                  href={link.href} 
+                  className={cn(
+                    'text-sm lg:text-base transition-colors',
+                    isActive
+                      ? 'text-poker-gold font-medium'
+                      : 'text-gray-300 hover:text-poker-gold'
+                  )}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
           </div>
 
           {/* Mobile Menu Button */}
@@ -57,16 +68,24 @@ export default function Header() {
         {isOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-gray-800 pt-4">
             <div className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-base hover:text-poker-gold transition-colors py-2"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(link.href + '/')
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      'text-base transition-colors py-2',
+                      isActive
+                        ? 'text-poker-gold font-medium'
+                        : 'text-gray-300 hover:text-poker-gold'
+                    )}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
             </div>
           </div>
         )}

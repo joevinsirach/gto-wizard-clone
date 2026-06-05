@@ -1,4 +1,3 @@
-import type { NextConfig } from 'next'
 import withPWAInit from '@ducanh2912/next-pwa'
 
 const withPWA = withPWAInit({
@@ -18,6 +17,35 @@ const nextConfig = {
   },
   typescript: {
     ignoreBuildErrors: true,
+  },
+  // Proxy /api, /icm, /plo4, /double-board, /bomb-pot, /ws to backend
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/api/:path*`,
+      },
+      {
+        source: '/icm/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/icm/:path*`,
+      },
+      {
+        source: '/plo4/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/plo4/:path*`,
+      },
+      {
+        source: '/double-board/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/double-board/:path*`,
+      },
+      {
+        source: '/bomb-pot/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/bomb-pot/:path*`,
+      },
+      {
+        source: '/ws/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/ws/:path*`,
+      },
+    ]
   },
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export interface EquityBarEntry {
   hand: string;
@@ -15,78 +15,89 @@ export const MOCK_EQUITY_BAR_DATA: EquityBarEntry[] = [
 ];
 
 interface EquityBarProps {
-  heroEquity: number;
-  villainEquity: number;
-  heroLabel?: string;
-  villainLabel?: string;
-  showLabels?: boolean;
+  /** Equity percentage (0-100) */
+  value: number;
+  /** Label shown to the right of the bar (optional) */
+  label?: string;
+  /** If true, a label is shown to the left */
+  showValue?: boolean;
+  /** Compact mode: smaller height, no border-radius, minimal gap */
+  compact?: boolean;
   className?: string;
 }
 
+/**
+ * Map equity (0-100) to an HSL color.
+ *   0%   → hsl(0,   70%, 50%)  – red
+ *   50%  → hsl(60,  70%, 55%)  – yellow
+ *   100% → hsl(120, 70%, 50%)  – green
+ */
+function equityToHsl(equity: number): string {
+  const clamped = Math.max(0, Math.min(100, equity));
+  const hue = (clamped / 100) * 120;
+  return `hsl(${hue}, 70%, 50%)`;
+}
+
+/**
+ * EquityBar – A compact inline horizontal bar whose width represents equity.
+ *
+ * Use cases:
+ * - Inline in tables or hand-history rows.
+ * - Mini equity visualization next to hand names.
+ */
 export function EquityBar({
-  heroEquity,
-  villainEquity,
-  heroLabel = "Hero",
-  villainLabel = "Villain",
-  showLabels = true,
+  value,
+  label,
+  showValue = false,
+  compact = false,
   className,
 }: EquityBarProps) {
+  const clamped = Math.max(0, Math.min(100, value));
+
   return (
-    <div className={clsx("flex flex-col gap-2", className)}>
-      {showLabels && (
-        <div className="flex justify-between text-sm">
-          <span className="text-green-500 font-medium">{heroLabel}</span>
-          <span className="text-red-500 font-medium">{villainLabel}</span>
-        </div>
+    <div className={cn("flex items-center gap-1.5", className)}>
+      {/* Bar track */}
+      <div
+        className={cn(
+          "relative overflow-hidden bg-gray-800",
+          compact ? "h-3 w-16 rounded-sm" : "h-4 w-24 rounded-md"
+        )}
+      >
+        <div
+          className="absolute inset-y-0 left-0 transition-all duration-300 ease-out"
+          style={{
+            width: `${clamped}%`,
+            backgroundColor: equityToHsl(clamped),
+          }}
+        />
+      </div>
+
+      {/* Value label */}
+      {showValue && (
+        <span className="text-xs font-medium text-muted-foreground tabular-nums w-10 text-right">
+          {clamped.toFixed(0)}%
+        </span>
       )}
-      <div className="relative h-6 w-full rounded-full bg-gray-800 overflow-hidden">
-        {/* Hero bar (left) */}
-        <div
-          className="absolute top-0 left-0 h-full bg-green-500 rounded-l-full transition-all duration-300"
-          style={{ width: `${heroEquity}%` }}
-        />
-        {/* Villain bar (right) */}
-        <div
-          className="absolute top-0 right-0 h-full bg-red-500 rounded-r-full transition-all duration-300"
-          style={{ width: `${villainEquity}%` }}
-        />
-        {/* Center divider */}
-        <div className="absolute top-0 left-1/2 h-full w-px bg-gray-900 z-10" />
-      </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{heroEquity.toFixed(1)}%</span>
-        <span>{villainEquity.toFixed(1)}%</span>
-      </div>
+
+      {/* Custom label */}
+      {label && (
+        <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+          {label}
+        </span>
+      )}
     </div>
   );
 }
 
-interface EquityBarComparisonProps {
-  entries?: EquityBarEntry[];
-  heroLabel?: string;
-  villainLabel?: string;
-  className?: string;
-}
-
-export function EquityBarComparison({
-  entries = MOCK_EQUITY_BAR_DATA,
-  heroLabel = "Hero",
-  villainLabel = "Villain",
+/** Bar-only variant: just the colored bar, no label, ultra-compact. */
+export function MiniEquityBar({
+  value,
   className,
-}: EquityBarComparisonProps) {
-  return (
-    <div className={clsx("flex flex-col gap-4", className)}>
-      {entries.map((entry) => (
-        <div key={entry.hand} className="flex flex-col gap-1">
-          <div className="text-sm font-medium text-foreground">{entry.hand}</div>
-          <EquityBar
-            heroEquity={entry.heroEquity}
-            villainEquity={entry.villainEquity}
-            heroLabel={heroLabel}
-            villainLabel={villainLabel}
-          />
-        </div>
-      ))}
-    </div>
-  );
+}: {
+  value: number;
+  className?: string;
+}) {
+  return <EquityBar value={value} compact className={className} />;
 }
+
+export default EquityBar;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { cn, RANKS, getHand } from "@/lib/utils";
+import { gtoTheme } from "@/styles/gto-tokens";
 
 interface RangeSelectorProps {
   value: Set<string>;
@@ -10,10 +11,40 @@ interface RangeSelectorProps {
   selectable?: boolean;
 }
 
+type HandType = "pocket" | "suited" | "offsuit";
+
+/**
+ * Determine hand type from the getHand format:
+ * - row === col => pocket pair (e.g. "AA", "KK")
+ * - col > row   => suited (e.g. "AKs")
+ * - col < row   => offsuit (e.g. "AKo")
+ */
+function getHandType(hand: string): HandType {
+  if (hand.includes("s")) return "suited";
+  if (hand.includes("o")) return "offsuit";
+  return "pocket";
+}
+
+function getHandTypeColor(hand: string): string {
+  const t = getHandType(hand);
+  return gtoTheme.handType[t];
+}
+
 export function RangeSelector({ value, onChange, className, selectable = true }: RangeSelectorProps) {
-  const [hoveredCell, setHoveredCell] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<string | null>(null);
   const isDragging = useRef(false);
+  const selectMode = useRef<"add" | "remove">("add");
+
+  // Track all cells for range-filling during drag
+  const cellRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const setCellRef = useCallback((hand: string, el: HTMLDivElement | null) => {
+    if (el) {
+      cellRefs.current.set(hand, el);
+    } else {
+      cellRefs.current.delete(hand);
+    }
+  }, []);
 
   const toggleHand = useCallback(
     (hand: string, isShiftClick: boolean) => {
@@ -51,6 +82,59 @@ export function RangeSelector({ value, onChange, className, selectable = true }:
     [value, onChange, lastSelected]
   );
 
+  /** Drag handler: when mouse enters a cell while dragging, add/remove it */
+  const handleCellEnter = useCallback(
+    (hand: string) => {
+      if (!selectable || !isDragging.current) return;
+
+      const newValue = new Set(value);
+      if (selectMode.current === "add") {
+        newValue.add(hand);
+      } else {
+        newValue.delete(hand);
+      }
+      setLastSelected(hand);
+      onChange(newValue);
+    },
+    [selectable, value, onChange]
+  );
+
+  const handleMouseDown = useCallback(
+    (hand: string, e: React.MouseEvent) => {
+      if (!selectable) return;
+      e.preventDefault();
+
+      // Determine mode based on current state of clicked cell
+      if (value.has(hand)) {
+        selectMode.current = "remove";
+      } else {
+        selectMode.current = "add";
+      }
+
+      isDragging.current = true;
+      toggleHand(hand, e.shiftKey);
+    },
+    [selectable, value, toggleHand]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
+
+  const getCellColor = (hand: string) => {
+    if (!selectable) return "bg-gray-800 cursor-default";
+
+    const isSelected = value.has(hand);
+
+    if (isSelected) {
+      const color = getHandTypeColor(hand);
+      // Use the hand type color at ~60% saturation for selected state
+      return `${color}77`; // 47% alpha in hex
+    }
+
+    return "bg-gray-700";
+  };
+
   const getHandIndex = (hand: string): { row: number; col: number } | null => {
     const ranks = hand.match(/[AKQJT2-9]/g);
     if (!ranks || ranks.length < 2) return null;
@@ -64,25 +148,6 @@ export function RangeSelector({ value, onChange, className, selectable = true }:
     return { row, col };
   };
 
-  const getCellColor = (hand: string, isHovered: boolean) => {
-    if (!selectable) return "bg-gray-800 cursor-default";
-
-    const isSelected = value.has(hand);
-
-    if (isSelected) {
-      if (hand.includes("s")) {
-        return "bg-blue-600 hover:bg-blue-500";
-      }
-      return "bg-green-600 hover:bg-green-500";
-    }
-
-    if (isHovered) {
-      return "bg-gray-600 hover:bg-gray-500";
-    }
-
-    return "bg-gray-700 hover:bg-gray-600";
-  };
-
   const getHandDisplayName = (hand: string): string => {
     if (hand.includes("s")) {
       return hand.slice(0, 2);
@@ -93,16 +158,26 @@ export function RangeSelector({ value, onChange, className, selectable = true }:
     return hand;
   };
 
+  // Memoize labels for each cell position — show for diagonal, first col, and last col
+  const showLabel = useCallback((rowIdx: number, colIdx: number): boolean => {
+    return rowIdx === colIdx || colIdx === 0 || colIdx === RANKS.length - 1;
+  }, []);
+
   return (
-    <div className={cn("relative", className)}>
+    <div
+      className={cn("relative", className)}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
       <div className="inline-grid gap-0.5 bg-gray-800 p-2 rounded-lg select-none">
+        {/* Grid CSS — 14 columns: 1 row-header + 13 ranks */}
         {/* Top-left corner */}
-        <div className="w-8 h-8" />
+        <div className="w-11 h-11" />
         {/* Column headers */}
         {RANKS.map((rank, idx) => (
           <div
             key={`col-${rank}-${idx}`}
-            className="w-8 h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground"
+            className="w-11 h-11 flex items-center justify-center text-xs font-semibold text-gray-400"
           >
             {rank}
           </div>
@@ -112,41 +187,40 @@ export function RangeSelector({ value, onChange, className, selectable = true }:
         {RANKS.map((rank, rowIdx) => (
           <div key={`row-${rank}-${rowIdx}`} className="contents">
             {/* Row header */}
-            <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+            <div className="w-11 h-11 flex items-center justify-center text-xs font-semibold text-gray-400">
               {rank}
             </div>
             {/* Hand cells */}
             {RANKS.map((_, colIdx) => {
               const hand = getHand(rowIdx, colIdx);
-              const isHovered = hoveredCell === hand;
               const isSelected = value.has(hand);
-              const showLabel = rowIdx === colIdx || colIdx === 0 || colIdx === RANKS.length - 1;
+              const type = getHandType(hand);
+              const typeColor = getHandTypeColor(hand);
 
               return (
                 <div
                   key={hand}
+                  ref={(el) => setCellRef(hand, el)}
                   className={cn(
-                    "w-8 h-8 rounded text-xs font-medium cursor-pointer transition-all flex items-center justify-center",
-                    getCellColor(hand, isHovered)
+                    "w-11 h-11 rounded text-xs font-medium cursor-pointer transition-colors flex items-center justify-center select-none",
+                    isSelected
+                      ? "text-white font-bold"
+                      : "text-gray-300 hover:brightness-125",
+                    isSelected
+                      ? ""
+                      : "hover:bg-gray-600"
                   )}
-                  onMouseEnter={() => selectable && setHoveredCell(hand)}
-                  onMouseLeave={() => selectable && setHoveredCell(null)}
-                  onMouseDown={(e) => {
-                    if (!selectable) return;
-                    isDragging.current = true;
-                    toggleHand(hand, e.shiftKey);
+                  style={{
+                    backgroundColor: isSelected ? typeColor : undefined,
+                    minWidth: "44px",
+                    minHeight: "44px",
                   }}
-                  onMouseUp={() => {
-                    isDragging.current = false;
-                  }}
-                  title={hand}
+                  onMouseEnter={() => handleCellEnter(hand)}
+                  onMouseDown={(e) => handleMouseDown(hand, e)}
+                  title={`${hand} (${type})`}
                 >
-                  <span
-                    className={cn(
-                      isSelected ? "text-white font-semibold" : "text-gray-300"
-                    )}
-                  >
-                    {showLabel ? getHandDisplayName(hand) : ""}
+                  <span>
+                    {showLabel(rowIdx, colIdx) ? getHandDisplayName(hand) : ""}
                   </span>
                 </div>
               );
@@ -155,19 +229,32 @@ export function RangeSelector({ value, onChange, className, selectable = true }:
         ))}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-3 text-xs">
+      {/* Legend — hand type colors */}
+      <div className="flex items-center gap-4 mt-3 text-xs flex-wrap">
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 rounded bg-green-600" />
-          <span className="text-muted-foreground">Pocket Pairs / Offsuit</span>
+          <div
+            className="w-4 h-4 rounded"
+            style={{ backgroundColor: gtoTheme.handType.pocket }}
+          />
+          <span className="text-gray-400">Pocket Pairs</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 rounded bg-blue-600" />
-          <span className="text-muted-foreground">Suited</span>
+          <div
+            className="w-4 h-4 rounded"
+            style={{ backgroundColor: gtoTheme.handType.suited }}
+          />
+          <span className="text-gray-400">Suited</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div
+            className="w-4 h-4 rounded"
+            style={{ backgroundColor: gtoTheme.handType.offsuit }}
+          />
+          <span className="text-gray-400">Offsuit</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 rounded bg-gray-700" />
-          <span className="text-muted-foreground">Unselected</span>
+          <span className="text-gray-400">Unselected</span>
         </div>
       </div>
     </div>

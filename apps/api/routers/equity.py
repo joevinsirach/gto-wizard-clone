@@ -28,14 +28,22 @@ CACHE_TTL_SECONDS = 3600  # 1 hour
 DEFAULT_ITERATIONS = 100000
 MAX_ITERATIONS = 1000000
 
-# All 169 preflop hands in standard order for heatmap
+# All 169 preflop hands in standard grid order for heatmap
+# Grid layout: rows = first card rank, cols = second card rank
+#   - Diagonal (row==col): pocket pairs, e.g. "AA", "KK"
+#   - Above diagonal (row<col): suited, e.g. "AKs"
+#   - Below diagonal (row>col): offsuit, e.g. "AKo"
+RANK_ORDER = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"]
 PREFLOP_HANDS_169 = []
-for r1_idx, r1 in enumerate(["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"]):
-    for r2_idx, r2 in enumerate(["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"]):
-        if r1_idx <= r2_idx:  # Upper triangle including diagonal (pairs and suited/offsuit combos)
-            suited = "_s" if r1_idx == r2_idx else ("s" if r1_idx > r2_idx else "")
-            hand = f"{r1}{r2}{suited}"
-            PREFLOP_HANDS_169.append(hand)
+for r1 in RANK_ORDER:
+    for r2 in RANK_ORDER:
+        if RANK_ORDER.index(r1) < RANK_ORDER.index(r2):
+            hand = f"{r1}{r2}s"   # Suited
+        elif RANK_ORDER.index(r1) > RANK_ORDER.index(r2):
+            hand = f"{r1}{r2}o"   # Offsuit
+        else:
+            hand = f"{r1}{r2}"    # Pocket pair
+        PREFLOP_HANDS_169.append(hand)
 
 
 def get_redis(request: Request):

@@ -1,22 +1,13 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { cn } from "@/lib/utils";
 
 export interface EquityEntry {
   hand: string;
-  heroEquity: number;
-  heroWin: number;
-  heroTie: number;
-  villainEquity: number;
+  heroEquity: number;    // 0-100
+  heroWin: number;       // win %
+  heroTie: number;       // tie %
+  villainEquity: number; // 0-100
   villainWin: number;
   villainTie: number;
 }
@@ -34,59 +25,96 @@ export const MOCK_EQUITY_DATA: EquityEntry[] = [
 
 interface EquityChartProps {
   data?: EquityEntry[];
+  className?: string;
+  heroLabel?: string;
+  villainLabel?: string;
 }
 
-export function EquityChart({ data = MOCK_EQUITY_DATA }: EquityChartProps) {
+export function EquityChart({
+  data = MOCK_EQUITY_DATA,
+  className,
+  heroLabel = "Hero",
+  villainLabel = "Villain",
+}: EquityChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className={cn("flex items-center justify-center h-48 text-muted-foreground text-sm", className)}>
+        No equity data available
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-80">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={{ top: 4, right: 4, bottom: 4, left: 0 }}
-          barCategoryGap="20%"
-        >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-          <XAxis
-            dataKey="hand"
-            tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-            tickLine={false}
-            axisLine={false}
-            domain={[0, 100]}
-            label={{ value: "%", angle: -90, position: "insideLeft", fontSize: 10, fill: "var(--color-muted-foreground)" }}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--color-popover)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "6px",
-              fontSize: 12,
-              color: "var(--color-popover-foreground)",
-            }}
-            labelStyle={{ color: "var(--color-foreground)" }}
-          />
-          <Legend
-            wrapperStyle={{ fontSize: 12, paddingTop: "8px" }}
-            formatter={(value) => {
-              const labels: Record<string, string> = {
-                heroWin: "Hero Win%",
-                heroTie: "Hero Tie%",
-                villainWin: "Villain Win%",
-                villainTie: "Villain Tie%",
-              };
-              return labels[value] || value;
-            }}
-          />
-          <Bar dataKey="heroWin" stackId="hero" fill="#22c55e" fillOpacity={0.9} radius={[0, 0, 0, 0]} />
-          <Bar dataKey="heroTie" stackId="hero" fill="#22c55e" fillOpacity={0.4} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="villainWin" stackId="villain" fill="#ef4444" fillOpacity={0.9} radius={[0, 0, 0, 0]} />
-          <Bar dataKey="villainTie" stackId="villain" fill="#ef4444" fillOpacity={0.4} radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className={cn("space-y-6", className)}>
+      {data.map((entry) => {
+        const { hand, heroEquity, heroWin, heroTie, villainEquity, villainWin, villainTie } = entry;
+        // Residual tie: whatever doesn't belong to hero or villain
+        const tiePct = Math.max(0, 100 - heroEquity - villainEquity);
+
+        return (
+          <div key={hand} className="space-y-2">
+            {/* Hand label + EV */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-foreground">{hand}</span>
+              <span className="text-xs text-muted-foreground">
+                EV: {(heroEquity / 100).toFixed(3)}
+              </span>
+            </div>
+
+            {/* Horizontal bar: hero | tie | villain */}
+            <div className="relative h-10 w-full rounded-full overflow-hidden bg-gray-800">
+              {heroEquity > 0 && (
+                <div
+                  className="absolute inset-y-0 left-0 flex items-center justify-start pl-3"
+                  style={{ width: `${heroEquity}%`, backgroundColor: "#22c55e" }}
+                >
+                  <span className="text-xs font-bold text-white drop-shadow-sm">
+                    {heroEquity.toFixed(1)}%
+                  </span>
+                </div>
+              )}
+              {tiePct > 0 && (
+                <div
+                  className="absolute inset-y-0 flex items-center justify-center"
+                  style={{
+                    width: `${tiePct}%`,
+                    backgroundColor: "#6b7280",
+                    left: `${heroEquity}%`,
+                  }}
+                >
+                  <span className="text-[10px] font-bold text-white drop-shadow-sm">
+                    {tiePct.toFixed(1)}%
+                  </span>
+                </div>
+              )}
+              {villainEquity > 0 && (
+                <div
+                  className="absolute inset-y-0 right-0 flex items-center justify-end pr-3"
+                  style={{ width: `${villainEquity}%`, backgroundColor: "#ef4444" }}
+                >
+                  <span className="text-xs font-bold text-white drop-shadow-sm">
+                    {villainEquity.toFixed(1)}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Win / Tie counts below */}
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex gap-3">
+                <span className="text-green-400 font-medium">Win: {heroWin.toFixed(1)}%</span>
+                <span className="text-gray-400">Tie: {heroTie.toFixed(1)}%</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-gray-400">Tie: {villainTie.toFixed(1)}%</span>
+                <span className="text-red-400 font-medium">Win: {villainWin.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
+
+export default EquityChart;

@@ -168,7 +168,7 @@ export default function EquityPage() {
         body: JSON.stringify({
           villain: villainStr,
           board: boardStr || undefined,
-          iterations,
+          iterations: Math.min(iterations, 10000),  // Cap heatmap to 10k (evaluates all 169 hands)
         }),
       });
 
