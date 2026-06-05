@@ -15,11 +15,11 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 # 1. Start API backend
-echo "Starting API on :8000..."
+echo "Starting API on :8002..."
 cd "$SCRIPT_DIR"
 PYTHONPATH="$SCRIPT_DIR/apps/api:$SCRIPT_DIR" \
     /app/venv/bin/uvicorn apps.api.main:app \
-    --host 0.0.0.0 --port 8000 \
+    --host 0.0.0.0 --port 8002 \
     --log-level info &
 API_PID=$!
 echo $API_PID >> "$PID_FILE"
