@@ -6,10 +6,8 @@ cards to make the best 5-card poker hand.
 """
 from typing import List, Tuple, Optional
 from itertools import combinations
-import sys
 
-# Add phevaluator to path
-sys.path.insert(0, "/tmp/PokerHandEvaluator/python")
+# phevaluator: HenryRLee/PokerHandEvaluator (pure Python implementation)
 from phevaluator.evaluator import evaluate_cards
 
 from .deck import Card, RANKS, SUITS

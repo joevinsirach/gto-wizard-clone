@@ -363,58 +363,49 @@ class EquityCalculator:
     ) -> float:
         """
         Calculate equity of hand vs a range of opponent hands.
-        Properly enumerates all villain combos and compares against each.
+
+        For each iteration: randomly selects one combo from villain's range,
+        removes both hero and villain cards from deck, then samples board cards
+        and compares. This avoids impossible runouts (villain cards appearing
+        on the board).
         """
         import random
         random.seed(self.seed)
-        
+
         board = board or []
         needed = 5 - len(board)
-        
+
         # Get all villain combos from range
         villain_combos = self._get_villain_combos(villain_range)
         if not villain_combos:
             return 0.0
-        
-        # Monte Carlo vs range
+
+        n_combos = len(villain_combos)
         wins = 0
         ties = 0
         total = 0
-        
-        exclude_set = set(hero_cards + board)
-        remaining_cards = [c for c in Deck()._cards if c not in exclude_set]
-        
+
         for _ in range(iterations):
+            # Pick one random villain combo
+            v_cards = random.choice(villain_combos)
+
+            # Exclude hero + this villain combo + known board from deck
+            exclude_set = set(hero_cards + board + list(v_cards))
+            remaining_cards = [c for c in Deck()._cards if c not in exclude_set]
+
             sampled = random.sample(remaining_cards, needed)
             full_board = board + sampled
+
             hero_hand = Hand(hero_cards + full_board)
-            
-            # Evaluate against all villain combos
-            villain_wins = 0
-            villain_losses = 0
-            
-            for v_cards in villain_combos:
-                villain_hand = Hand(list(v_cards) + full_board)
-                result = hero_hand.compare_to(villain_hand)
-                
-                if result > 0:
-                    villain_losses += 1
-                elif result < 0:
-                    villain_wins += 1
-                    break  # Hero loses, no need to check more
-            
-            if villain_wins == 0:
-                # Hero didn't lose to any combo
-                if villain_losses > 0:
-                    # Hero beat at least one combo (including all combos)
-                    wins += 1
-                else:
-                    # Hero tied all combos
-                    ties += 1
-            # If villain_wins > 0, hero lost this iteration (already counted as loss)
+            villain_hand = Hand(list(v_cards) + full_board)
+            result = hero_hand.compare_to(villain_hand)
+
+            if result > 0:
+                wins += 1
+            elif result == 0:
+                ties += 1
             total += 1
-        
-        # Calculate equity as average win/tie rate per villain combo
+
         return (wins + ties * 0.5) / total if total > 0 else 0.0
     
     def equity_vs_range_multiway(

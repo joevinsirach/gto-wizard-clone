@@ -3,10 +3,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
-import sys
-sys.path.insert(0, "/tmp/PokerHandEvaluator/python")
-sys.path.insert(0, "packages/poker-core/src")
-
 from gto_poker.plo4 import PLO4Evaluator, PLO4Equity
 from gto_poker.plo4_range import PLO4RangeParser
 
