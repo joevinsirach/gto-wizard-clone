@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { gtoTheme } from "@/styles/gto-tokens";
 import { StrategyCard } from "@/components/ui/StrategyCard";
 import { StrategyHeatmap } from "@/components/ui/StrategyHeatmap";
 

@@ -3,17 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Upload, HelpCircle, Settings, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const navLinks = [
-  { href: '/equity', label: 'Equity' },
-  { href: '/icm', label: 'ICM' },
-  { href: '/train', label: 'Train' },
-  { href: '/courses', label: 'Courses' },
-  { href: '/spots', label: 'Spots' },
-  { href: '/analyze', label: 'Analyze' },
-  { href: '/strategies', label: 'Strategies' },
+const navTabs = [
+  { href: '/study', label: 'STUDY' },
+  { href: '/practice', label: 'PRACTICE' },
+  { href: '/analyze', label: 'ANALYZE' },
 ]
 
 export default function Header() {
@@ -21,35 +17,79 @@ export default function Header() {
   const pathname = usePathname()
 
   return (
-    <header className="border-b border-gray-800 bg-gray-900/95 backdrop-blur sticky top-0 z-50">
-      <nav className="container mx-auto px-4 py-3 sm:py-4">
-        <div className="flex items-center justify-between">
-          <Link 
-            href="/" 
-            className="text-lg sm:text-xl font-bold text-poker-gold hover:opacity-80 transition-opacity"
+    <header className="sticky top-0 z-50" style={{ backgroundColor: '#1a1a2e' }}>
+      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-14 items-center justify-between">
+          {/* Left: Logo */}
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-lg font-bold text-white hover:opacity-80 transition-opacity shrink-0"
           >
-            GTO Wizard
+            <span className="text-xl">🧙</span>
+            <span>GTO Wizard</span>
           </Link>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + '/')
+
+          {/* Middle: Nav Tabs (Desktop) */}
+          <div className="hidden md:flex items-center h-full gap-1">
+            {navTabs.map((tab) => {
+              const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
               return (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
+                <Link
+                  key={tab.href}
+                  href={tab.href}
                   className={cn(
-                    'text-sm lg:text-base transition-colors',
+                    'relative flex items-center h-full px-4 text-sm font-medium transition-colors',
                     isActive
-                      ? 'text-poker-gold font-medium'
-                      : 'text-gray-300 hover:text-poker-gold'
+                      ? 'text-white'
+                      : 'text-gray-400 hover:text-gray-200'
                   )}
                 >
-                  {link.label}
+                  {tab.label}
+                  {isActive && (
+                    <span
+                      className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
+                      style={{ backgroundColor: '#22c55e' }}
+                    />
+                  )}
                 </Link>
               )
             })}
+          </div>
+
+          {/* Right: Actions (Desktop) */}
+          <div className="hidden md:flex items-center gap-2">
+            {/* Upload Button */}
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-300 transition-colors hover:text-white"
+              style={{ backgroundColor: '#2d2d44' }}
+            >
+              <Upload size={16} />
+              <span>UPLOAD</span>
+            </button>
+
+            {/* Icon buttons */}
+            <button
+              type="button"
+              className="p-2 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+              aria-label="Help"
+            >
+              <HelpCircle size={18} />
+            </button>
+            <button
+              type="button"
+              className="p-2 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+              aria-label="Settings"
+            >
+              <Settings size={18} />
+            </button>
+            <button
+              type="button"
+              className="p-2 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+              aria-label="Profile"
+            >
+              <User size={18} />
+            </button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -66,26 +106,47 @@ export default function Header() {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-gray-800 pt-4">
-            <div className="flex flex-col gap-4">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href || pathname.startsWith(link.href + '/')
+          <div className="md:hidden border-t border-gray-700/50 pb-4 pt-4">
+            <div className="flex flex-col gap-2">
+              {navTabs.map((tab) => {
+                const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
                 return (
                   <Link
-                    key={link.href}
-                    href={link.href}
+                    key={tab.href}
+                    href={tab.href}
                     className={cn(
-                      'text-base transition-colors py-2',
+                      'flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-colors',
                       isActive
-                        ? 'text-poker-gold font-medium'
-                        : 'text-gray-300 hover:text-poker-gold'
+                        ? 'text-white'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                     )}
                     onClick={() => setIsOpen(false)}
+                    style={isActive ? { backgroundColor: '#22c55e20', borderLeft: '3px solid #22c55e' } : {}}
                   >
-                    {link.label}
+                    {tab.label}
                   </Link>
                 )
               })}
+              {/* Mobile action buttons */}
+              <div className="mt-3 flex items-center gap-2 px-4">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-300 transition-colors hover:text-white"
+                  style={{ backgroundColor: '#2d2d44' }}
+                >
+                  <Upload size={16} />
+                  <span>UPLOAD</span>
+                </button>
+                <button type="button" className="p-2 text-gray-400 hover:text-white" aria-label="Help">
+                  <HelpCircle size={18} />
+                </button>
+                <button type="button" className="p-2 text-gray-400 hover:text-white" aria-label="Settings">
+                  <Settings size={18} />
+                </button>
+                <button type="button" className="p-2 text-gray-400 hover:text-white" aria-label="Profile">
+                  <User size={18} />
+                </button>
+              </div>
             </div>
           </div>
         )}

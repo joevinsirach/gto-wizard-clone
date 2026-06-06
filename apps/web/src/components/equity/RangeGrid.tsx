@@ -1,152 +1,263 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { cn, RANKS } from "@/lib/utils";
+import { useMemo, useState, useCallback } from "react";
+import { cn, RANKS, getHand } from "@/lib/utils";
+import { gtoTheme, getStrengthColor, getBetColor } from "@/styles/gto-tokens";
 
-export type HandType = "pocket" | "suited" | "offsuit";
+// ============================================================================
+// Types
+// ============================================================================
+
+export type CellMode = "strength" | "action";
 
 export interface CellData {
   hand: string;
-  row: number;
-  col: number;
-  type: HandType;
+  /** Equity value 0-100 (for strength mode) */
+  equity?: number;
+  /** Bet size in big blinds (for action mode) */
+  betSize?: number;
+  /** Action label */
+  action?: string;
+  /** Frequency of this action (0-1) */
+  frequency?: number;
 }
 
 export interface RangeGridProps {
-  selectedHands: Set<string>;
-  onChange: (hands: Set<string>) => void;
-  className?: string;
+  /** Grid data keyed by hand string */
+  data: Record<string, CellData>;
+  /** Coloring mode */
+  mode: CellMode;
+  /** Title shown above the grid */
+  title: string;
+  /** Optional subtitle/position label */
+  subtitle?: string;
+  /** Whether cells are selectable */
   selectable?: boolean;
+  /** Selected hands set */
+  selected?: Set<string>;
+  /** Called when a cell is clicked */
+  onCellClick?: (hand: string, data: CellData) => void;
+  /** Callback for selection changes */
+  onSelectionChange?: (selected: Set<string>) => void;
+  className?: string;
 }
 
-export function getHandType(row: number, col: number): HandType {
-  if (row === col) return "pocket";
-  return col > row ? "suited" : "offsuit";
+export function getHandDisplayName(hand: string): string {
+  if (hand.includes("s") || hand.includes("o")) {
+    return hand.slice(0, 2);
+  }
+  return hand;
 }
 
-export function getHand(row: number, col: number): string {
-  const rank1 = RANKS[row];
-  const rank2 = RANKS[col];
-  if (row === col) return `${rank1}${rank2}`;
-  if (col > row) return `${rank1}${rank2}s`;
-  return `${rank1}${rank2}o`;
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function StrengthCell({ hand, equity }: { hand: string; equity: number | undefined }) {
+  const bgColor = equity !== undefined ? getStrengthColor(equity) : gtoTheme.cell.unselected;
+  const opacity = equity !== undefined ? Math.max(0.25, Math.min(0.85, equity / 100 + 0.15)) : 0.5;
+  const displayVal = equity !== undefined ? `${equity.toFixed(0)}%` : "";
+
+  return (
+    <>
+      <span className="text-[10px] font-semibold text-white drop-shadow-sm">
+        {getHandDisplayName(hand)}
+      </span>
+      <span className="text-[8px] text-white/70 absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap">
+        {displayVal}
+      </span>
+    </>
+  );
 }
+
+function ActionCell({ data }: { data: CellData }) {
+  const bgColor = getBetColor(data.betSize ?? 0);
+  const opacity = Math.max(0.2, Math.min(0.85, (data.frequency ?? 0.5) + 0.2));
+  const label = data.action ?? "";
+
+  // Shorten bet size labels
+  const shortLabel = label
+    .replace("bet ", "")
+    .replace("check", "X")
+    .replace("fold", "F");
+
+  return (
+    <>
+      <span className="text-[10px] font-semibold text-white drop-shadow-sm">
+        {getHandDisplayName(data.hand)}
+      </span>
+      <span className="text-[8px] text-white/80 absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap">
+        {shortLabel}
+      </span>
+    </>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 export function RangeGrid({
-  selectedHands,
-  onChange,
+  data,
+  mode,
+  title,
+  subtitle,
+  selectable = false,
+  selected,
+  onCellClick,
+  onSelectionChange,
   className,
-  selectable = true,
 }: RangeGridProps) {
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
 
-  const handleCellClick = useCallback(
-    (hand: string) => {
-      if (!selectable) return;
-      const newSelected = new Set(selectedHands);
-      if (newSelected.has(hand)) {
-        newSelected.delete(hand);
-      } else {
-        newSelected.add(hand);
+  const gridRows = useMemo(() => {
+    return RANKS.map((rowRank, row) => {
+      const cells = RANKS.map((colRank, col) => {
+        const hand = getHand(row, col);
+        return { hand, cellData: data[hand] };
+      });
+      return { rank: rowRank, cells };
+    });
+  }, [data]);
+
+  const handleClick = useCallback(
+    (hand: string, cellData: CellData | undefined) => {
+      if (selectable && onSelectionChange) {
+        const newSet = new Set(selected ?? []);
+        if (newSet.has(hand)) {
+          newSet.delete(hand);
+        } else {
+          newSet.add(hand);
+        }
+        onSelectionChange(newSet);
       }
-      onChange(newSelected);
+      if (cellData && onCellClick) {
+        onCellClick(hand, cellData);
+      }
     },
-    [selectedHands, onChange, selectable]
+    [selectable, selected, onSelectionChange, onCellClick]
   );
 
-  const getCellBgColor = (hand: string, type: HandType, isHovered: boolean) => {
-    if (!selectable) return "bg-gray-800 cursor-default";
-    const isSelected = selectedHands.has(hand);
-
-    if (isSelected) {
-      if (type === "pocket") return "bg-green-600 hover:bg-green-500";
-      if (type === "suited") return "bg-blue-600 hover:bg-blue-500";
-      return "bg-yellow-600 hover:bg-yellow-500";
-    }
-
-    if (isHovered) return "bg-gray-600 hover:bg-gray-500";
-    return "bg-gray-700 hover:bg-gray-600";
-  };
-
-  const displayRank = (rank: string) => rank;
+  const isSelected = (hand: string) => selected?.has(hand) ?? false;
 
   return (
-    <div className={cn("inline-block", className)}>
-      <div className="inline-grid gap-0.5 bg-gray-900 p-2 rounded-lg select-none">
-        {/* Top-left corner spacer */}
-        <div className="w-9 h-9" />
-
-        {/* Column headers (T, J, Q, K, A for opponent's hand) */}
-        {RANKS.map((rank, idx) => (
-          <div
-            key={`col-header-${rank}-${idx}`}
-            className="w-9 h-9 flex items-center justify-center text-xs font-bold text-amber-400"
-          >
-            {displayRank(rank)}
-          </div>
-        ))}
-
-        {/* Grid rows */}
-        {RANKS.map((rowRank, rowIdx) => (
-          <div key={`row-${rowRank}-${rowIdx}`} className="contents">
-            {/* Row header (2-9, T, J, Q, K, A for our hand) */}
-            <div className="w-9 h-9 flex items-center justify-center text-xs font-bold text-amber-400">
-              {displayRank(rowRank)}
-            </div>
-
-            {/* Cells for this row */}
-            {RANKS.map((colRank, colIdx) => {
-              const hand = getHand(rowIdx, colIdx);
-              const type = getHandType(rowIdx, colIdx);
-              const isHovered = hoveredCell === hand;
-              const showLabel = rowIdx === colIdx || colIdx === 0 || colIdx === RANKS.length - 1;
-
-              return (
-                <div
-                  key={hand}
-                  className={cn(
-                    "w-9 h-9 rounded cursor-pointer transition-all flex items-center justify-center",
-                    getCellBgColor(hand, type, isHovered)
-                  )}
-                  onMouseEnter={() => selectable && setHoveredCell(hand)}
-                  onMouseLeave={() => setHoveredCell(null)}
-                  onClick={() => handleCellClick(hand)}
-                  title={hand}
-                >
-                  {showLabel && (
-                    <span
-                      className={cn(
-                        "text-xs font-semibold",
-                        selectedHands.has(hand) ? "text-white" : "text-gray-300"
-                      )}
-                    >
-                      {hand.length > 2 ? hand.slice(0, 2) : hand}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+    <div
+      className={cn(
+        "rounded-lg border border-gray-800 bg-gray-900/60 p-4",
+        className
+      )}
+    >
+      {/* Title */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wide">
+            {title}
+          </h3>
+          {subtitle && (
+            <p className="text-xs text-gray-400">{subtitle}</p>
+          )}
+        </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-3 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-4 h-4 rounded bg-green-600" />
-          <span className="text-gray-400">Pocket Pairs</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-4 h-4 rounded bg-blue-600" />
-          <span className="text-gray-400">Suited</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-4 h-4 rounded bg-yellow-600" />
-          <span className="text-gray-400">Offsuit</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-4 h-4 rounded bg-gray-700" />
-          <span className="text-gray-400">Unselected</span>
+      {/* Grid */}
+      <div className="overflow-x-auto">
+        <div className="inline-block select-none">
+          {/* Column headers */}
+          <div className="flex items-center mb-px">
+            <div className="w-[22px] shrink-0" />
+            {RANKS.map((rank) => (
+              <div
+                key={rank}
+                className="text-[10px] font-semibold text-gray-500 text-center"
+                style={{ width: 30, minWidth: 30 }}
+              >
+                {rank}
+              </div>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {gridRows.map(({ rank, cells }) => (
+            <div key={rank} className="flex items-center mb-px">
+              <div className="w-[22px] shrink-0 text-[10px] font-semibold text-gray-500 text-center">
+                {rank}
+              </div>
+              {cells.map(({ hand, cellData }) => {
+                const equity = cellData?.equity ?? 0;
+                const betSize = cellData?.betSize ?? 0;
+                const freq = cellData?.frequency ?? 0;
+
+                // Determine background color and opacity
+                let bgColor: string;
+                let opacity: number;
+                let showLabel = true;
+
+                if (mode === "strength") {
+                  bgColor = getStrengthColor(equity);
+                  opacity = Math.max(0.2, Math.min(0.85, equity / 100 + 0.15));
+                } else {
+                  bgColor = getBetColor(betSize);
+                  opacity = Math.max(0.2, Math.min(0.85, freq + 0.2));
+                }
+
+                if (!cellData) {
+                  bgColor = gtoTheme.cell.unselected;
+                  opacity = 0.3;
+                  showLabel = false;
+                }
+
+                const hovered = hoveredCell === hand;
+                const selectedState = isSelected(hand);
+
+                return (
+                  <div
+                    key={hand}
+                    className={cn(
+                      "relative flex items-center justify-center cursor-pointer transition-all",
+                      hovered && "ring-1 ring-white/30 z-10",
+                      selectedState && "ring-2 ring-gold"
+                    )}
+                    style={{
+                      width: 30,
+                      height: 30,
+                      minWidth: 30,
+                      minHeight: 30,
+                      backgroundColor: `${bgColor}${Math.round(opacity * 255)
+                        .toString(16)
+                        .padStart(2, "0")}`,
+                      borderRadius: 2,
+                    }}
+                    onMouseEnter={() => setHoveredCell(hand)}
+                    onMouseLeave={() => setHoveredCell(null)}
+                    onClick={() => handleClick(hand, cellData)}
+                    title={
+                      cellData
+                        ? `${hand} | Eq: ${cellData.equity?.toFixed(1) ?? "?"}% | Action: ${cellData.action ?? "?"} ${cellData.betSize ? `(${cellData.betSize}bb)` : ""}`
+                        : hand
+                    }
+                  >
+                    {showLabel && (
+                      <>
+                        <span className="text-[10px] font-semibold text-white drop-shadow-sm">
+                          {getHandDisplayName(hand)}
+                        </span>
+                        {mode === "strength" && cellData?.equity !== undefined && (
+                          <span className="text-[7px] text-white/70 absolute -bottom-[2px] left-1/2 -translate-x-1/2 whitespace-nowrap leading-none">
+                            {equity.toFixed(0)}%
+                          </span>
+                        )}
+                        {mode === "action" && cellData?.action && (
+                          <span className="text-[7px] text-white/70 absolute -bottom-[2px] left-1/2 -translate-x-1/2 whitespace-nowrap leading-none">
+                            {cellData.action.replace("bet ", "").replace("check", "X").replace("fold", "F")}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
     </div>

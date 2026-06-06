@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { gtoTheme } from "@/styles/gto-tokens";
 
 type Difficulty = "beginner" | "intermediate" | "advanced";
 type Category = "preflop" | "postflop" | "icm" | "exploits";

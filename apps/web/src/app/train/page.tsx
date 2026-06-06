@@ -13,6 +13,7 @@ import {
   Area,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { gtoTheme } from "@/styles/gto-tokens";
 import { QuizCard, Action, QuizQuestion, QuizOption } from "@/components/train/QuizCard";
 import { SpotCategoryFilter } from "@/components/train/SpotCategoryFilter";
 import { DifficultySelector } from "@/components/train/DifficultySelector";
@@ -363,7 +364,7 @@ export default function TrainPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-poker-gold">Training Mode</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Master GTO poker decisions
           </p>
         </div>
@@ -406,19 +407,19 @@ export default function TrainPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-poker-gold">{stats.totalQuestions}</div>
-                <div className="text-sm text-muted-foreground">Questions</div>
+                <div className="text-sm text-gray-400">Questions</div>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-green-400">{accuracy.toFixed(0)}%</div>
-                <div className="text-sm text-muted-foreground">Accuracy</div>
+                <div className="text-sm text-gray-400">Accuracy</div>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-yellow-400">{stats.bestStreak}</div>
-                <div className="text-sm text-muted-foreground">Best Streak</div>
+                <div className="text-sm text-gray-400">Best Streak</div>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-red-400">-{stats.totalEvLoss.toFixed(2)}</div>
-                <div className="text-sm text-muted-foreground">Total EV Loss</div>
+                <div className="text-sm text-gray-400">Total EV Loss</div>
               </div>
             </div>
 
@@ -434,7 +435,7 @@ export default function TrainPage() {
                     >
                       <div className="font-semibold text-red-400">{spot.category}</div>
                       <div className="text-2xl font-bold mt-1">{spot.accuracy.toFixed(0)}%</div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-gray-400 mt-1">
                         {spot.total} questions answered
                       </div>
                     </div>
@@ -511,7 +512,7 @@ export default function TrainPage() {
                           style={{ width: `${catAccuracy}%` }}
                         />
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-gray-400 mt-1">
                         {data.correct} / {data.total} correct
                       </div>
                     </div>
@@ -537,7 +538,7 @@ export default function TrainPage() {
               {/* Progress */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-gray-400">
                     Question {currentQuestionIndex + 1} of {filteredQuestions.length}
                   </span>
                   <span className="text-sm font-semibold text-poker-gold">
@@ -571,7 +572,7 @@ export default function TrainPage() {
               <h3 className="font-semibold mb-4 text-poker-gold">Session Stats</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Accuracy</span>
+                  <span className="text-gray-400">Accuracy</span>
                   <span className={cn(
                     "font-bold",
                     accuracy >= 70 ? "text-green-400" : accuracy >= 50 ? "text-yellow-400" : "text-red-400"
@@ -580,15 +581,15 @@ export default function TrainPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Streak</span>
+                  <span className="text-gray-400">Streak</span>
                   <span className="font-bold text-yellow-400">{stats.currentStreak}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Best Streak</span>
+                  <span className="text-gray-400">Best Streak</span>
                   <span className="font-bold text-poker-gold">{stats.bestStreak}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">EV Loss</span>
+                  <span className="text-gray-400">EV Loss</span>
                   <span className="font-bold text-red-400">-{stats.totalEvLoss.toFixed(3)}</span>
                 </div>
               </div>
@@ -659,7 +660,7 @@ export default function TrainPage() {
             {/* Difficulty Breakdown */}
             {Object.keys(stats.difficultyAccuracy).length > 0 && (
               <div className="bg-gray-900/80 backdrop-blur rounded-xl p-4 border border-gray-800">
-                <h3 className="font-semibold mb-4 text.poker-gold">Difficulty</h3>
+                <h3 className="font-semibold mb-4 text-poker-gold">Difficulty</h3>
                 <div className="space-y-2">
                   {(["easy", "medium", "hard"] as const).map((diff) => {
                     const data = stats.difficultyAccuracy[diff];
@@ -691,7 +692,7 @@ export default function TrainPage() {
         <div className="bg-gray-900/80 backdrop-blur rounded-xl p-8 border border-gray-800 text-center">
           <div className="text-6xl mb-4">🎯</div>
           <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-gray-400 mb-6">
             Try adjusting your filters to see more questions.
           </p>
           <button

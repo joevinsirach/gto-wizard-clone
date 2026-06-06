@@ -7,6 +7,7 @@ import { BubblePressure } from "@/components/icm/BubblePressure";
 import { SMPZone } from "@/components/icm/SMPZone";
 import { useICMCalculator } from "@/hooks/useICMCalculator";
 import dynamic from "next/dynamic";
+import { gtoTheme } from "@/styles/gto-tokens";
 
 // Dynamic import for heavy ICMResults component (uses Recharts)
 const ICMResults = dynamic(
@@ -16,7 +17,7 @@ const ICMResults = dynamic(
       <div className="border border-gray-800 rounded-lg p-6 sm:p-8 bg-gray-900/50 flex items-center justify-center min-h-[16rem]">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
-          <div className="text-muted-foreground text-sm">Loading chart...</div>
+          <div className="text-gray-400 text-sm">Loading chart...</div>
         </div>
       </div>
     ),
@@ -92,7 +93,7 @@ export default function ICMPage() {
       {/* Quick Settings - Mobile responsive */}
       <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-3 sm:items-center">
         <div className="flex items-center gap-2">
-          <label className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Buy-in:</label>
+          <label className="text-xs sm:text-sm text-gray-400 whitespace-nowrap">Buy-in:</label>
           <input
             type="number"
             value={totalPrize}
@@ -101,7 +102,7 @@ export default function ICMPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Total Chips:</label>
+          <label className="text-xs sm:text-sm text-gray-400 whitespace-nowrap">Total Chips:</label>
           <input
             type="number"
             value={totalChips}
@@ -182,7 +183,7 @@ export default function ICMPage() {
             <div className="border border-gray-800 rounded-lg p-6 sm:p-8 bg-gray-900/50 flex items-center justify-center min-h-[16rem]">
               <div className="text-center">
                 <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
-                <div className="text-muted-foreground text-sm">Calculating ICM...</div>
+                <div className="text-gray-400 text-sm">Calculating ICM...</div>
               </div>
             </div>
           ) : (
@@ -202,7 +203,7 @@ export default function ICMPage() {
           <div className="border border-gray-800 rounded-lg p-6 bg-gray-900/50 flex items-center justify-center min-h-[16rem]">
             <div className="text-center">
               <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
-              <div className="text-muted-foreground text-sm">Calculating ICM...</div>
+              <div className="text-gray-400 text-sm">Calculating ICM...</div>
             </div>
           </div>
         ) : (
@@ -221,7 +222,7 @@ export default function ICMPage() {
           <div className="border border-gray-800 rounded-lg p-6 sm:p-8 bg-gray-900/50 flex items-center justify-center min-h-[16rem]">
             <div className="text-center">
               <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
-              <div className="text-muted-foreground text-sm">Calculating ICM...</div>
+              <div className="text-gray-400 text-sm">Calculating ICM...</div>
             </div>
           </div>
         ) : (

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { gtoTheme } from '@/styles/gto-tokens'
 
 const features = [
   {

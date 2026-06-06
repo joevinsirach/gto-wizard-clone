@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ICMAwareStrategy } from "@/components/strategy/ICMAwareStrategy";
 import { cn } from "@/lib/utils";
+import { gtoTheme } from "@/styles/gto-tokens";
 import type { StrategyCell } from "@/components/ui/StrategyHeatmap";
 import dynamic from "next/dynamic";
 
@@ -21,7 +22,7 @@ const StrategyHeatmap = dynamic(
       <div className="border border-gray-800 rounded-lg p-8 bg-gray-900/50 flex items-center justify-center min-h-[12rem]">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-poker-gold border-t-transparent rounded-full mx-auto mb-4" />
-          <div className="text-muted-foreground text-sm">Loading heatmap...</div>
+          <div className="text-gray-400 text-sm">Loading heatmap...</div>
         </div>
       </div>
     ),
@@ -321,7 +322,7 @@ function BoardCardInput({ cards, onChange, disabled }: BoardCardInputProps) {
     <div className="flex flex-wrap gap-2 items-end">
       {cards.map((card, index) => (
         <div key={index} className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">{labels[index]}</label>
+          <label className="text-xs text-gray-400">{labels[index]}</label>
           <input
             type="text"
             value={card}
@@ -375,7 +376,7 @@ function ProgressDisplay({ progress, connected }: ProgressDisplayProps) {
           />
           <span className="text-sm font-medium capitalize">{progress.status}</span>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-gray-400">
           {connected ? "Connected" : "Disconnected"}
         </span>
       </div>
@@ -396,15 +397,15 @@ function ProgressDisplay({ progress, connected }: ProgressDisplayProps) {
       <div className="flex items-center justify-between text-xs">
         <div className="space-x-4">
           <span>
-            <span className="text-muted-foreground">Progress: </span>
+            <span className="text-gray-400">Progress: </span>
             <span className="font-mono">{(progress.progress * 100).toFixed(1)}%</span>
           </span>
           <span>
-            <span className="text-muted-foreground">Iterations: </span>
+            <span className="text-gray-400">Iterations: </span>
             <span className="font-mono">{progress.iterations.toLocaleString()}</span>
           </span>
         </div>
-        <span className="text-muted-foreground">
+        <span className="text-gray-400">
           ETA: {formatTime(progress.estimatedTimeRemaining)}
         </span>
       </div>
@@ -627,10 +628,10 @@ export default function StrategiesPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-poker-gold terminal-text">
-          <span className="text-green-400">$</span> GTO Strategy Browser
+        <h1 className="text-2xl sm:text-3xl font-bold text-poker-gold">
+          GTO Strategy Browser
         </h1>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-gray-400">
           {strategies.length} spots found
         </span>
       </div>
@@ -646,7 +647,7 @@ export default function StrategiesPage() {
       <div className="flex flex-wrap gap-6 mb-8 p-6 bg-gray-900/50 rounded-lg border border-gray-800">
         {/* Board Card Input */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-muted-foreground">Board Cards</label>
+          <label className="text-sm font-medium text-gray-400">Board Cards</label>
           <BoardCardInput
             cards={boardCards}
             onChange={setBoardCards}
@@ -655,7 +656,7 @@ export default function StrategiesPage() {
           {boardInput && (
             <button
               onClick={handleClearBoard}
-              className="text-xs text-muted-foreground hover:text-white transition-colors"
+              className="text-xs text-gray-400 hover:text-white transition-colors"
             >
               Clear board
             </button>
@@ -664,7 +665,7 @@ export default function StrategiesPage() {
 
         {/* Position Selector */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-muted-foreground">Position</label>
+          <label className="text-sm font-medium text-gray-400">Position</label>
           <select
             value={position}
             onChange={(e) => setPosition(e.target.value as Position)}
@@ -681,7 +682,7 @@ export default function StrategiesPage() {
 
         {/* Stack Depth Selector */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-muted-foreground">Stack Depth</label>
+          <label className="text-sm font-medium text-gray-400">Stack Depth</label>
           <select
             value={stackDepth}
             onChange={(e) => setStackDepth(Number(e.target.value))}
@@ -698,7 +699,7 @@ export default function StrategiesPage() {
 
         {/* Bet Size Selector */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-muted-foreground">Bet Size</label>
+          <label className="text-sm font-medium text-gray-400">Bet Size</label>
           <select
             value={betSize}
             onChange={(e) => setBetSize(Number(e.target.value))}
@@ -759,7 +760,7 @@ export default function StrategiesPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <span className="ml-3 text-muted-foreground">Loading strategy...</span>
+          <span className="ml-3 text-gray-400">Loading strategy...</span>
         </div>
       )}
 
@@ -784,19 +785,19 @@ export default function StrategiesPage() {
             <h3 className="text-lg font-semibold mb-4">Spot Details</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <span className="text-xs text-muted-foreground">Board</span>
+                <span className="text-xs text-gray-400">Board</span>
                 <div className="font-mono text-sm">{boardString || "None"}</div>
               </div>
               <div>
-                <span className="text-xs text-muted-foreground">Position</span>
+                <span className="text-xs text-gray-400">Position</span>
                 <div className="font-medium">{position}</div>
               </div>
               <div>
-                <span className="text-xs text-muted-foreground">Stack Depth</span>
+                <span className="text-xs text-gray-400">Stack Depth</span>
                 <div className="font-medium">{stackDepth}bb</div>
               </div>
               <div>
-                <span className="text-xs text-muted-foreground">Bet Size</span>
+                <span className="text-xs text-gray-400">Bet Size</span>
                 <div className="font-medium">{betSize === 1.0 ? "Pot" : `${betSize * 100}%`}</div>
               </div>
             </div>
@@ -819,7 +820,7 @@ export default function StrategiesPage() {
 
       {/* Empty State */}
       {!loading && Object.keys(currentStrategy).length === 0 && boardString.length >= 6 && (
-        <div className="p-8 text-center text-muted-foreground border border-gray-800 rounded-lg">
+        <div className="p-8 text-center text-gray-400 border border-gray-800 rounded-lg">
           <p className="mb-2">No strategy found for the selected parameters.</p>
           <p className="text-sm">Click "Solve New Spot" to generate a GTO solution.</p>
         </div>
@@ -827,7 +828,7 @@ export default function StrategiesPage() {
 
       {/* No Board State */}
       {!loading && boardString.length < 6 && (
-        <div className="p-8 text-center text-muted-foreground border border-gray-800 rounded-lg">
+        <div className="p-8 text-center text-gray-400 border border-gray-800 rounded-lg">
           <p className="mb-2">Enter at least 3 board cards to view a strategy.</p>
           <p className="text-sm">You can also enter 4 (turn) or 5 (river) cards for later streets.</p>
         </div>

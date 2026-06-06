@@ -1,438 +1,712 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { RangeSelector, EquityChart, EquityHeatmap, EquityEntry } from "@/components/equity";
-import { RANKS, SUITS } from "@/lib/utils";
+import { useState, useMemo, useCallback } from "react";
+import { RangeSelector, EquityChart, EquityHeatmap, EquityBar, RangeGrid } from "@/components/equity";
+import type { CellData } from "@/components/equity";
+import { RANKS, getHand } from "@/lib/utils";
+import { gtoTheme, getStrengthColor, getBetColor, getEquityBucket } from "@/styles/gto-tokens";
+import { cn } from "@/lib/utils";
 
-interface EquityResult {
-  equity: number;
-  wins: number;
-  ties: number;
-  total: number;
-  ev_per_hand: number;
+// ============================================================================
+// Types
+// ============================================================================
+
+interface PositionAction {
+  position: string;
+  stack: number;
+  action: string;
+  isHero: boolean;
 }
 
-interface HeatmapData {
-  hand: string;
-  equity: number;
+interface BoardCard {
+  rank: string;
+  suit: string;
 }
 
-const ITERATION_OPTIONS = [
-  { value: 10000, label: "10,000" },
-  { value: 50000, label: "50,000" },
-  { value: 100000, label: "100,000" },
-  { value: 500000, label: "500,000" },
+interface StatItem {
+  label: string;
+  value: string;
+  color?: string;
+}
+
+interface ActionBreakdown {
+  action: string;
+  pct: number;
+  combos: number;
+  color: string;
+}
+
+// ============================================================================
+// Mock Data
+// ============================================================================
+
+const MOCK_POSITIONS: PositionAction[] = [
+  { position: "UTG", stack: 100, action: "fold", isHero: false },
+  { position: "HJ",  stack: 100, action: "fold", isHero: false },
+  { position: "CO",  stack: 100, action: "fold", isHero: false },
+  { position: "BTN", stack: 100, action: "raise 2.5", isHero: true },
+  { position: "SB",  stack: 100, action: "fold", isHero: false },
+  { position: "BB",  stack: 100, action: "call", isHero: false },
 ];
 
-const RANK_DISPLAY: Record<string, string> = {
-  A: "A",
-  K: "K",
-  Q: "Q",
-  J: "J",
-  T: "T",
-  "9": "9",
-  "8": "8",
-  "7": "7",
-  "6": "6",
-  "5": "5",
-  "4": "4",
-  "3": "3",
-  "2": "2",
+const MOCK_BOARD: BoardCard[] = [
+  { rank: "Q", suit: "♥" },
+  { rank: "J", suit: "♦" },
+  { rank: "4", suit: "♠" },
+];
+
+const SUIT_SYMBOLS: Record<string, string> = {
+  h: "♥", d: "♦", c: "♣", s: "♠",
+  "♥": "♥", "♦": "♦", "♣": "♣", "♠": "♠",
 };
 
-const SUIT_DISPLAY: Record<string, string> = {
-  h: "♥",
-  d: "♦",
-  c: "♣",
-  s: "♠",
+const SUIT_COLORS: Record<string, string> = {
+  h: "text-red-400", d: "text-blue-400", c: "text-green-400", s: "text-gray-300",
+  "♥": "text-red-400", "♦": "text-blue-400", "♣": "text-green-400", "♠": "text-gray-300",
 };
 
-interface CardInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  label: string;
-  disabled?: boolean;
+// Mock BB range data (strength mode) - equity values
+function generateMockBBData(): Record<string, CellData> {
+  const data: Record<string, CellData> = {};
+  for (let row = 0; row < RANKS.length; row++) {
+    for (let col = 0; col < RANKS.length; col++) {
+      const hand = getHand(row, col);
+      // Generate realistic equity values for BB vs BTN range on QJ4 board
+      const equity = Math.random() * 100;
+      data[hand] = {
+        hand,
+        equity,
+        action: equity > 50 ? "call" : equity > 30 ? "check" : "fold",
+        frequency: Math.random(),
+      };
+    }
+  }
+  return data;
 }
 
-function CardInput({ value, onChange, label, disabled }: CardInputProps) {
-  const rank = value[0] || "";
-  const suit = value[1] || "";
+// Mock BTN range data (action mode) with bet sizes
+function generateMockBTNData(): Record<string, CellData> {
+  const data: Record<string, CellData> = {};
+  for (let row = 0; row < RANKS.length; row++) {
+    for (let col = 0; col < RANKS.length; col++) {
+      const hand = getHand(row, col);
+      const rand = Math.random();
+      let action: string;
+      let betSize: number;
+      let frequency: number;
 
+      if (rand < 0.2) {
+        action = "fold";
+        betSize = 0;
+        frequency = 0.2 - rand * 0.1;
+      } else if (rand < 0.4) {
+        action = "check";
+        betSize = 0;
+        frequency = 0.3 - (rand - 0.2) * 0.2;
+      } else if (rand < 0.6) {
+        action = "bet 1.8";
+        betSize = 1.8;
+        frequency = 0.4 - (rand - 0.4) * 0.3;
+      } else if (rand < 0.8) {
+        action = "bet 2.75";
+        betSize = 2.75;
+        frequency = 0.5 - (rand - 0.6) * 0.3;
+      } else if (rand < 0.9) {
+        action = "bet 4.1";
+        betSize = 4.1;
+        frequency = 0.6 - (rand - 0.8) * 0.4;
+      } else {
+        action = "bet 6.9";
+        betSize = 6.9;
+        frequency = 0.7 - (rand - 0.9) * 0.5;
+      }
+
+      data[hand] = { hand, equity: 50, action, betSize, frequency };
+    }
+  }
+  return data;
+}
+
+// Mock stats
+const MOCK_STATS: StatItem[] = [
+  { label: "COMBOS", value: "120", color: gtoTheme.text.primary },
+  { label: "EV", value: "+3.42", color: gtoTheme.stat.positive },
+  { label: "EQUITY%", value: "54.1%", color: gtoTheme.text.primary },
+  { label: "EQR%", value: "98.2%", color: gtoTheme.stat.positive },
+];
+
+const MOCK_BUCKETS = [
+  { label: "BEST", pct: 35, combos: 42, color: gtoTheme.bucket.best },
+  { label: "GOOD", pct: 28, combos: 34, color: gtoTheme.bucket.good },
+  { label: "WEAK", pct: 22, combos: 26, color: gtoTheme.bucket.weak },
+  { label: "TRASH", pct: 15, combos: 18, color: gtoTheme.bucket.trash },
+];
+
+const MOCK_ACTION_BREAKDOWN: ActionBreakdown[] = [
+  { action: "CHECK", pct: 42, combos: 50, color: gtoTheme.strategy.check },
+  { action: "BET 1.8", pct: 22, combos: 26, color: gtoTheme.strategy.bet33 },
+  { action: "BET 2.75", pct: 18, combos: 22, color: gtoTheme.strategy.bet50 },
+  { action: "BET 4.1", pct: 10, combos: 12, color: gtoTheme.strategy.bet75 },
+  { action: "BET 6.9", pct: 8, combos: 10, color: gtoTheme.strategy.bet150 },
+];
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function SuitIcon({ suit, size = "sm" }: { suit: string; size?: "sm" | "md" }) {
+  const symbol = SUIT_SYMBOLS[suit] || suit;
+  const colorClass = SUIT_COLORS[suit] || "text-white";
+  const sizeClass = size === "md" ? "text-2xl" : "text-lg";
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-muted-foreground">{label}</label>
-      <div className="flex gap-1">
-        <select
-          value={rank}
-          onChange={(e) => onChange(e.target.value + suit)}
-          disabled={disabled}
-          className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm w-16 appearance-none cursor-pointer disabled:opacity-50"
-        >
-          <option value="">--</option>
-          {RANKS.map((r) => (
-            <option key={r} value={r}>
-              {RANK_DISPLAY[r]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={suit}
-          onChange={(e) => onChange(rank + e.target.value)}
-          disabled={disabled}
-          className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm w-16 appearance-none cursor-pointer disabled:opacity-50"
-        >
-          <option value="">--</option>
-          {SUITS.map((s) => (
-            <option key={s} value={s}>
-              {SUIT_DISPLAY[s]}
-            </option>
-          ))}
-        </select>
+    <span className={cn(sizeClass, "font-bold", colorClass)}>
+      {symbol}
+    </span>
+  );
+}
+
+function BoardCardView({ card, index }: { card: BoardCard; index: number }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="w-10 h-14 rounded-md bg-white flex flex-col items-center justify-center shadow-lg border border-gray-300">
+        <span className="text-sm font-bold text-gray-900 leading-none">{card.rank}</span>
+        <SuitIcon suit={card.suit} size="sm" />
       </div>
     </div>
   );
 }
 
+function PositionFlowBar({ positions }: { positions: PositionAction[] }) {
+  return (
+    <div className="flex items-center gap-0 bg-gray-800/50 rounded-lg p-2 overflow-x-auto">
+      {positions.map((pos, idx) => (
+        <div key={pos.position} className="flex items-center">
+          <div
+            className={cn(
+              "flex flex-col items-center px-3 py-1.5 rounded-md min-w-[64px]",
+              pos.isHero
+                ? "bg-green-900/50 border border-green-700"
+                : pos.action === "fold"
+                ? "opacity-50"
+                : "bg-gray-800"
+            )}
+          >
+            <span
+              className={cn(
+                "text-xs font-bold uppercase tracking-wide",
+                pos.isHero ? "text-green-400" : "text-gray-300"
+              )}
+            >
+              {pos.position}
+            </span>
+            <span className="text-[10px] text-gray-400">{pos.stack}bb</span>
+            <span
+              className={cn(
+                "text-[10px] font-medium",
+                pos.action === "fold"
+                  ? "text-gray-500"
+                  : pos.action.includes("raise")
+                  ? "text-orange-400"
+                  : pos.action === "call"
+                  ? "text-blue-400"
+                  : pos.action === "bet"
+                  ? "text-green-400"
+                  : "text-gray-300"
+              )}
+            >
+              {pos.action}
+            </span>
+          </div>
+          {idx < positions.length - 1 && (
+            <span className="text-gray-600 mx-1 text-lg">→</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BoardSection({ board, stack }: { board: BoardCard[]; stack: number }) {
+  return (
+    <div className="flex items-center gap-4 bg-gray-800/30 rounded-lg px-4 py-3">
+      <div className="flex items-center gap-1">
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wide mr-1">
+          FLOP
+        </span>
+        <span className="text-xs text-gray-500">|</span>
+        <span className="text-xs text-gray-400">Stack</span>
+        <span className="text-sm font-bold text-white ml-1">{stack}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        {board.map((card, i) => (
+          <BoardCardView key={i} card={card} index={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatsPanel({ stats, buckets }: { stats: StatItem[]; buckets: typeof MOCK_BUCKETS }) {
+  return (
+    <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4">
+      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+        Statistics
+      </h3>
+      {/* Main stats */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-gray-800/40 rounded-lg p-3">
+            <div
+              className="text-lg font-bold font-mono"
+              style={{ color: stat.color || "inherit" }}
+            >
+              {stat.value}
+            </div>
+            <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wider mt-0.5">
+              {stat.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Equity Buckets */}
+      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+        EQ BUCKETS
+      </h3>
+      <div className="space-y-2">
+        {buckets.map((bucket) => (
+          <div key={bucket.label} className="flex items-center gap-2">
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: bucket.color }}
+            />
+            <div className="flex-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium text-gray-300">{bucket.label}</span>
+                <span className="text-gray-400">
+                  {bucket.pct}% · {bucket.combos}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-gray-800 rounded-full mt-0.5 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${bucket.pct}%`,
+                    backgroundColor: bucket.color,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActionBreakdownPanel({ actions }: { actions: ActionBreakdown[] }) {
+  return (
+    <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4">
+      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+        Action Breakdown
+      </h3>
+      <div className="space-y-2">
+        {actions.map((action) => (
+          <div key={action.action} className="flex items-center gap-2">
+            <div
+              className="w-3 h-3 rounded-sm shrink-0"
+              style={{ backgroundColor: action.color }}
+            />
+            <div className="flex-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium text-gray-300">{action.action}</span>
+                <span className="text-gray-400">
+                  {action.pct}% · {action.combos} combos
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Action bar visualization */}
+      <div className="flex h-5 rounded-md overflow-hidden mt-3">
+        {actions.map((action) => (
+          <div
+            key={action.action}
+            style={{
+              width: `${action.pct}%`,
+              backgroundColor: action.color,
+              opacity: 0.8,
+            }}
+            title={`${action.action}: ${action.pct}% (${action.combos} combos)`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GameSettingsSidebar() {
+  const [selectedGameType, setSelectedGameType] = useState("Cash");
+  const gameTypes = ["Cash", "Tournament", "Spin & Go"];
+  const tableSizes = ["6max", "9max", "Heads-up"];
+  const stakes = ["NL50", "NL100", "NL200", "NL500"];
+  const scenarios = ["General", "3b Pot", "4b Pot", "SRP"];
+  const stackDepths = ["100bb", "50bb", "75bb", "150bb"];
+  const activeScenario = "3b GTO";
+
+  return (
+    <div className="w-56 shrink-0 bg-gray-900/80 border-r border-gray-800 flex flex-col">
+      {/* Game type header */}
+      <div className="px-4 py-3 border-b border-gray-800">
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+          Game
+        </h2>
+      </div>
+
+      {/* Game Settings */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Game Type */}
+        <div>
+          <label className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+            Type
+          </label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {gameTypes.map((gt) => (
+              <button
+                key={gt}
+                onClick={() => setSelectedGameType(gt)}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors",
+                  selectedGameType === gt
+                    ? "bg-green-700 text-white font-semibold"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                )}
+              >
+                {gt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table Size */}
+        <div>
+          <label className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+            Table Size
+          </label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {tableSizes.map((size) => (
+              <button
+                key={size}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors",
+                  size === "6max"
+                    ? "bg-green-700 text-white font-semibold"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                )}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Stakes */}
+        <div>
+          <label className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+            Stakes
+          </label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {stakes.map((stake) => (
+              <button
+                key={stake}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors",
+                  stake === "NL50"
+                    ? "bg-green-700 text-white font-semibold"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                )}
+              >
+                {stake}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Scenario */}
+        <div>
+          <label className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+            Scenario
+          </label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {scenarios.map((sc) => (
+              <button
+                key={sc}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors",
+                  sc === activeScenario
+                    ? "bg-green-700 text-white font-semibold"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                )}
+              >
+                {sc === "General" ? "General" : sc}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Stack Depth */}
+        <div>
+          <label className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+            Stack Depth
+          </label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {stackDepths.map((sd) => (
+              <button
+                key={sd}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors",
+                  sd === "100bb"
+                    ? "bg-green-700 text-white font-semibold"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                )}
+              >
+                {sd}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Active Scenario */}
+        <div className="pt-3 border-t border-gray-800">
+          <label className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+            Active Solution
+          </label>
+          <div className="mt-1 p-2 rounded bg-green-900/30 border border-green-800">
+            <span className="text-xs font-semibold text-green-400">3b GTO</span>
+            <span className="text-[10px] text-green-600 block">BTN vs BB · Q♥J♦4♠</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NavBar() {
+  const [activeTab, setActiveTab] = useState("study");
+
+  const tabs = [
+    { id: "study", label: "STUDY" },
+    { id: "practice", label: "PRACTICE" },
+    { id: "analyze", label: "ANALYZE" },
+  ];
+
+  return (
+    <nav className="flex items-center justify-between px-6 py-2 bg-gray-900 border-b border-gray-800">
+      {/* Left: Logo */}
+      <div className="flex items-center gap-6">
+        <span className="text-lg font-bold text-poker-gold tracking-tight">
+          GTO Wizard
+        </span>
+        {/* Tabs */}
+        <div className="flex items-center gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors",
+                activeTab === tab.id
+                  ? "bg-green-700 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-gray-800"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: Icons */}
+      <div className="flex items-center gap-3">
+        <button className="text-xs text-gray-400 hover:text-white px-3 py-1.5 border border-gray-700 rounded transition-colors">
+          Upload
+        </button>
+        <button className="text-gray-500 hover:text-white transition-colors" title="Help">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+          </svg>
+        </button>
+        <button className="text-gray-500 hover:text-white transition-colors" title="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
+          U
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ============================================================================
+// Equity Line Chart (Inline SVG)
+// ============================================================================
+
+function EquityLineChart() {
+  const width = 700;
+  const height = 180;
+  const padding = { top: 20, right: 20, bottom: 30, left: 40 };
+
+  // Generate mock equity data - equity changing over streets
+  const streets = ["Pre", "Flop", "Turn", "River"];
+  const bbEquity = [45, 52, 48, 44];
+  const btnEquity = [55, 48, 52, 56];
+
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+
+  const xScale = (i: number) => padding.left + (i / (streets.length - 1)) * chartW;
+  const yScale = (v: number) => padding.top + chartH - ((v - 30) / 40) * chartH;
+
+  const bbLine = bbEquity.map((v, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(v)}`).join(" ");
+  const btnLine = btnEquity.map((v, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(v)}`).join(" ");
+
+  // Area fills
+  const bbArea = `M${xScale(0)},${yScale(30)} ${bbEquity.map((v, i) => `L${xScale(i)},${yScale(v)}`).join(" ")} L${xScale(streets.length - 1)},${yScale(30)} Z`;
+  const btnArea = `M${xScale(0)},${yScale(30)} ${btnEquity.map((v, i) => `L${xScale(i)},${yScale(v)}`).join(" ")} L${xScale(streets.length - 1)},${yScale(30)} Z`;
+
+  return (
+    <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4">
+      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+        Equity Graph
+      </h3>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        {/* Grid lines */}
+        {[40, 50, 60].map((v) => (
+          <g key={v}>
+            <line
+              x1={padding.left}
+              y1={yScale(v)}
+              x2={width - padding.right}
+              y2={yScale(v)}
+              stroke="#374151"
+              strokeWidth={1}
+              strokeDasharray="3,3"
+            />
+            <text x={padding.left - 8} y={yScale(v) + 3} textAnchor="end" fill="#6b7280" fontSize={10}>
+              {v}%
+            </text>
+          </g>
+        ))}
+
+        {/* X-axis labels */}
+        {streets.map((s, i) => (
+          <text
+            key={s}
+            x={xScale(i)}
+            y={height - padding.bottom + 16}
+            textAnchor="middle"
+            fill="#6b7280"
+            fontSize={11}
+            fontWeight={600}
+          >
+            {s}
+          </text>
+        ))}
+
+        {/* Area fills */}
+        <path d={bbArea} fill="#3b82f6" opacity={0.08} />
+        <path d={btnArea} fill="#22c55e" opacity={0.08} />
+
+        {/* Lines */}
+        <path d={bbLine} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={btnLine} fill="none" stroke="#22c55e" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* Dots */}
+        {bbEquity.map((v, i) => (
+          <circle key={`bb-${i}`} cx={xScale(i)} cy={yScale(v)} r={4} fill="#3b82f6" stroke="#1a1a2e" strokeWidth={2} />
+        ))}
+        {btnEquity.map((v, i) => (
+          <circle key={`btn-${i}`} cx={xScale(i)} cy={yScale(v)} r={4} fill="#22c55e" stroke="#1a1a2e" strokeWidth={2} />
+        ))}
+
+        {/* Labels at last point */}
+        <text x={xScale(3) + 10} y={yScale(bbEquity[3]) + 3} fill="#3b82f6" fontSize={11} fontWeight={700}>
+          BB
+        </text>
+        <text x={xScale(3) + 10} y={yScale(btnEquity[3]) + 3} fill="#22c55e" fontSize={11} fontWeight={700}>
+          BTN
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Page
+// ============================================================================
+
 export default function EquityPage() {
   const [heroRange, setHeroRange] = useState<Set<string>>(new Set());
   const [villainRange, setVillainRange] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"chart" | "heatmap">("chart");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Calculate state
-  const [heroHand, setHeroHand] = useState("");
-  const [boardCards, setBoardCards] = useState(["", "", "", "", ""]);
-  const [iterations, setIterations] = useState(100000);
-
-  // Results state
-  const [equityResult, setEquityResult] = useState<EquityResult | null>(null);
-  const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
-  const [chartData, setChartData] = useState<EquityEntry[]>([]);
-
-  const updateBoardCard = useCallback((index: number, value: string) => {
-    setBoardCards((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  }, []);
-
-  const buildBoardString = useCallback(
-    (cards: string[]) => cards.filter((c) => c.length === 2).join(""),
-    []
-  );
-
-  const handleCalculate = useCallback(async () => {
-    setError(null);
-    setEquityResult(null);
-    setHeatmapData([]);
-    setChartData([]);
-
-    // Validate hero hand
-    if (!heroHand || heroHand.length < 2) {
-      setError("Please enter a valid hero hand (e.g., AKs, AhKh)");
-      return;
-    }
-
-    if (villainRange.size === 0) {
-      setError("Please select at least one villain hand");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const villainStr = Array.from(villainRange).join(",");
-      const boardStr = buildBoardString(boardCards);
-
-      const requestBody: {
-        hero: string;
-        villain: string;
-        board?: string;
-        iterations: number;
-      } = {
-        hero: heroHand,
-        villain: villainStr,
-        iterations,
-      };
-
-      if (boardStr.length > 0) {
-        requestBody.board = boardStr;
-      }
-
-      // Call equity heatmap for range data
-      const response = await fetch("/api/v1/equity/heatmap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          villain: villainStr,
-          board: boardStr || undefined,
-          iterations: Math.min(iterations, 500),  // Cap heatmap to 500 (169 hands evaluated)
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const heatmapResult = await response.json();
-      setHeatmapData(heatmapResult.hands || []);
-
-      // Also get specific hand calculation for hero hand
-      const equityRes = await fetch("/api/v1/equity/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!equityRes.ok) {
-        throw new Error(`API error: ${equityRes.status}`);
-      }
-
-      const equityData = await equityRes.json();
-      setEquityResult(equityData);
-
-      // Build chart data for the hero hand vs villain range
-      if (heatmapResult.hands) {
-        const heroHandEquity = heatmapResult.hands.find(
-          (h: { hand: string; equity: number }) => h.hand.toLowerCase() === heroHand.toLowerCase()
-        )?.equity;
-
-        const entry: EquityEntry = {
-          hand: heroHand,
-          heroEquity: (equityData.equity ?? heroHandEquity ?? 0) * 100,
-          heroWin: ((equityData.wins ?? 0) / (equityData.total || 1)) * 100,
-          heroTie: ((equityData.ties ?? 0) / (equityData.total || 1)) * 100,
-          villainEquity: (1 - (equityData.equity ?? heroHandEquity ?? 0)) * 100,
-          villainWin: (((equityData.total || 1) - (equityData.wins ?? 0)) / (equityData.total || 1)) * 100,
-          villainTie: ((equityData.ties ?? 0) / (equityData.total || 1)) * 100,
-        };
-        setChartData([entry]);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Calculation failed";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [heroHand, villainRange, boardCards, iterations, buildBoardString, heatmapData]);
-
-  const hasResults = equityResult !== null || heatmapData.length > 0;
+  // Generate mock data
+  const bbRangeData = useMemo(() => generateMockBBData(), []);
+  const btnRangeData = useMemo(() => generateMockBTNData(), []);
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-poker-gold">Equity Calculator</h1>
+    <div className="min-h-screen bg-[#1a1a2e] text-white">
+      {/* Top Nav */}
+      <NavBar />
 
-      {/* Ranges Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
-        <div className="border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Hero Range</h2>
-          <RangeSelector value={heroRange} onChange={setHeroRange} />
+      <div className="flex">
+        {/* Left Sidebar */}
+        <GameSettingsSidebar />
+
+        {/* Main Content */}
+        <div className="flex-1 p-4 space-y-4 overflow-hidden">
+          {/* Hand History Flow Bar */}
+          <PositionFlowBar positions={MOCK_POSITIONS} />
+
+          {/* Board + Stack */}
+          <BoardSection board={MOCK_BOARD} stack={5.5} />
+
+          {/* Two Range Grids Side by Side + Stats */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            {/* BB Range (Strength) */}
+            <div>
+              <RangeGrid
+                data={bbRangeData}
+                mode="strength"
+                title="BB Range"
+                subtitle="Strength"
+                className="h-full"
+              />
+            </div>
+
+            {/* BTN Range (Action) */}
+            <div>
+              <RangeGrid
+                data={btnRangeData}
+                mode="action"
+                title="BTN Range"
+                subtitle="Strategy"
+                className="h-full"
+              />
+            </div>
+
+            {/* Right Panel: Stats + Action Breakdown */}
+            <div className="space-y-4">
+              <StatsPanel stats={MOCK_STATS} buckets={MOCK_BUCKETS} />
+              <ActionBreakdownPanel actions={MOCK_ACTION_BREAKDOWN} />
+            </div>
+          </div>
+
+          {/* Equity Graph */}
+          <EquityLineChart />
         </div>
-
-        <div className="border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Villain Range</h2>
-          <RangeSelector value={villainRange} onChange={setVillainRange} />
-        </div>
-      </div>
-
-      {/* Hand Input, Board & Controls */}
-      <div className="border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Hero Hand Input */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-muted-foreground">Hero Hand</label>
-            <input
-              type="text"
-              value={heroHand}
-              onChange={(e) => setHeroHand(e.target.value.toUpperCase())}
-              placeholder="e.g., AKs, AA, AhKh"
-              className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm w-full"
-            />
-            <p className="text-xs text-muted-foreground mt-1">Specific hand to calculate</p>
-          </div>
-
-          {/* Iteration Selector */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-muted-foreground">Iterations</label>
-            <select
-              value={iterations}
-              onChange={(e) => setIterations(Number(e.target.value))}
-              className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm w-full appearance-none cursor-pointer"
-            >
-              {ITERATION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">Monte Carlo simulations</p>
-          </div>
-
-          {/* Board Cards */}
-          <div className="lg:col-span-2">
-            <label className="text-sm text-muted-foreground mb-1 block">Board Cards (optional)</label>
-            <div className="flex gap-2 flex-wrap">
-              {boardCards.map((card, idx) => (
-                <CardInput
-                  key={idx}
-                  value={card}
-                  onChange={(val) => updateBoardCard(idx, val)}
-                  label={idx === 0 ? "Flop 1" : idx === 1 ? "Flop 2" : idx === 2 ? "Flop 3" : idx === 3 ? "Turn" : "River"}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Calculate Button */}
-        <div className="mt-4 flex items-center gap-4">
-          <button
-            onClick={handleCalculate}
-            disabled={loading}
-            className="px-6 py-2.5 bg-poker-gold text-gray-900 font-semibold rounded-lg hover:bg-poker-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Calculating...
-              </span>
-            ) : (
-              "Calculate Equity"
-            )}
-          </button>
-
-          {error && (
-            <div className="text-red-500 text-sm flex items-center gap-1">
-              <span>⚠</span>
-              {error}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Results Section */}
-      <div className="mt-4 sm:mt-6 lg:mt-8 border border-gray-800 rounded-lg p-4 sm:p-6 bg-gray-900/50">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold">Results</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode("chart")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                viewMode === "chart"
-                  ? "bg-poker-gold text-gray-900"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-              }`}
-            >
-              Chart
-            </button>
-            <button
-              onClick={() => setViewMode("heatmap")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                viewMode === "heatmap"
-                  ? "bg-poker-gold text-gray-900"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-              }`}
-            >
-              Heatmap
-            </button>
-          </div>
-        </div>
-
-        {/* Equity Summary */}
-        {equityResult && !loading && chartData.length > 0 && viewMode === "chart" && (
-          <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-800/50 rounded-lg">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">
-                {(equityResult.equity * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-muted-foreground">Hero Equity</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-400">
-                {((1 - equityResult.equity) * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-muted-foreground">Villain Equity</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {equityResult.wins.toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground">Wins</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {equityResult.ties.toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground">Ties</div>
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center h-64">
-            <div className="flex flex-col items-center gap-3">
-              <svg className="animate-spin h-8 w-8 text-poker-gold" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <span className="text-muted-foreground">Calculating equity...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Chart View */}
-        {!loading && viewMode === "chart" && chartData.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-            <EquityChart data={chartData} />
-          </div>
-        )}
-
-        {/* Heatmap View */}
-        {!loading && viewMode === "heatmap" && heatmapData.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-3 sm:p-4 flex justify-center">
-            <EquityHeatmap
-              data={heatmapData}
-              onCellClick={(hand, equity) => console.log(`Clicked ${hand}: ${equity}%`)}
-            />
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !hasResults && (
-          <div className="flex items-center justify-center h-32 text-muted-foreground">
-            Select ranges and click Calculate to see equity results
-          </div>
-        )}
       </div>
     </div>
   );
