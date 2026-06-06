@@ -153,7 +153,7 @@ class HeatmapRequest(BaseModel):
     """Request for heatmap generation."""
     villain: Union[str, List[str]] = Field(..., description="Villain range(s)")
     board: Optional[str] = Field(None, description="Board cards")
-    iterations: int = Field(10000, ge=1000, le=MAX_ITERATIONS)
+    iterations: int = Field(10000, ge=100, le=MAX_ITERATIONS)
 
 
 class HeatmapCell(BaseModel):
@@ -306,51 +306,79 @@ async def equity_heatmap(request: Request, req: HeatmapRequest):
     """
     Generate equity heatmap data for all 169 preflop hands.
     
-    Returns equity for each hand against the specified villain range,
-    useful for visualizing hand strength across the entire range.
+    Uses ThreadPoolExecutor to parallelize evaluations across 4 threads.
+    Results cached in Redis/fakeredis for 1 hour.
     """
     # Parse villain range
     villain_ranges = _parse_villain_ranges(req.villain)
     villain_str = ",".join(villain_ranges)
     board_cards = Deck.parse_board(req.board) if req.board else []
     
+    # Check cache
+    redis = get_redis(request)
+    cache_key = f"heatmap:{villain_str}:{req.board or ''}:{req.iterations}"
+    
+    if redis:
+        try:
+            cached = redis.get(cache_key)
+            if cached:
+                data = json.loads(cached)
+                return HeatmapResponse(**data)
+        except Exception as e:
+            logger.warning(f"Heatmap cache error: {e}")
+    
     calc = EquityCalculator()
     parser = RangeParser()
+    iterations = min(req.iterations, 500)  # Cap for performance (visual guide, not precise calculation)
     
-    results = []
-    for hand in PREFLOP_HANDS_169:
+    def evaluate_hand(hand: str) -> Optional[HeatmapCell]:
+        """Evaluate a single hand vs villain range."""
         try:
             hero_cards = _cards_from_hand(hand)
-            
-            # Calculate equity vs range
             equity = calc.equity_vs_range(
                 hero_cards=hero_cards,
                 villain_range=villain_ranges,
                 board=board_cards,
-                iterations=req.iterations,
-                n_threads=4
+                iterations=iterations,
+                n_threads=1  # Thread safety with per-call seed
             )
-            
-            # Count combos
             combo_count = len(parser.get_all_combos(hand))
-            
-            results.append(HeatmapCell(
+            return HeatmapCell(
                 hand=hand,
                 equity=round(equity, 4),
                 combo_count=combo_count
-            ))
+            )
         except Exception as e:
             logger.warning(f"Error calculating equity for {hand}: {e}")
-            results.append(HeatmapCell(
-                hand=hand,
-                equity=0.0,
-                combo_count=0
-            ))
+            return HeatmapCell(hand=hand, equity=0.0, combo_count=0)
     
-    return HeatmapResponse(
+    # Parallel evaluation
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {executor.submit(evaluate_hand, hand): hand for hand in PREFLOP_HANDS_169}
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                results.append(result)
+    
+    # Sort results to match hand order
+    hand_order = {h: i for i, h in enumerate(PREFLOP_HANDS_169)}
+    results.sort(key=lambda r: hand_order.get(r.hand, 999))
+    
+    response_data = HeatmapResponse(
         hands=results,
         villain_range=villain_str
     )
+    
+    # Cache result
+    if redis:
+        try:
+            redis.setex(cache_key, 3600, json.dumps(response_data.model_dump()))
+        except Exception as e:
+            logger.warning(f"Heatmap cache write error: {e}")
+    
+    return response_data
 
 
 # ============================================================================
