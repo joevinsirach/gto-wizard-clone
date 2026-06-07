@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy import JSON
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -19,7 +19,7 @@ class CommunitySpot(Base):
     
     __tablename__ = "community_spots"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
     board = Column(Text, nullable=False, default="")
@@ -28,11 +28,11 @@ class CommunitySpot(Base):
     pot_size = Column(Float, nullable=False, default=0.0)
     stack_depth = Column(Integer, nullable=False, default=100)
     author = Column(Text, nullable=False, default="anonymous")
-    tags = Column(ARRAY(Text), nullable=True, default=[])
-    strategy_json = Column(JSONB, nullable=False)
+    tags = Column(JSON, nullable=True, default=[])
+    strategy_json = Column(JSON, nullable=False)
     likes_count = Column(Integer, nullable=False, default=0)
     fork_count = Column(Integer, nullable=False, default=0)
-    parent_spot_id = Column(UUID(as_uuid=True), nullable=True)  # For forked spots
+    parent_spot_id = Column(String(36), nullable=True)  # For forked spots
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -68,8 +68,8 @@ class SpotComment(Base):
     
     __tablename__ = "spot_comments"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    spot_id = Column(UUID(as_uuid=True), ForeignKey("community_spots.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    spot_id = Column(String(36), ForeignKey("community_spots.id", ondelete="CASCADE"), nullable=False)
     author = Column(Text, nullable=False, default="anonymous")
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
@@ -95,8 +95,8 @@ class SpotLike(Base):
     
     __tablename__ = "spot_likes"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    spot_id = Column(UUID(as_uuid=True), ForeignKey("community_spots.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    spot_id = Column(String(36), ForeignKey("community_spots.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Text, nullable=False, default="anonymous")  # User who liked
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     

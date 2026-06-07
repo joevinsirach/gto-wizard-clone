@@ -87,21 +87,40 @@ def make_strategy_key(
 
 
 def parse_strategy_key(key: str) -> Dict[str, Any]:
-    """Parse a strategy key into its components."""
+    """Parse a strategy key into its components.
+    
+    Key format: {game_type}:{players}:{board}:{bet_sizes}:{stack_depth}
+    Example: nlh:2:preflop::100
+    Example with board: nlh:2:Kd:7h:2c::100
+    Example with bet sizes: nlh:2:preflop:30,70:100
+    
+    Board may contain colons (e.g., 'Kd:7h:2c'), so we parse from the ends.
+    """
     parts = key.split(":")
     if len(parts) < 5:
         raise ValueError(f"Invalid strategy key format: {key}")
     
-    game_type, players, board, stack_depth, bet_sizes_str = parts[:5]
+    game_type = parts[0]
+    players = int(parts[1])
+    
+    # Work from the end: stack_depth is last, bet_sizes_str is second-to-last
+    # Everything in between is the board (which may contain colons)
+    bet_sizes_str = parts[-2]
+    stack_depth = int(parts[-1])
+    
+    # Board is everything from index 2 to -2
+    board_parts = parts[2:-2]
+    board = ":".join(board_parts)
+    
     bet_sizes = []
     if bet_sizes_str:
-        bet_sizes = [int(x) for x in bet_sizes_str.split(",")]
+        bet_sizes = [int(x) for x in bet_sizes_str.split(",") if x]
     
     return {
         "game_type": game_type,
-        "players": int(players),
+        "players": players,
         "board": board,
-        "stack_depth": int(stack_depth),
+        "stack_depth": stack_depth,
         "bet_sizes": bet_sizes,
     }
 

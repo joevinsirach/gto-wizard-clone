@@ -18,10 +18,10 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import cast, Float, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.services.database import get_session_factory as async_session_factory
+from apps.api.services.database import get_session_context
 from apps.api.services.quiz_models import (
     QuizSpot,
     QuizSubmission,
@@ -188,7 +188,7 @@ async def submit_quiz_answer(request: QuizSubmitRequest):
     Compares user's selected action against GTO action,
     calculates EV loss, and updates user stats.
     """
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         # Get spot
         try:
             spot_uuid = uuid.UUID(request.spot_id)
@@ -276,7 +276,7 @@ async def get_random_spot(
     Supports filtering by category, difficulty, and street.
     Also supports avoiding recently shown spots via exclude_ids.
     """
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         query = select(QuizSpot)
         
         if category:
@@ -337,7 +337,7 @@ async def get_random_spot(
 @router.get("/spot/{spot_id}", response_model=SpotResponse)
 async def get_spot(spot_id: str):
     """Get a specific quiz spot by ID."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         try:
             spot_uuid = uuid.UUID(spot_id)
         except ValueError:
@@ -375,7 +375,7 @@ async def get_spot(spot_id: str):
 @router.get("/stats/{user_id}", response_model=UserStatsResponse)
 async def get_user_stats(user_id: str):
     """Get user statistics and progress."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         stats = await get_or_create_user_stats(session, user_id)
         
         return UserStatsResponse(
@@ -400,7 +400,7 @@ async def get_leaderboard(
     user_id: Optional[str] = Query(None, description="Current user ID to show their rank"),
 ):
     """Get leaderboard ranked by accuracy and solves completed."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         # Query top users by accuracy (min 10 solves for ranking)
         subquery = select(
             UserStats.user_id,
@@ -411,7 +411,7 @@ async def get_leaderboard(
         ).where(UserStats.total_solves >= 10).subquery()
         
         # Calculate accuracy in SQL
-        accuracy_expr = func.cast(subquery.c.correct_count, func.Float) / func.cast(subquery.c.total_solves, func.Float) * 100
+        accuracy_expr = cast(subquery.c.correct_count, Float) / cast(subquery.c.total_solves, Float) * 100
         
         result = await session.execute(
             select(
@@ -474,7 +474,7 @@ async def get_leaderboard(
 @router.get("/categories", response_model=CategoriesResponse)
 async def get_categories():
     """Get all available spot categories and difficulties."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         # Get distinct categories
         cat_result = await session.execute(
             select(QuizSpot.category).distinct()
@@ -500,7 +500,7 @@ async def mark_for_review(
     mastered: bool = Query(False, description="Whether user has mastered this spot"),
 ):
     """Mark a spot for review mode."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         try:
             spot_uuid = uuid.UUID(spot_id)
         except ValueError:
@@ -546,7 +546,7 @@ async def get_review_spots(
     mastered_only: bool = Query(False, description="Only show not-yet-mastered spots"),
 ):
     """Get spots a user has marked for review."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         query = select(ReviewSpot, QuizSpot).join(
             QuizSpot, ReviewSpot.spot_id == QuizSpot.id
         ).where(ReviewSpot.user_id == user_id)
@@ -585,7 +585,7 @@ async def get_review_spots(
 @router.get("/missed/{user_id}")
 async def get_missed_spots(user_id: str):
     """Get spots that user has gotten wrong (for review mode)."""
-    async with async_session_factory() as session:
+    async with get_session_context() as session:
         stats_result = await session.execute(
             select(UserStats).where(UserStats.user_id == user_id)
         )

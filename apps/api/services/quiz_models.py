@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, func
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.api.services.database import Base
@@ -23,10 +23,10 @@ class QuizSpot(Base):
     """A poker situation (spot) with GTO solution for training."""
     __tablename__ = "quiz_spots"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
     )
 
     game_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True, default="nlh")
@@ -46,7 +46,7 @@ class QuizSpot(Base):
     gto_frequency: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False, default=1.0)
     gto_ev: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0.0)
 
-    options: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    options: Mapped[dict] = mapped_column(JSON, nullable=False)
     explanation: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     street: Mapped[str] = mapped_column(String(20), nullable=False, index=True, default="flop")
 
@@ -74,17 +74,17 @@ class QuizSubmission(Base):
     """A user's answer to a quiz spot."""
     __tablename__ = "quiz_submissions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
     )
 
     user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     user_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     spot_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("quiz_spots.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -115,10 +115,10 @@ class UserStats(Base):
     """Per-user training statistics and progress."""
     __tablename__ = "user_stats"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
     )
 
     user_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
@@ -134,16 +134,14 @@ class UserStats(Base):
     points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
-    weak_spots: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    accuracy_history: Mapped[List[float]] = mapped_column(
-        ARRAY(Numeric(5, 2)),
-        nullable=False,
-        default=list,
+    weak_spots: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    accuracy_history: Mapped[Optional[list]] = mapped_column(
+        JSON,
+        nullable=True, default=list,
     )
-    missed_spot_ids: Mapped[List[uuid.UUID]] = mapped_column(
-        ARRAY(UUID(as_uuid=True)),
-        nullable=False,
-        default=list,
+    missed_spot_ids: Mapped[Optional[list]] = mapped_column(
+        JSON,
+        nullable=True, default=list,
     )
 
     last_updated: Mapped[datetime] = mapped_column(
@@ -176,15 +174,15 @@ class ReviewSpot(Base):
     """Spots that a user has marked for review."""
     __tablename__ = "review_spots"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
     )
 
     user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     spot_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("quiz_spots.id", ondelete="CASCADE"),
         nullable=False,
     )

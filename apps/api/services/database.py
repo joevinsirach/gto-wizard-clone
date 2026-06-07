@@ -72,14 +72,50 @@ async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initialize database tables."""
+    logger.info("Initializing database tables...")
+    engine = get_engine()
+    
+    # Import all models so their metadata gets registered with Base
     from apps.api.models.spots import CommunitySpot, SpotComment, SpotLike
     from apps.api.models.course_models import Course, Lesson, UserProgress
-    from apps.api.models.hh_models import HandHistory, HandTag
-
-    engine = get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables initialized")
+    from apps.api.models.hh_models import HandHistory, HandTag, HandAction
+    from apps.api.services.quiz_models import QuizSpot, QuizSubmission, UserStats, ReviewSpot
+    
+    # Import models from services/models.py as well
+    from apps.api.services.models import Strategy
+    
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables initialized")
+    except Exception as e:
+        error_str = str(e)
+        if "JSONB" in error_str or "can't render element" in error_str:
+            logger.warning("JSONB columns not supported in SQLite. Trying incremental table creation...")
+            logger.warning("JSONB columns not supported in SQLite. Trying incremental table creation...")
+            # Get all registered tables
+            from sqlalchemy import Table, MetaData
+            
+            tables_to_create = list(Base.metadata.tables.values())
+            created_count = 0
+            failed_tables = []
+            
+            for table in tables_to_create:
+                try:
+                    async with engine.begin() as conn:
+                        await conn.run_sync(table.create, checkfirst=True)
+                    created_count += 1
+                except Exception as table_err:
+                    failed_tables.append(table.name)
+                    logger.warning(f"Could not create table '{table.name}': {table_err}")
+            
+            if created_count > 0:
+                logger.info(f"Created {created_count} tables. Failed: {failed_tables}")
+            else:
+                logger.warning(f"No tables could be created. All failed: {failed_tables}")
+        else:
+            logger.error(f"Database initialization failed: {e}")
+            raise
 
 
 async def close_db():

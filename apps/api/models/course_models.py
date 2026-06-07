@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import JSON
+
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -19,7 +20,7 @@ class Course(Base):
     
     __tablename__ = "courses"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
     short_description = Column(Text, nullable=True)
@@ -31,8 +32,8 @@ class Course(Base):
     lesson_count = Column(Integer, nullable=False, default=0)
     is_published = Column(Boolean, nullable=False, default=False)
     is_featured = Column(Boolean, nullable=False, default=False)
-    prerequisites = Column(JSONB, nullable=True, default=[])  # List of course IDs
-    tags = Column(JSONB, nullable=True, default=[])
+    prerequisites = Column(JSON, nullable=True, default=[])  # List of course IDs
+    tags = Column(JSON, nullable=True, default=[])
     author = Column(Text, nullable=False, default="GTO Wizard")
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -68,8 +69,8 @@ class Lesson(Base):
     
     __tablename__ = "lessons"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    course_id = Column(UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    course_id = Column(String(36), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     title = Column(Text, nullable=False)
     content = Column(Text, nullable=True)  # Markdown/HTML content
     content_type = Column(String(20), nullable=False, default="text")  # text, video, quiz, interactive
@@ -77,7 +78,7 @@ class Lesson(Base):
     order_index = Column(Integer, nullable=False, default=0)
     duration_minutes = Column(Integer, nullable=False, default=0)
     is_preview = Column(Boolean, nullable=False, default=False)  # Free preview lesson
-    quiz_data = Column(JSONB, nullable=True)  # Quiz questions if content_type is quiz
+    quiz_data = Column(JSON, nullable=True)  # Quiz questions if content_type is quiz
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -108,10 +109,10 @@ class UserProgress(Base):
     
     __tablename__ = "user_progress"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Text, nullable=False, index=True)
-    course_id = Column(UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
-    lesson_id = Column(UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
+    course_id = Column(String(36), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    lesson_id = Column(String(36), ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
     status = Column(String(20), nullable=False, default="not_started")  # not_started, in_progress, completed
     progress_percent = Column(Float, nullable=False, default=0.0)
     time_spent_minutes = Column(Integer, nullable=False, default=0)

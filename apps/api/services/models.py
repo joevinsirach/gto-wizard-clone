@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import JSON
+
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import declarative_base
 
@@ -18,7 +19,7 @@ class Strategy(Base):
     
     __tablename__ = "strategies"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: None)
+    id = Column(String(36), primary_key=True, default=lambda: None)
     key = Column(Text, unique=True, nullable=False, index=True)
     game_type = Column(String(10), nullable=False, default="nlh")
     players = Column(Integer, nullable=False, default=2)
@@ -26,7 +27,7 @@ class Strategy(Base):
     board_hash = Column(Text, nullable=False, default="")
     bet_size = Column(Float, nullable=False, default=0.0)
     stack_depth = Column(Integer, nullable=False)
-    strategy_data = Column(JSONB, nullable=False)
+    strategy_data = Column(JSON, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     

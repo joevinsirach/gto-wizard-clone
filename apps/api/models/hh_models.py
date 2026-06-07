@@ -13,6 +13,7 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 from sqlalchemy import (
+    String,
     Column,
     DateTime,
     Enum,
@@ -24,7 +25,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON
+from sqlalchemy import String
 from sqlalchemy.orm import relationship
 
 from apps.api.services.database import Base
@@ -73,8 +75,8 @@ class HandHistory(Base):
     """
     __tablename__ = "hand_histories"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
     
     # Site information
     site = Column(Enum(SiteEnum), nullable=False)
@@ -83,19 +85,19 @@ class HandHistory(Base):
     raw_text = Column(Text, nullable=False)
     
     # Parsed structured data
-    parsed_data = Column(JSONB, nullable=True)
+    parsed_data = Column(JSON, nullable=True)
     
     # Hero player info
     hero_name = Column(String(100), nullable=True)
     
-    # Stakes as JSONB for flexibility (e.g., {"sb": 0.01, "bb": 0.02})
-    stakes = Column(JSONB, nullable=True)
+    # Stakes as JSON for flexibility (e.g., {"sb": 0.01, "bb": 0.02})
+    stakes = Column(JSON, nullable=True)
     
     # Pot information
     pot = Column(Float, default=0.0)
     
-    # Board cards as JSONB list
-    board = Column(JSONB, nullable=True)
+    # Board cards as JSON list
+    board = Column(JSON, nullable=True)
     
     # Board texture classification
     board_texture = Column(Enum(BoardTexture), nullable=True)
@@ -112,13 +114,13 @@ class HandHistory(Base):
     button_position = Column(Integer, nullable=True)
     
     # Players involved
-    players = Column(JSONB, nullable=True)  # List of player info
+    players = Column(JSON, nullable=True)  # List of player info
     
     # EV metrics
     ev_loss = Column(Float, nullable=True)  # Expected value loss vs GTO
     
     # Winners info
-    winners = Column(JSONB, nullable=True)  # [{"player": "X", "amount": Y}]
+    winners = Column(JSON, nullable=True)  # [{"player": "X", "amount": Y}]
     
     # Hand ID from site
     external_hand_id = Column(String(100), nullable=True, index=True)
@@ -171,14 +173,14 @@ class HandTag(Base):
     """
     __tablename__ = "hand_tags"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     hand_id = Column(
-        UUID(as_uuid=True), 
+        String(36), 
         ForeignKey("hand_histories.id", ondelete="CASCADE"), 
         nullable=False,
         index=True
     )
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(String(36), nullable=False, index=True)
     tag = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -210,9 +212,9 @@ class HandAction(Base):
     """
     __tablename__ = "hand_actions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     hand_id = Column(
-        UUID(as_uuid=True), 
+        String(36), 
         ForeignKey("hand_histories.id", ondelete="CASCADE"), 
         nullable=False,
         index=True
