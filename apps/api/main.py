@@ -13,6 +13,7 @@ from routers import equity, solver, auth, hh, strategy, quiz, analyze_leaks
 from routers import plo4_equity, plo4_ranges, omaha
 from routers import double_board, bomb_pot, spots, courses, icm
 from routers.strategy_lookup import router as strategy_lookup_router
+from routers.trainer import router as trainer_router
 from routers.quiz_ws import websocket_handler
 
 logging.basicConfig(level=logging.INFO)
@@ -87,6 +88,7 @@ app.include_router(analyze_leaks.router)
 app.include_router(courses.router)
 app.include_router(icm.router)
 app.include_router(strategy_lookup_router)
+app.include_router(trainer_router)
 
 
 @app.get("/")
