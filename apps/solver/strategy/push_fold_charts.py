@@ -9,17 +9,18 @@ Chart format: 13x13 matrix for each position
 Rows and columns represent card ranks (2-A), suited hands on diagonal and above,
 offsuit hands below diagonal.
 """
-
+from math import log, exp
 from typing import Dict, List, Tuple, Optional
 from enum import Enum
 import sys
+import os
 
 # RANKS for 13x13 grid ordering: 2, 3, 4, 5, 6, 7, 8, 9, T, J, Q, K, A
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
 RANK_INDICES = {r: i for i, r in enumerate(RANKS)}
 
 # Add poker-core path for ICM
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
+# path removed — gto-poker is pip-installed
 
 
 class Action(Enum):

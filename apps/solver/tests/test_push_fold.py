@@ -6,12 +6,13 @@ Run with: pytest apps/solver/tests/test_push_fold.py -v
 
 import pytest
 import sys
+import os
 import json
 from pathlib import Path
 
 # Add paths
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+# path removed — gto-poker is pip-installed
 
 from strategy.push_fold_charts import (
     PushFoldCharts,

@@ -16,8 +16,8 @@ import os
 from pathlib import Path
 
 # Add paths
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+# path removed — gto-poker is pip-installed
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from gto_poker.deck import Deck, Card
 from gto_poker.hand import Hand, HandEvaluator

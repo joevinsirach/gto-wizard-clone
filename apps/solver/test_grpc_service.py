@@ -8,7 +8,7 @@ import sys
 import time
 
 # Add proto directory to path
-PROTO_DIR = '/tmp/gto-wizard-clone/apps/solver/proto'
+PROTO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'proto')
 sys.path.insert(0, PROTO_DIR)
 
 import grpc

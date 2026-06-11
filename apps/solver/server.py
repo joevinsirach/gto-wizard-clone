@@ -20,8 +20,20 @@ from concurrent import futures
 import grpc
 
 # Add solver paths
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
+# solver dir is current dir, no path insert needed
+# path removed — gto-poker is pip-installed
+
+# Add solver dir to path for internal imports
+_solver_dir = os.path.dirname(os.path.abspath(__file__))
+if _solver_dir not in sys.path:
+    sys.path.insert(0, _solver_dir)
+
+# Add proto directory to path
+import sys
+import os
+_proto_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'proto')
+if _proto_dir not in sys.path:
+    sys.path.insert(0, _proto_dir)
 
 import solver_pb2_grpc
 from service import SolverServicer

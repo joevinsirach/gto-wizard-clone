@@ -5,7 +5,7 @@ from typing import List, Optional
 
 import sys
 sys.path.insert(0, "/tmp/PokerHandEvaluator/python")
-sys.path.insert(0, "/tmp/gto-wizard-clone/packages/poker-core/src")
+# sys.path removed — gto-poker is pip-installed
 
 from gto_poker.plo5 import PLO5Evaluator, PLO5Equity
 from gto_poker.omaha_hi_lo import OmahaHiLoEvaluator, OmahaHiLoEquity

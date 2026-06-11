@@ -19,12 +19,19 @@ from typing import Dict, Optional, List, AsyncIterator
 import solver_pb2
 import solver_pb2_grpc
 
+import sys
+import os
+
+# Ensure proto dir is on path for pb2 imports
+_proto_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'proto')
+if _proto_dir not in sys.path:
+    sys.path.insert(0, _proto_dir)
+
 logger = logging.getLogger(__name__)
 
 # Add packages/poker-core to path for ICM and CFR engine
-import sys
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+# path removed — gto-poker is pip-installed
+# solver dir is current dir, no path insert needed
 
 from gto_poker.icm import (
     icm_calculate,
@@ -41,7 +48,7 @@ import sys
 
 def _import_strategy_storage_service():
     """Lazy import of StrategyStorageService to avoid pydantic/asyncpg dependency issues."""
-    strategy_storage_path = '/tmp/gto-wizard-clone/apps/api/services/strategy_storage.py'
+    strategy_storage_path = '/workspace/gto-wizard-clone/apps/api/services/strategy_storage.py'
     spec = importlib.util.spec_from_file_location("strategy_storage_module", strategy_storage_path)
     strategy_storage_module = importlib.util.module_from_spec(spec)
     sys.modules['strategy_storage_module'] = strategy_storage_module

@@ -18,7 +18,7 @@ class TestMalmoudHarville:
         stacks = [3000.0, 2000.0, 1000.0]
         prizes = [0.5, 0.3, 0.2]
 
-        equity = malmoud_harville(stacks, prizes, seed=42)
+        equity = malmoud_harville(stacks, prizes, n_simulations=5000, seed=42)
 
         assert equity[0] > equity[1] > equity[2]
         assert abs(sum(equity) - 1.0) < 0.001
@@ -32,7 +32,7 @@ class TestMalmoudHarville:
         stacks = [1000.0, 1000.0, 1000.0]
         prizes = [0.5, 0.3, 0.2]
 
-        equity = malmoud_harville(stacks, prizes, seed=42)
+        equity = malmoud_harville(stacks, prizes, n_simulations=5000, seed=42)
 
         # All equal, each gets ~1/3 of equity = 0.333
         assert abs(equity[0] - equity[1]) < 0.002
@@ -43,7 +43,7 @@ class TestMalmoudHarville:
         stacks = [5000.0]
         prizes = [1.0]
 
-        equity = malmoud_harville(stacks, prizes, seed=42)
+        equity = malmoud_harville(stacks, prizes, n_simulations=5000, seed=42)
 
         assert abs(equity[0] - 1.0) < 0.001
 
@@ -57,8 +57,8 @@ class TestMalmoudHarville:
         stacks = [3000.0, 2000.0, 1000.0]
         prizes = [0.5, 0.3, 0.2]
 
-        result1 = malmoud_harville(stacks, prizes, seed=12345)
-        result2 = malmoud_harville(stacks, prizes, seed=12345)
+        result1 = malmoud_harville(stacks, prizes, n_simulations=5000, seed=12345)
+        result2 = malmoud_harville(stacks, prizes, n_simulations=5000, seed=12345)
 
         for v1, v2 in zip(result1, result2):
             assert abs(v1 - v2) < 1e-6
@@ -80,7 +80,7 @@ class TestCalculateBubbleFactor:
         stacks = [3333.0, 3333.0, 3333.0]
         prizes = [0.5, 0.3, 0.2]
 
-        bf = calculate_bubble_factor(stacks, prizes, player_idx=0)
+        bf = calculate_bubble_factor(stacks, prizes, player_idx=0, n_simulations=5000)
         assert abs(bf - 1.0) < 0.01
 
     def test_short_stack_bubbles_harder(self):
@@ -88,8 +88,8 @@ class TestCalculateBubbleFactor:
         stacks = [8000.0, 1500.0, 500.0]
         prizes = [0.5, 0.3, 0.2]
 
-        bf_short = calculate_bubble_factor(stacks, prizes, player_idx=2)
-        bf_big = calculate_bubble_factor(stacks, prizes, player_idx=0)
+        bf_short = calculate_bubble_factor(stacks, prizes, player_idx=2, n_simulations=5000)
+        bf_big = calculate_bubble_factor(stacks, prizes, player_idx=0, n_simulations=5000)
 
         assert bf_short > bf_big
         assert bf_short > 1.0
@@ -112,7 +112,7 @@ class TestICMCalculate:
         prizes = [500.0, 300.0, 200.0]
         players = ["Big", "Mid", "Short"]
 
-        results = icm_calculate(stacks, prizes, players=players, seed=42)
+        results = icm_calculate(stacks, prizes, players=players, n_simulations=5000, seed=42)
 
         assert len(results) == 3
         assert all(isinstance(r, ICMResult) for r in results)
@@ -123,7 +123,7 @@ class TestICMCalculate:
         prizes = [500.0, 300.0, 200.0]
         players = ["P1", "P2", "P3"]
 
-        results = icm_calculate(stacks, prizes, players=players, seed=42)
+        results = icm_calculate(stacks, prizes, players=players, n_simulations=5000, seed=42)
 
         total = sum(r.equity for r in results)
         assert abs(total - sum(prizes)) < 0.01
@@ -134,7 +134,7 @@ class TestICMCalculate:
         prizes = [500.0, 300.0]  # 2 prizes for 3 players
         players = ["P1", "P2", "P3"]
 
-        results = icm_calculate(stacks, prizes, players=players, seed=42)
+        results = icm_calculate(stacks, prizes, players=players, n_simulations=5000, seed=42)
         total = sum(r.equity for r in results)
         assert abs(total - 800.0) < 0.01
 
@@ -172,7 +172,7 @@ class TestICMEdgeCases:
         prizes = [700.0, 300.0]
         players = ["HU1", "HU2"]
 
-        results = icm_calculate(stacks, prizes, players=players, seed=42)
+        results = icm_calculate(stacks, prizes, players=players, n_simulations=5000, seed=42)
 
         assert len(results) == 2
         assert results[0].equity > results[1].equity
@@ -183,7 +183,7 @@ class TestICMEdgeCases:
         prizes = [500.0, 300.0, 150.0, 50.0]
         players = [f"P{i}" for i in range(9)]
 
-        results = icm_calculate(stacks, prizes, players=players, seed=42)
+        results = icm_calculate(stacks, prizes, players=players, n_simulations=5000, seed=42)
 
         assert len(results) == 9
         assert results[0].equity > results[-1].equity
@@ -194,7 +194,7 @@ class TestICMEdgeCases:
         prizes = [500.0, 300.0, 200.0]
         players = ["P1", "P2", "P3"]
 
-        results = icm_calculate(stacks, prizes, players=players, seed=42)
+        results = icm_calculate(stacks, prizes, players=players, n_simulations=5000, seed=42)
 
         # Player with 0 chips gets 0 chip_equity
         zero_players = [r for r in results if r.chip_equity == 0.0]

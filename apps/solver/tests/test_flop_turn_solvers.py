@@ -10,8 +10,9 @@ These tests verify:
 """
 
 import sys
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+import os
+# path removed — gto-poker is pip-installed
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import pytest
 import numpy as np

@@ -103,7 +103,7 @@ def solve_spot(self, params: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Import CFR components
         import sys
-        sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../..'))
 
         from cfr.engine import solve_river, CFREngine
         from games.texas_hold_em import TexasHoldEm, create_river_state

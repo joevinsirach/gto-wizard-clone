@@ -8,15 +8,16 @@ Implements specialized river solving with:
 - Strategy extraction for all players
 """
 
-from typing import List, Dict, Tuple, Optional, Callable, Any
+from typing import List, Dict, Tuple, Optional, Callable
 import numpy as np
+import os
 import sys
 
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
+# path removed — gto-poker is pip-installed
 from gto_poker.deck import Deck, Card
 from gto_poker.hand import Hand, HandEvaluator
 
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from games.texas_hold_em import TexasHoldEm, GameState, Action, ActionType, create_river_state, create_multiway_river_state
 from games.infosets import InfoSetManager, InfoSet
 from cfr.engine import CFREngine

@@ -13,7 +13,10 @@ from typing import List, Optional, Tuple, Dict, Any
 from dataclasses import dataclass, field
 import numpy as np
 import sys
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
+import os
+# path removed — gto-poker is pip-installed
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from gto_poker.deck import Deck, Card
 from gto_poker.hand import Hand, HandEvaluator
 

@@ -11,10 +11,12 @@ Tests for 5 recently-fixed bugs:
 
 import pytest
 import sys
+import os
+import json
 import numpy as np
 
-sys.path.insert(0, '/tmp/gto-wizard-clone/packages/poker-core/src')
-sys.path.insert(0, '/tmp/gto-wizard-clone/apps/solver')
+# path removed — gto-poker is pip-installed
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from games.texas_hold_em import TexasHoldEm, GameState, Action, ActionType, \
     create_river_state, create_multiway_river_state
