@@ -75,18 +75,19 @@ async def init_db():
     logger.info("Initializing database tables...")
     engine = get_engine()
     
-    # Import all models so their metadata gets registered with Base
+    # Import all models so their metadata gets registered
     from apps.api.models.spots import CommunitySpot, SpotComment, SpotLike
     from apps.api.models.course_models import Course, Lesson, UserProgress
     from apps.api.models.hh_models import HandHistory, HandTag, HandAction
     from apps.api.services.quiz_models import QuizSpot, QuizSubmission, UserStats, ReviewSpot
     
     # Import models from services/models.py as well
-    from apps.api.services.models import Strategy
+    from apps.api.services.models import Strategy, Base as ModelsBase
     
     try:
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            # Use ModelsBase (declarative_base) which all models actually inherit from
+            await conn.run_sync(ModelsBase.metadata.create_all)
         logger.info("Database tables initialized")
     except Exception as e:
         error_str = str(e)

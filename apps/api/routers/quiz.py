@@ -211,6 +211,14 @@ async def submit_quiz_answer(request: QuizSubmitRequest):
         if not is_correct:
             # Find EV of selected action
             options = spot.options if isinstance(spot.options, dict) else {}
+            # Handle list format by converting to dict
+            if isinstance(spot.options, list):
+                options = {}
+                for opt in spot.options:
+                    act = opt.get("action", "unknown")
+                    if act not in options:
+                        options[act] = []
+                    options[act].append(opt)
             selected_option = None
             for action_key in ["raise", "call", "fold"]:
                 if action_key in options:
@@ -295,8 +303,9 @@ async def get_random_spot(
                 pass  # Skip invalid IDs
         
         # Get count
+        subq = query.subquery()
         count_result = await session.execute(
-            select(func.count(QuizSpot.id)).select_from(query.subquery())
+            select(func.count()).select_from(subq)
         )
         total_count = count_result.scalar() or 0
         
@@ -328,7 +337,7 @@ async def get_random_spot(
             gto_action=spot.gto_action,
             gto_frequency=float(spot.gto_frequency),
             gto_ev=float(spot.gto_ev),
-            options=spot.options if isinstance(spot.options, dict) else {},
+            options=spot.options if isinstance(spot.options, list) else list(spot.options.values())[0] if isinstance(spot.options, dict) and spot.options else [],
             street=spot.street,
             explanation=spot.explanation,
         )
@@ -366,7 +375,7 @@ async def get_spot(spot_id: str):
             gto_action=spot.gto_action,
             gto_frequency=float(spot.gto_frequency),
             gto_ev=float(spot.gto_ev),
-            options=spot.options if isinstance(spot.options, dict) else {},
+            options=spot.options if isinstance(spot.options, list) else list(spot.options.values())[0] if isinstance(spot.options, dict) and spot.options else [],
             street=spot.street,
             explanation=spot.explanation,
         )
@@ -574,7 +583,7 @@ async def get_review_spots(
                 gto_action=spot.gto_action,
                 gto_frequency=float(spot.gto_frequency),
                 gto_ev=float(spot.gto_ev),
-                options=spot.options if isinstance(spot.options, dict) else {},
+                options=spot.options if isinstance(spot.options, list) else list(spot.options.values())[0] if isinstance(spot.options, dict) and spot.options else [],
                 street=spot.street,
                 explanation=spot.explanation,
             ))
@@ -617,7 +626,7 @@ async def get_missed_spots(user_id: str):
                     gto_action=spot.gto_action,
                     gto_frequency=float(spot.gto_frequency),
                     gto_ev=float(spot.gto_ev),
-                    options=spot.options if isinstance(spot.options, dict) else {},
+                    options=spot.options if isinstance(spot.options, list) else list(spot.options.values())[0] if isinstance(spot.options, dict) and spot.options else [],
                     street=spot.street,
                     explanation=spot.explanation,
                 )

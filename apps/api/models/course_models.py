@@ -9,10 +9,10 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Boolean, ForeignKey
 from sqlalchemy import JSON
 
-from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import relationship, declarative_base
+ 
+from sqlalchemy.orm import relationship
 
-from apps.api.services.models import Base
+from apps.api.services.database import Base
 
 
 class Course(Base):
