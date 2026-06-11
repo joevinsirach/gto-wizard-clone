@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 const RED = '#D32F2F'
 const RED_BRIGHT = '#E53935'
 const RED_DARK = '#7B1E1E'
 const BLUE = '#3A6EA5'
 const GREEN = '#00C853'
+const GRAY = '#2a2a2a'
 
 const POSITIONS = [
   { id: 'UTG', label: 'UTG', stack: 100 },
@@ -34,27 +35,84 @@ const MATRIX_HANDS: string[][] = [
 ]
 
 const SUIT_SYM: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
-function getCellColor(hand: string): string {
-  const redSet = new Set(['AA','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','AKo','KK','KQs','KJs','KTs','K9s','K8s','K7s','AQo','KQo','QQ','QJs','QTs','AJo','KJo','JJ','JTs','ATo','TT','99','98s','88','87s'])
-  if (redSet.has(hand)) return RED
-  const gradient: Record<string, string> = {
-    'K6s': `linear-gradient(to right,${RED} 85%,${BLUE} 85%)`, 'Q9s': `linear-gradient(to right,${RED} 90%,${BLUE} 90%)`,
-    'QJo': `linear-gradient(to right,${RED} 75%,${BLUE} 75%)`, 'KTo': `linear-gradient(to right,${RED} 80%,${BLUE} 80%)`,
-    'T9s': `linear-gradient(to right,${BLUE} 20%,${RED} 20%)`, 'A9o': `linear-gradient(to right,${RED} 5%,${BLUE} 5%)`,
-    '77': `linear-gradient(to right,${RED} 70%,${BLUE} 70%)`, '76s': `linear-gradient(to right,${RED} 15%,${BLUE} 15%)`,
-    '66': `linear-gradient(to right,${RED} 25%,${BLUE} 25%)`, '65s': `linear-gradient(to right,${RED} 20%,${BLUE} 20%)`,
-    '55': `linear-gradient(to right,${RED} 15%,${BLUE} 15%)`, '54s': `linear-gradient(to right,${RED} 20%,${BLUE} 20%)`,
-    '44': `linear-gradient(to right,${RED} 5%,${BLUE} 5%)`, '33': `linear-gradient(to right,${RED} 2%,${BLUE} 2%)`,
-    '32s': `linear-gradient(to right,${RED} 1%,${BLUE} 1%)`,
-  }
-  return gradient[hand] || BLUE
+type HandData = { hand: string; action: string; frequency: number; equity: number }
+
+const ACTION_COLORS: Record<string, string> = {
+  'raise': RED_BRIGHT,
+  'call': BLUE,
+  'fold': GRAY,
+  'all_in': RED_DARK,
 }
 
 export default function StudyPage() {
   const [activePosition, setActivePosition] = useState('UTG')
   const [selectedCell, setSelectedCell] = useState<string | null>(null)
+  const [rangeData, setRangeData] = useState<Map<string, HandData>>(new Map())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isSolverMode, setIsSolverMode] = useState(false)
+
+  // Fetch solver data when position changes
+  useEffect(() => {
+    async function fetchRange() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`${API_BASE}/solver/preflop-range`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            position: activePosition,
+            stack_depth: POSITIONS.find(p => p.id === activePosition)?.stack || 100,
+          }),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        const map = new Map<string, HandData>()
+        for (const h of data.hands || []) {
+          map.set(h.hand, h)
+        }
+        setRangeData(map)
+        setIsSolverMode(true)
+      } catch (err: any) {
+        setError(err.message)
+        setIsSolverMode(false)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchRange()
+  }, [activePosition])
+
   const handCells = MATRIX_HANDS.flat()
+
+  function getCellColor(hand: string): string {
+    if (isSolverMode) {
+      const data = rangeData.get(hand)
+      if (!data || data.action === 'fold') return GRAY
+      return ACTION_COLORS[data.action] || RED
+    }
+    // Fallback to hardcoded colors
+    const redSet = new Set(['AA','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','AKo','KK','KQs','KJs','KTs','K9s','K8s','K7s','AQo','KQo','QQ','QJs','QTs','AJo','KJo','JJ','JTs','ATo','TT','99','98s','88','87s'])
+    if (redSet.has(hand)) return RED
+    return BLUE
+  }
+
+  function getCellOpacity(hand: string): number {
+    if (!isSolverMode) return 1.0
+    const data = rangeData.get(hand)
+    if (!data) return 0.3
+    if (data.action === 'fold') return 0.3
+    return 0.5 + data.frequency * 0.5
+  }
+
+  // Get action data for selected cell
+  const selectedHandData = useMemo(() => {
+    if (!selectedCell) return null
+    return rangeData.get(selectedCell) || null
+  }, [selectedCell, rangeData])
 
   const selectedHandCombos = useMemo(() => {
     if (!selectedCell) return []
@@ -67,7 +125,10 @@ export default function StudyPage() {
     <div style={{ minHeight: '100vh', background: '#0E0E0E' }}>
       {/* Position Bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px', overflowX: 'auto', background: '#0E0E0E', borderBottom: '1px solid #141414' }}>
-        <button style={{ background: '#1A1A1A', border: '1px solid #2a2a2a', color: '#d0d0d0', padding: '8px 12px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', cursor: 'pointer' }}>♠ Cash 100bb ▾</button>
+        <div style={{ background: '#1A1A1A', border: '1px solid #2a2a2a', color: '#d0d0d0', padding: '8px 12px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          {loading ? <span style={{ color: GREEN }}>●</span> : error ? <span style={{ color: RED }}>●</span> : <span style={{ color: GREEN }}>●</span>}
+          {loading ? 'Solving...' : error ? 'Offline' : 'GTO'}
+        </div>
         {POSITIONS.map(pos => (
           <button key={pos.id} onClick={() => setActivePosition(pos.id)}
             style={{
@@ -76,7 +137,6 @@ export default function StudyPage() {
               color: activePosition === pos.id ? '#fff' : '#b5b5b5',
               padding: '6px 14px 5px', borderRadius: 8, fontSize: 13, whiteSpace: 'nowrap', cursor: 'pointer',
               textAlign: 'center', minWidth: 78, lineHeight: 1.2,
-              boxShadow: activePosition === pos.id ? '0 0 0 1px rgba(124,252,124,.15) inset' : 'none',
             }}>
             {pos.label} {pos.stack}
             {activePosition === pos.id && <span style={{ display: 'block', fontSize: 10, color: '#7CFC7C', marginTop: 2, fontWeight: 600 }}>Take action</span>}
@@ -85,7 +145,7 @@ export default function StudyPage() {
       </div>
 
       {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)', gap: 16, padding: 16, maxWidth: 1640, margin: '0 auto' }} className="strategy-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)', gap: 16, padding: 16, maxWidth: 1640, margin: '0 auto' }}>
         {/* Matrix Panel */}
         <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 10, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderBottom: '1px solid #262626' }}>
@@ -100,12 +160,29 @@ export default function StudyPage() {
           </div>
           <div style={{ padding: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 2, background: '#222', border: '1px solid #222', borderRadius: 6, overflow: 'hidden' }}>
-              {handCells.map(hand => (
-                <div key={hand} onClick={() => setSelectedCell(selectedCell === hand ? null : hand)}
-                  style={{ aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 650, color: '#fff', letterSpacing: 0.2, textShadow: '0 1px 1px rgba(0,0,0,.45)', cursor: 'pointer', userSelect: 'none', transition: 'transform .07s', background: getCellColor(hand), border: selectedCell === hand ? '2px solid #fff' : 'none' }}
-                  className="cell-hover">{hand}</div>
-              ))}
+              {handCells.map(hand => {
+                const data = rangeData.get(hand)
+                const opacity = getCellOpacity(hand)
+                return (
+                  <div key={hand} onClick={() => setSelectedCell(selectedCell === hand ? null : hand)}
+                    style={{
+                      aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11.5, fontWeight: 650, color: '#fff', letterSpacing: 0.2,
+                      textShadow: '0 1px 1px rgba(0,0,0,.45)', cursor: 'pointer', userSelect: 'none',
+                      transition: 'transform .07s', background: getCellColor(hand), opacity,
+                      border: selectedCell === hand ? '2px solid #fff' : 'none',
+                    }}>
+                    {hand}
+                  </div>
+                )
+              })}
             </div>
+          </div>
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 14, padding: '0 14px 12px', fontSize: 11, color: '#999' }}>
+            <span><span style={{ display:'inline-block', width:12, height:12, background:RED_BRIGHT, borderRadius:2, marginRight:4, verticalAlign:'middle' }}></span> Raise</span>
+            <span><span style={{ display:'inline-block', width:12, height:12, background:BLUE, borderRadius:2, marginRight:4, verticalAlign:'middle' }}></span> Call</span>
+            <span><span style={{ display:'inline-block', width:12, height:12, background:GRAY, borderRadius:2, marginRight:4, verticalAlign:'middle' }}></span> Fold</span>
           </div>
         </div>
 
@@ -120,21 +197,54 @@ export default function StudyPage() {
             {POSITIONS.map(pos => (
               <span key={pos.id} style={{ background: activePosition === pos.id ? '#1a3a2b' : '#262626', color: activePosition === pos.id ? '#7CFC7C' : '#b9b9b9', padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: activePosition === pos.id ? '1px solid #2a6b4a' : '1px solid #2e2e2e' }}>{pos.label} {pos.stack}</span>
             ))}
-            <div style={{ marginLeft: 'auto', textAlign: 'right', fontSize: 12, color: '#9a9a9a', lineHeight: 1.35 }}><b style={{ color: '#ddd', fontWeight: 500 }}>1.5 BB</b><br />Pot odds: 40%</div>
-          </div>
-          <div style={{ padding: '0 14px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>Actions ▾</div>
-            <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {[{ t: 'Allin 100', p: '0%', c: '0 combos', bg: RED_DARK }, { t: 'Raise 2.5', p: '17.5%', c: '231.88 combos', bg: RED_BRIGHT }, { t: 'Fold', p: '82.5%', c: '1094.11 combos', bg: BLUE }].map(a => (
-                <div key={a.t} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: a.bg }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{a.t}</div>
-                  <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{a.p}</div>
-                  <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{a.c}</div>
-                </div>
-              ))}
+            <div style={{ marginLeft: 'auto', textAlign: 'right', fontSize: 12, color: '#9a9a9a', lineHeight: 1.35 }}>
+              {activePosition === 'UTG' ? <><b style={{ color:'#ddd',fontWeight:500 }}>2.5 BB</b><br />Pot odds: 40%</> : <><b style={{ color:'#ddd',fontWeight:500 }}>1.5 BB</b><br />Pot odds: 33%</>}
             </div>
           </div>
-          {/* Hand combos */}
+
+          {/* Selected hand action breakdown */}
+          {selectedHandData ? (
+            <div style={{ padding: '0 14px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>
+                Actions for {selectedCell}
+                <span style={{ fontSize: 10, color: '#888', fontWeight: 400, marginLeft: 'auto' }}>
+                  Equity: {(selectedHandData.equity * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {(() => {
+                  const actionBg: Record<string, string> = {
+                    'raise': RED_BRIGHT, 'call': BLUE, 'fold': GRAY, 'all_in': RED_DARK
+                  }
+                  return [{ t: selectedHandData.action.toUpperCase(), p: `${(selectedHandData.frequency * 100).toFixed(1)}%`, c: `${Math.round(selectedHandData.equity * 169)} combos`, bg: actionBg[selectedHandData.action] || GRAY }]
+                })().map(a => (
+                  <div key={a.t} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: a.bg }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{a.t}</div>
+                    <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{a.p}</div>
+                    <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{a.c}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '0 14px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>Actions ▾</div>
+              <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {[{ t: 'Fold', p: `${activePosition === 'UTG' ? '82.5' : '60.0'}%`, c: `${activePosition === 'UTG' ? '1094' : '795'} combos`, bg: GRAY },
+                  { t: 'Raise 2.5', p: `${activePosition === 'UTG' ? '12.0' : '30.0'}%`, c: `${activePosition === 'UTG' ? '159' : '398'} combos`, bg: RED_BRIGHT },
+                  { t: 'Call', p: `${activePosition === 'UTG' ? '5.5' : '10.0'}%`, c: `${activePosition === 'UTG' ? '73' : '133'} combos`, bg: BLUE },
+                ].map(a => (
+                  <div key={a.t} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: a.bg }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{a.t}</div>
+                    <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{a.p}</div>
+                    <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{a.c}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hand combos section */}
           <div style={{ borderTop: '1px solid #262626', marginTop: 6 }}>
             <div style={{ display: 'flex', gap: 18, padding: '10px 14px', borderBottom: '1px solid #262626' }}>
               {['Summary', 'Filters', 'Blockers', 'Hands'].map((t, i) => (
@@ -152,7 +262,7 @@ export default function StudyPage() {
                       {selectedCell[1]}<span className={s2 === 'h' || s2 === 'd' ? 'suit-heart' : 'suit-spade'}>{SUIT_SYM[s2]}</span>
                     </div>
                     <div style={{ fontSize: 11, color: '#cfe0f5', lineHeight: 1.5 }}>
-                      <div>Fold <span style={{ float: 'right', color: '#fff', fontWeight: 600 }}>100</span></div>
+                      <div>{selectedHandData?.action || 'Fold'} <span style={{ float: 'right', color: '#fff', fontWeight: 600 }}>{selectedHandData ? `${(selectedHandData.frequency * 100).toFixed(0)}%` : '100'}</span></div>
                     </div>
                   </div>
                 ))}
