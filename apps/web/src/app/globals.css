@@ -1,57 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  --bg: #0E0E0E;
+  --panel: #1C1C1C;
+  --nav: #111111;
+  --red: #D32F2F;
+  --red-bright: #E53935;
+  --red-dark: #7B1E1E;
+  --blue: #3A6EA5;
+  --green: #00C853;
+  --green-bright: #7CFC7C;
+  --border: #262626;
+  --text: #E6E6E6;
+  --muted: #9A9A9A;
   --radius: 0.5rem;
-
-  /* Poker theme colors */
-  --poker-green: #2d5a27;
-  --poker-felt: #1a472a;
-  --poker-gold: #d4af37;
-  --poker-red: #c41e3a;
 }
+
+* { box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: white;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100dvh;
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
 }
 
-/* Safe area padding for notched devices */
-@supports (padding: max(0px)) {
-  .pb-safe {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-  .pt-safe {
-    padding-top: max(1rem, env(safe-area-inset-top));
-  }
-}
+/* Suit colors */
+.suit-spade { color: #e8eef7; }
+.suit-heart { color: #ff7a7a; }
+.suit-diamond { color: #ff7a7a; }
+.suit-club { color: #e8eef7; }
 
-@theme {
-  --color-poker-green: var(--poker-green);
-  --color-poker-felt: var(--poker-felt);
-  --color-poker-gold: var(--poker-gold);
-  --color-poker-red: var(--poker-red);
-}
+.cell-hover:hover { transform: scale(1.04); z-index: 2; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7); }
+.pos-btn:hover { background: #1a1a1a !important; }
+
+@media (max-width: 1100px) { .strategy-grid { grid-template-columns: 1fr !important; } }
+@media (max-width: 720px) { .cards-grid { grid-template-columns: 1fr !important; } .hand-grid { grid-template-columns: repeat(2, 1fr) !important; } }
