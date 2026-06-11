@@ -80,7 +80,7 @@ class TestCalculateBubbleFactor:
         stacks = [3333.0, 3333.0, 3333.0]
         prizes = [0.5, 0.3, 0.2]
 
-        bf = calculate_bubble_factor(stacks, prizes, player_idx=0, n_simulations=5000)
+        bf = calculate_bubble_factor(stacks, prizes, player_idx=0, n_simulations=5000, seed=42)
         assert abs(bf - 1.0) < 0.01
 
     def test_short_stack_bubbles_harder(self):
@@ -88,8 +88,8 @@ class TestCalculateBubbleFactor:
         stacks = [8000.0, 1500.0, 500.0]
         prizes = [0.5, 0.3, 0.2]
 
-        bf_short = calculate_bubble_factor(stacks, prizes, player_idx=2, n_simulations=5000)
-        bf_big = calculate_bubble_factor(stacks, prizes, player_idx=0, n_simulations=5000)
+        bf_short = calculate_bubble_factor(stacks, prizes, player_idx=2, n_simulations=5000, seed=42)
+        bf_big = calculate_bubble_factor(stacks, prizes, player_idx=0, n_simulations=5000, seed=42)
 
         assert bf_short > bf_big
         assert bf_short > 1.0
