@@ -8,7 +8,7 @@ Handles Omaha-specific range notation including:
 - Bracket notation: AA-JJ (any pair from AA to JJ)
 - Plus notation: JJ+ (any pair from JJ up)
 """
-from typing import List, Set, Tuple
+from typing import List, Set
 from itertools import product, combinations, permutations
 
 from .deck import RANKS, SUITS

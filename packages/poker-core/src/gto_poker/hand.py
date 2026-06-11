@@ -1,7 +1,7 @@
 """Hand evaluation — find the best 5-card poker hand from 5-7 cards"""
 
-from typing import List, Tuple, Optional
-from .deck import Card, RANKS, SUITS
+from typing import List, Tuple
+from .deck import Card
 
 # Hand rankings (lower is better)
 HAND_NAMES = {

@@ -48,7 +48,7 @@ class ScoopTracker:
         elif (player1_wins_board1 and tie_b2) or (tie_b1 and player1_wins_board2):
             # Won one, tied one — chop
             self.chop_wins += 1
-        elif player1_wins_board1 == (player1_wins_board2 == False) and not (tie_b1 or tie_b2):
+        elif player1_wins_board1 == (not player1_wins_board2) and not (tie_b1 or tie_b2):
             # Won one, lost one (no ties) — chop
             self.chop_wins += 1
         else:
@@ -157,7 +157,6 @@ class DoubleBoardEvaluator:
         Returns:
             List of adjusted equities (0-1) for each player
         """
-        from itertools import combinations
 
         n = len(hands)
         ranks1 = [self._evaluate_single_board(h, board1) for h in hands]
@@ -243,7 +242,6 @@ class DoubleBoardEquity:
         board2: List[str],
     ) -> Tuple[float, float, ScoopTracker]:
         """Exact equity when both boards are complete (5 cards each)."""
-        from itertools import combinations
 
         # Each player has C(4,2)*C(5,3) = 60 combos per board
         # For showdown, we need the best combo for each player on each board

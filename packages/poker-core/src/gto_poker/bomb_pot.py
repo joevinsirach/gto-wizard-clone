@@ -294,8 +294,6 @@ class BombPotEquity:
         Returns:
             Tuple of (equity1, equity2)
         """
-        model = BombPotGameModel()
-
         # Build deck excluding known cards
         used = set(hand1 + hand2 + list(state.straddle_map.keys()))
         deck = [r + s for r in RANKS for s in SUITS if r + s not in used]

@@ -1,7 +1,7 @@
 """Range parsing — convert poker range strings to hand lists"""
 
 from typing import List, Set
-from itertools import combinations, product
+from itertools import combinations
 from .deck import Card, RANKS, SUITS
 
 # All 169 pre-flop hand combinations

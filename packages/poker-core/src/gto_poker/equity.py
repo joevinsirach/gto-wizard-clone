@@ -1,10 +1,9 @@
 """Equity calculation — Monte Carlo and exact enumeration"""
 
-from typing import List, Tuple, Dict, Optional, Set
-import numpy as np
+from typing import List, Tuple, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
-from itertools import product, combinations
-from .deck import Deck, Card, RANKS, SUITS
+from itertools import combinations
+from .deck import Deck, Card, SUITS
 from .hand import Hand, hand_rank_key
 from .range import RangeParser
 
@@ -34,9 +33,6 @@ def _fast_hand_compare(cards1: List[int], cards2: List[int]) -> int:
     # Sort cards by rank for easier evaluation
     ranks1 = sorted([c % 13 for c in cards1], reverse=True)
     ranks2 = sorted([c % 13 for c in cards2], reverse=True)
-    suits1 = [c // 13 for c in cards1]
-    suits2 = [c // 13 for c in cards2]
-    
     # Count ranks
     from collections import Counter
     rank_counts1 = Counter(ranks1)
@@ -245,7 +241,6 @@ class EquityCalculator:
         if remaining == 1:
             # Turn card
             for turn_card in combinations(deck_cards, 1):
-                full_board = board + list(turn_card)
                 hero_hand = Hand(hero_full + list(turn_card))
                 villain_hand = Hand(villain_full + list(turn_card))
                 result = hero_hand.compare_to(villain_hand)
@@ -257,7 +252,6 @@ class EquityCalculator:
         else:
             # Flop (2 cards) or pre-flop (5 cards)
             for remaining_cards in combinations(deck_cards, remaining):
-                full_board = board + list(remaining_cards)
                 hero_hand = Hand(hero_full + list(remaining_cards))
                 villain_hand = Hand(villain_full + list(remaining_cards))
                 result = hero_hand.compare_to(villain_hand)
@@ -380,7 +374,6 @@ class EquityCalculator:
         if not villain_combos:
             return 0.0
 
-        n_combos = len(villain_combos)
         wins = 0
         ties = 0
         total = 0
@@ -666,7 +659,6 @@ class EquityCalculator:
             Dict with 'equity', 'wins', 'ties', 'total'
         """
         import random
-        from itertools import combinations as comb
         
         board = board or []
         dead_cards = dead_cards or []

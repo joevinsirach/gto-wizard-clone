@@ -284,7 +284,6 @@ class OmahaHiLoEquity:
             Tuple of (h1_high_equity, h2_high_equity, h1_low_equity, h2_low_equity)
             Note: When there's no low, the high hand gets the whole pot
         """
-        from .deck import Deck
         
         if len(board) == 0:
             return self._monte_carlo(hand1, hand2, samples)
@@ -357,7 +356,7 @@ class OmahaHiLoEquity:
         samples: int,
     ) -> Tuple[float, float, float, float]:
         """Monte Carlo when no board is known."""
-        from .deck import Deck, RANKS, SUITS
+        from .deck import Deck, SUITS
         
         used_cards = set(hand1 + hand2)
         deck = []
@@ -378,7 +377,6 @@ class OmahaHiLoEquity:
             self._random.shuffle(deck)
             board = deck[:5]
             
-            from .deck import Deck
             h1_cards = [Deck.parse(c) for c in hand1]
             h2_cards = [Deck.parse(c) for c in hand2]
             board_cards = [Deck.parse(c) for c in board]
@@ -425,7 +423,7 @@ class OmahaHiLoEquity:
         samples: int,
     ) -> Tuple[float, float, float, float]:
         """Monte Carlo for partial board."""
-        from .deck import Deck, RANKS, SUITS
+        from .deck import Deck, SUITS
         
         used_cards = set(hand1 + hand2 + board)
         deck = []
@@ -446,7 +444,6 @@ class OmahaHiLoEquity:
             self._random.shuffle(deck)
             full_board = board + deck[:board_missing]
             
-            from .deck import Deck
             h1_cards = [Deck.parse(c) for c in hand1]
             h2_cards = [Deck.parse(c) for c in hand2]
             board_cards = [Deck.parse(c) for c in full_board]

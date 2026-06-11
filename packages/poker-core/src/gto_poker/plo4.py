@@ -10,7 +10,7 @@ from itertools import combinations
 # phevaluator: HenryRLee/PokerHandEvaluator (pure Python implementation)
 from phevaluator.evaluator import evaluate_cards
 
-from .deck import Card, RANKS, SUITS
+from .deck import RANKS, SUITS
 
 
 def plo4_hand_rank_to_percentage(rank: int, total: int = 7462) -> float:

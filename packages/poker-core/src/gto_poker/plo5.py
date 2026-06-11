@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, "/tmp/PokerHandEvaluator/python")
 from phevaluator.evaluator import evaluate_cards
 
-from .deck import Card, RANKS, SUITS
+from .deck import RANKS, SUITS
 
 
 def plo5_hand_rank_to_percentage(rank: int, total: int = 7462) -> float:

@@ -2,8 +2,7 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
-from datetime import datetime
+from typing import List, Optional, Dict
 from enum import Enum
 
 
@@ -828,4 +827,4 @@ def parse_hand(text: str) -> ParsedHand:
     elif fmt == 'ggpoker':
         return parse_ggpoker_hh(text)
 
-    raise ValueError(f"Unknown hand history format. Could not detect site from text.")
+    raise ValueError("Unknown hand history format. Could not detect site from text.")
