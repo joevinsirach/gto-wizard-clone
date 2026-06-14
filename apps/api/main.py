@@ -15,6 +15,7 @@ from routers import double_board, bomb_pot, spots, courses, icm
 from routers.strategy_lookup import router as strategy_lookup_router
 from routers.trainer import router as trainer_router
 from routers.quiz_ws import websocket_handler
+from routers.variants import router as variants_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -88,6 +89,7 @@ app.include_router(analyze_leaks.router)
 app.include_router(courses.router)
 app.include_router(icm.router)
 app.include_router(strategy_lookup_router)
+app.include_router(variants_router)
 app.include_router(trainer_router)
 
 
