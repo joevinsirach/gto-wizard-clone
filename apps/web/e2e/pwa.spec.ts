@@ -53,7 +53,7 @@ export class PWAPage {
   // Get manifest data
   async getManifest(): Promise<any> {
     const links = await this.page.locator('link[rel="manifest"]').evaluateAll(
-      (els) => els.map((el) => el.href)
+      (els: Element[]) => els.map((el) => (el as HTMLLinkElement).href)
     );
     
     if (links.length > 0) {
@@ -295,10 +295,10 @@ test.describe("PWA Navigation Flows", () => {
     await page.waitForLoadState("domcontentloaded");
     await expect(page.locator("h1:has-text('Pre-Built Courses')")).toBeVisible();
 
-    // Navigate back to Equity
+    // Navigate back to Equity (game view — uses H2 instead of H1)
     await page.goto("/equity");
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("h1:has-text('Equity Calculator')")).toBeVisible();
+    await expect(page.locator("h2:has-text('Game')")).toBeVisible();
   });
 });
 

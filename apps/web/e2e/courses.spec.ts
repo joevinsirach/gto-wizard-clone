@@ -193,14 +193,14 @@ test.describe("Courses Page", () => {
     await expect(quickStats).toBeVisible();
 
     // Check for stat items
-    const coursesStarted = page.locator("text=Courses Started");
+    const totalLessons = page.locator("text=Total Lessons").first();
+    await expect(totalLessons).toBeVisible();
+
+    const coursesAvailable = page.locator("text=Courses Available");
+    await expect(coursesAvailable).toBeVisible();
+
+    const coursesStarted = page.locator("text=Started");
     await expect(coursesStarted).toBeVisible();
-
-    const lessonsCompleted = page.locator("text=Lessons Completed");
-    await expect(lessonsCompleted).toBeVisible();
-
-    const timeSpent = page.locator("text=Time Spent");
-    await expect(timeSpent).toBeVisible();
   });
 
   test("9. Stats summary cards show totals", async ({ page }) => {
