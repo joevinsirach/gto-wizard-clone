@@ -90,3 +90,55 @@ export const api = {
 };
 
 export default api;
+
+
+/** Variant metadata from the backend */
+export interface VariantInfo {
+  key: string
+  name: string
+  short_name: string
+  category: "flop" | "stud" | "draw"
+  hole_count: number
+  board_count: number
+  description: string
+}
+
+export interface EquityResult {
+  hero_equity: number
+  villain_equity: number | null
+  iterations: number
+  variant: string
+  variant_name: string
+}
+
+/** Variant-specific API methods */
+export const variantApi = {
+  async list(): Promise<VariantInfo[]> {
+    try {
+      const res = await fetch("/api/v1/variants")
+      if (!res.ok) return []
+      const data = await res.json()
+      return data.variants ?? []
+    } catch { return [] }
+  },
+
+  async get(key: string): Promise<VariantInfo | null> {
+    try {
+      const res = await fetch(`/api/v1/variants/${key}`)
+      if (!res.ok) return null
+      return await res.json()
+    } catch { return null }
+  },
+
+  async equity(key: string, hero: string, villain: string, board = "", iterations = 100000): Promise<EquityResult | null> {
+    try {
+      const res = await fetch(`/api/v1/variants/${key}/equity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hero_range: hero, villain_range: villain, board, iterations }),
+      })
+      if (!res.ok) return null
+      return await res.json()
+    } catch { return null }
+  },
+}

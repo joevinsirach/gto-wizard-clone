@@ -5,7 +5,10 @@ import { usePathname } from 'next/navigation'
 
 const navTabs = [
   { href: '/equity', label: "Hold'em" },
-  { href: '/plo', label: 'PLO', badge: 'NEW' },
+  { href: '/equity/plo', label: 'PLO' },
+  { href: '/equity/stud', label: 'Stud', badge: 'NEW' },
+  { href: '/equity/razz', label: 'Razz' },
+  { href: '/equity/badugi', label: 'Badugi' },
   { href: '/play', label: 'Play' },
   { href: '/study', label: 'Study', highlight: true },
   { href: '/practice', label: 'Practice' },
