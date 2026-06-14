@@ -11,7 +11,7 @@
  ○ (pwa) Service worker: /home/sc/repos/gto-wizard-clone/apps/web/public/sw.js
  ○ (pwa)   URL: /sw.js
  ○ (pwa)   Scope: /
- ✓ Compiled successfully in 5.5s
+ ✓ Compiled successfully in 6.5s
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/27) ...
@@ -33,10 +33,10 @@ Route (app)                                 Size  First Load JS
 ├ ○ /courses                             2.79 kB         111 kB
 ├ ○ /double-board                        2.33 kB         108 kB
 ├ ○ /equity                              6.37 kB         112 kB
-├ ○ /equity/badugi                         121 B         108 kB
-├ ○ /equity/plo                            121 B         108 kB
-├ ○ /equity/razz                           121 B         108 kB
-├ ○ /equity/stud                           121 B         108 kB
+├ ○ /equity/badugi                       1.61 kB         107 kB
+├ ○ /equity/plo                          2.48 kB         108 kB
+├ ○ /equity/razz                         3.38 kB         109 kB
+├ ○ /equity/stud                         3.39 kB         109 kB
 ├ ○ /icm                                 7.09 kB         112 kB
 ├ ○ /omaha                               2.84 kB         108 kB
 ├ ○ /play                                2.75 kB         108 kB
