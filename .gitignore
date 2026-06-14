@@ -7,3 +7,5 @@ __pycache__/
 .env.local
 *.db
 test-results/
+tsconfig.tsbuildinfo
+.turbo
