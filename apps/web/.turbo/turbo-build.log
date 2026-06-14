@@ -3,23 +3,56 @@
 > next build
 
    ▲ Next.js 15.5.19
-   - Environments: .env.local
 
    Creating an optimized production build ...
  ✓ (pwa) Compiling for server...
  ✓ (pwa) Compiling for server...
  ✓ (pwa) Compiling for client (static)...
- ○ (pwa) Service worker: /workspace/gto-wizard-clone/apps/web/public/sw.js
+ ○ (pwa) Service worker: /home/sc/repos/gto-wizard-clone/apps/web/public/sw.js
  ○ (pwa)   URL: /sw.js
  ○ (pwa)   Scope: /
- ✓ Compiled successfully in 38.4s
-   Skipping validation of types
-   Linting ...
+ ✓ Compiled successfully in 5.5s
+   Linting and checking validity of types ...
    Collecting page data ...
-   Generating static pages (0/20) ...
-   Generating static pages (5/20) 
-   Generating static pages (10/20) 
-   Generating static pages (15/20) 
- ✓ Generating static pages (20/20)
+   Generating static pages (0/27) ...
+   Generating static pages (6/27) 
+   Generating static pages (13/27) 
+   Generating static pages (20/27) 
+ ✓ Generating static pages (27/27)
    Finalizing page optimization ...
    Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      164 B         109 kB
+├ ○ /_not-found                            994 B         106 kB
+├ ○ /analyze                             2.11 kB         216 kB
+├ ○ /analyze/hands                       2.84 kB         220 kB
+├ ○ /analyze/leaks                       2.57 kB         220 kB
+├ ○ /analyze/viewer                        124 B         105 kB
+├ ○ /bomb-pot                            2.58 kB         108 kB
+├ ○ /courses                             2.79 kB         111 kB
+├ ○ /double-board                        2.33 kB         108 kB
+├ ○ /equity                              6.37 kB         112 kB
+├ ○ /equity/badugi                         121 B         108 kB
+├ ○ /equity/plo                            121 B         108 kB
+├ ○ /equity/razz                           121 B         108 kB
+├ ○ /equity/stud                           121 B         108 kB
+├ ○ /icm                                 7.09 kB         112 kB
+├ ○ /omaha                               2.84 kB         108 kB
+├ ○ /play                                2.75 kB         108 kB
+├ ○ /plo                                 1.97 kB         107 kB
+├ ○ /practice                            3.11 kB         108 kB
+├ ○ /spots                               4.39 kB         115 kB
+├ ○ /strategies                          7.25 kB         113 kB
+├ ○ /strategy                            3.98 kB         115 kB
+├ ○ /study                               3.51 kB         109 kB
+├ ○ /train                               11.2 kB         220 kB
+└ ○ /train/review                        2.76 kB         114 kB
++ First Load JS shared by all             105 kB
+  ├ chunks/626-662c25dbdf4b7e62.js         49 kB
+  ├ chunks/87c73c54-09e1ba5c70e60a51.js  54.2 kB
+  └ other shared chunks (total)          2.08 kB
+
+
+○  (Static)  prerendered as static content
+
