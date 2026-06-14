@@ -1,42 +1,48 @@
 #!/bin/bash
 # GTO Wizard Clone — auto-deploy script
-# Called by systemd timer to pull latest, build, test, and restart
+# Called by systemd timer to pull, build, test, and restart
 
-set -e
 REPO="/home/sc/repos/gto-wizard-clone"
 LOG="/home/sc/.hermes/logs/gto-wizard-deploy.log"
+exec >> "$LOG" 2>&1
 
-echo "[$(date)] Checking for updates..." >> "$LOG"
+echo "[$(date)] Checking for updates..."
 
-cd "$REPO"
+cd "$REPO" || exit 1
+
+# Save current state
+CURRENT_HASH=$(git rev-parse HEAD)
 
 # Fetch latest
-git fetch origin main 2>&1 >> "$LOG"
-
-# Check if we're behind
-HEAD_HASH=$(git rev-parse HEAD)
+git fetch origin main 2>&1
 REMOTE_HASH=$(git rev-parse origin/main)
 
-if [ "$HEAD_HASH" = "$REMOTE_HASH" ]; then
-    echo "[$(date)] Already up to date." >> "$LOG"
+if [ "$CURRENT_HASH" = "$REMOTE_HASH" ]; then
+    echo "[$(date)] Already up to date at $CURRENT_HASH."
     exit 0
 fi
 
-echo "[$(date)] New commit detected: $REMOTE_HASH" >> "$LOG"
+echo "[$(date)] New commit: $REMOTE_HASH (was: $CURRENT_HASH)"
 
-# Pull, install, build
-git pull origin main 2>&1 >> "$LOG"
-npm install 2>&1 >> "$LOG"
-npm run build 2>&1 >> "$LOG"
+# Pull and build
+git pull origin main 2>&1 || { echo "git pull failed"; exit 1; }
+npm install 2>&1 || { echo "npm install failed"; git reset --hard "$CURRENT_HASH"; exit 1; }
+npm run build 2>&1 || { echo "build failed"; git reset --hard "$CURRENT_HASH"; exit 1; }
 
-# Run E2E tests
-PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright test --config=apps/web/playwright.config.ts 2>&1 >> "$LOG" || {
-    echo "[$(date)] ⚠ E2E tests failed, rolling back..." >> "$LOG"
-    git reset --hard "$HEAD_HASH" 2>&1 >> "$LOG"
+# Run E2E tests — rollback on failure
+PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright test --config=apps/web/playwright.config.ts 2>&1
+TEST_EXIT=$?
+if [ $TEST_EXIT -ne 0 ]; then
+    echo "[$(date)] ⚠ E2E tests failed ($TEST_EXIT failures). Rolling back to $CURRENT_HASH..."
+    git reset --hard "$CURRENT_HASH"
+    git clean -fd
+    npm install 2>&1
+    npm run build 2>&1
+    systemctl --user restart gto-wizard-web.service 2>&1
+    echo "[$(date)] Rollback complete. Running at $CURRENT_HASH."
     exit 1
-}
+fi
 
 # Restart services
-systemctl --user restart gto-wizard-web.service 2>&1 >> "$LOG"
-
-echo "[$(date)] ✅ Deploy complete: $(git rev-parse --short HEAD)" >> "$LOG"
+systemctl --user restart gto-wizard-web.service 2>&1
+echo "[$(date)] ✅ Deployed: $(git rev-parse --short HEAD)"
