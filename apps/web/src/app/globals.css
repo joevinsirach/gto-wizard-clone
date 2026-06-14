@@ -41,3 +41,4 @@ body {
 
 @media (max-width: 1100px) { .strategy-grid { grid-template-columns: 1fr !important; } }
 @media (max-width: 720px) { .cards-grid { grid-template-columns: 1fr !important; } .hand-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 640px) { .nav-center { overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px !important; } }
