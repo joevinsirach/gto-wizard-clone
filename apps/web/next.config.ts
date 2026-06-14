@@ -12,38 +12,38 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   images: {
-    formats: ['image/avif', 'image/webp'],
+    formats: ['image/avif', 'image/webp'] as unknown as ['image/avif' | 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    // Type checking enabled — all errors resolved
   },
   // Proxy /api, /icm, /plo4, /double-board, /bomb-pot, /ws to backend
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8003'}/api/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/:path*`,
       },
       {
         source: '/icm/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/icm/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/icm/:path*`,
       },
       {
         source: '/plo4/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/plo4/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/plo4/:path*`,
       },
       {
         source: '/double-board/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/double-board/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/double-board/:path*`,
       },
       {
         source: '/bomb-pot/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/bomb-pot/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/bomb-pot/:path*`,
       },
       {
         source: '/ws/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'}/ws/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/ws/:path*`,
       },
     ]
   },
