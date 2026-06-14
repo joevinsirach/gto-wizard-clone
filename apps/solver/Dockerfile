@@ -15,10 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY apps/solver/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install PokerHandEvaluator with C++ extensions
-# The phevaluator package has C++ code that gets compiled via cmake/setuptools
-COPY /tmp/PokerHandEvaluator/python /tmp/phevaluator-src
-RUN pip install --no-cache-dir /tmp/phevaluator-src
+# Install phevaluator (hand evaluator pip package) instead of local PokerHandEvaluator
+RUN pip install --no-cache-dir phevaluator
 
 # Copy source
 COPY apps/solver/ .
