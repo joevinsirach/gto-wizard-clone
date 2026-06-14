@@ -59,7 +59,7 @@ class CommunitySpot(Base):
             "parent_spot_id": str(self.parent_spot_id) if self.parent_spot_id else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "comments_count": len(self.comments) if self.comments else 0,
+            "comments_count": 0,  # Avoid lazy-load relationship in async context
         }
 
 

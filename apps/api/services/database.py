@@ -86,8 +86,10 @@ async def init_db():
     
     try:
         async with engine.begin() as conn:
-            # Use ModelsBase (declarative_base) which all models actually inherit from
+            # Create tables from both base classes since models inherit from different ones
             await conn.run_sync(ModelsBase.metadata.create_all)
+            from apps.api.services.database import Base as DbBase
+            await conn.run_sync(DbBase.metadata.create_all)
         logger.info("Database tables initialized")
     except Exception as e:
         error_str = str(e)
