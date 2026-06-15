@@ -24,9 +24,10 @@ fi
 
 echo "[$(date)] New commit: $REMOTE_HASH (was: $CURRENT_HASH)"
 
-# Pull and build (--force avoids stale turbo cache on app renames)
+# Pull and build (clear turbo cache to avoid stale routes)
 git pull origin main 2>&1 || { echo "git pull failed"; exit 1; }
 npm install 2>&1 || { echo "npm install failed"; git reset --hard "$CURRENT_HASH"; exit 1; }
+uv sync --group runtime 2>&1 || { echo "backend sync failed"; }
 rm -rf apps/web/.next apps/web/.turbo 2>/dev/null
 npm run build 2>&1 || { echo "build failed"; git reset --hard "$CURRENT_HASH"; exit 1; }
 
