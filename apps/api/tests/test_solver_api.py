@@ -32,15 +32,15 @@ def test_submit_solve_request():
 
 def test_solve_job_response():
     """Test that solve job response model works."""
-    from apps.api.routers.solver import SolveJobResponse
-    
-    resp = SolveJobResponse(
-        id="test-job-123",
+    from apps.api.routers.solver import SolveResponse
+
+    resp = SolveResponse(
+        job_id="test-job-123",
         status="queued",
         progress=0,
     )
-    
-    assert resp.id == "test-job-123"
+
+    assert resp.job_id == "test-job-123"
     assert resp.status == "queued"
     assert resp.progress == 0
 

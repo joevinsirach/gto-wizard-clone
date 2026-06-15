@@ -934,7 +934,7 @@ class PushFoldStorage:
         return self._storage.save_strategy(
             street="preflop",
             strategy_data=strategy_data,
-            board_hash="",
+            board_hash=position.lower(),
             bet_size=0.0,
             stack_depth=stack_depth,
         )
@@ -952,7 +952,7 @@ class PushFoldStorage:
         """
         strategy_data = self._storage.get_strategy_by_params(
             street="preflop",
-            board_hash="",
+            board_hash=position.lower(),
             bet_size=0.0,
             stack_depth=stack_depth,
         )

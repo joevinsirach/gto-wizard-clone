@@ -1,17 +1,12 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "phase": "consolidation",
-  "phase_name": "Poker Consolidation — Step 1: pokerkit vendor",
+  "current_task": "fix-dev-environment",
   "completed": [
-    "Vendor pokerkit 0.6.3 into .venv",
-    "Create variant registry (10 variants)",
-    "Create variant equity API router",
-    "Register routes in main.py",
-    "Verify NLH, Razz, Badugi equity calculations"
+    {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
+    {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"}
   ],
-  "current": null,
-  "next": "Step 1b: Add frontend variant selector pages for stud/draw",
   "health": "tests_pass",
-  "last_sha": "6879815"
+  "last_sha": "cd82e05",
+  "blocker": null
 }
