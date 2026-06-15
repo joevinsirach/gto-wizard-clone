@@ -7,10 +7,12 @@
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
     {"task": "fix-dev-environment", "sha": "f943f99", "date": "2026-06-15", "coach": "approved"},
     {"task": "fix-variant-equity-pages", "sha": "8c1f6b1", "date": "2026-06-15", "coach": "approved"},
-    {"task": "polish-courses-page", "sha": "8686829", "date": "2026-06-15", "coach": "pending"},
-    {"task": "add-e2e-smoke-tests", "sha": "d9c3493", "date": "2026-06-15", "coach": "pending"}
+    {"task": "polish-courses-page", "sha": "8686829", "date": "2026-06-15", "coach": "approved"},
+    {"task": "add-e2e-smoke-tests", "sha": "d9c3493", "date": "2026-06-15", "coach": "approved"},
+    {"task": "add-stud-draw-variant-selectors", "sha": "7806c92", "date": "2026-06-15", "coach": "approved"},
+    {"task": "feat-preflop-solver-ranges", "sha": "4338451", "date": "2026-06-15", "coach": "approved"}
   ],
-  "health": "78_pass_0_error_0_fail",
-  "last_sha": "d9c3493",
+  "health": "589_pass_0_error_0_fail",
+  "last_sha": "4338451",
   "blocker": null
 }

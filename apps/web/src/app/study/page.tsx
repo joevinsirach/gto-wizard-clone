@@ -108,7 +108,33 @@ export default function StudyPage() {
     return 0.5 + data.frequency * 0.5
   }
 
-  // Get action data for selected cell
+  // Compute action summary from solver data
+  const actionSummary = useMemo(() => {
+    const counts: Record<string, { count: number; totalFreq: number }> = {}
+    rangeData.forEach((h) => {
+      const action = h.action.startsWith('raise') ? 'raise' : h.action
+      if (!counts[action]) counts[action] = { count: 0, totalFreq: 0 }
+      counts[action].count++
+      counts[action].totalFreq += h.frequency
+    })
+    return counts
+  }, [rangeData])
+
+  const totalCombos = 1326 // 52 choose 2
+
+  const actionLabels: Record<string, string> = {
+    raise: 'Raise 2.5',
+    call: 'Call',
+    fold: 'Fold',
+    all_in: 'All In',
+  }
+
+  const actionLabelsShort: Record<string, string> = {
+    raise: 'RAISE',
+    call: 'CALL',
+    fold: 'FOLD',
+    all_in: 'ALL IN',
+  }
   const selectedHandData = useMemo(() => {
     if (!selectedCell) return null
     return rangeData.get(selectedCell) || null
@@ -216,7 +242,7 @@ export default function StudyPage() {
                   const actionBg: Record<string, string> = {
                     'raise': RED_BRIGHT, 'call': BLUE, 'fold': GRAY, 'all_in': RED_DARK
                   }
-                  return [{ t: selectedHandData.action.toUpperCase(), p: `${(selectedHandData.frequency * 100).toFixed(1)}%`, c: `${Math.round(selectedHandData.equity * 169)} combos`, bg: actionBg[selectedHandData.action] || GRAY }]
+                  return [{ t: actionLabelsShort[selectedHandData.action] || selectedHandData.action.toUpperCase(), p: `${(selectedHandData.frequency * 100).toFixed(1)}%`, c: `${Math.round(selectedHandData.frequency * 6)} combos`, bg: actionBg[selectedHandData.action] || GRAY }]
                 })().map(a => (
                   <div key={a.t} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: a.bg }}>
                     <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{a.t}</div>
@@ -230,16 +256,18 @@ export default function StudyPage() {
             <div style={{ padding: '0 14px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>Actions ▾</div>
               <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {[{ t: 'Fold', p: `${activePosition === 'UTG' ? '82.5' : '60.0'}%`, c: `${activePosition === 'UTG' ? '1094' : '795'} combos`, bg: GRAY },
-                  { t: 'Raise 2.5', p: `${activePosition === 'UTG' ? '12.0' : '30.0'}%`, c: `${activePosition === 'UTG' ? '159' : '398'} combos`, bg: RED_BRIGHT },
-                  { t: 'Call', p: `${activePosition === 'UTG' ? '5.5' : '10.0'}%`, c: `${activePosition === 'UTG' ? '73' : '133'} combos`, bg: BLUE },
-                ].map(a => (
-                  <div key={a.t} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: a.bg }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{a.t}</div>
-                    <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{a.p}</div>
-                    <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{a.c}</div>
-                  </div>
-                ))}
+                {[['raise', RED_BRIGHT], ['call', BLUE], ['fold', GRAY]].map(([action, bg]) => {
+                  const s = actionSummary[action] || { count: 0, totalFreq: 0 }
+                  const pct = totalCombos > 0 ? ((s.count / 169) * 100).toFixed(1) : '0.0'
+                  const combos = Math.round((s.count / 169) * totalCombos)
+                  return (
+                    <div key={action} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: bg as string }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{actionLabels[action] || action}</div>
+                      <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{pct}%</div>
+                      <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{combos} combos</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
