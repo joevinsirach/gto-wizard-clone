@@ -5,7 +5,7 @@ import { variantApi } from "@/lib/api";
 import type { VariantInfo, EquityResult } from "@/lib/api";
 import { StudHandDisplay, makeDefaultStudHand } from "@/components/stud";
 import type { StudPlayerData } from "@/components/stud";
-import { CardSelectorGrid, selectedCardsToRange, cardsToHandDisplay } from "@/components/CardSelector";
+import { SlotSelector, selectedCardsToRange, cardsToHandDisplay } from "@/components/CardSelector";
 import type { CardSelection } from "@/components/CardSelector";
 
 const MAX_STUD_CARDS = 7; // 3 down + up to 4 up
@@ -80,17 +80,21 @@ export default function StudEquityPage() {
 
         {/* Hero / Villain card selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <CardSelectorGrid
+          <SlotSelector
             maxCards={MAX_STUD_CARDS}
             selected={heroCards}
             onChange={setHeroCards}
             label="Hero Cards (3 down + up to 4 up)"
+            downCount={3}
+            variantName="Stud"
           />
-          <CardSelectorGrid
+          <SlotSelector
             maxCards={MAX_STUD_CARDS}
             selected={villainCards}
             onChange={setVillainCards}
             label="Villain Cards (3 down + up to 4 up)"
+            downCount={3}
+            variantName="Stud"
           />
         </div>
 
