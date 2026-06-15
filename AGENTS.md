@@ -55,68 +55,44 @@ These skills are loaded automatically when the Player works on this project:
 
 Ordered by priority. Each task is one unit of work for one player tick.
 
-### Task: fix-dev-environment
-- **Description**: Install pytest and test dependencies in the .venv. Ensure `uv sync` works and all existing tests run without errors. Declare dependencies properly in pyproject.toml (pytest, fastapi, uvicorn, httpx, etc.).
-- **Success criteria**: `python -m pytest packages/poker-core/tests/ -q` exits 0. `python -m pytest apps/api/tests/ -q` exits 0. `python -m pytest apps/solver/tests/ -q` exits 0.
-- **Coach checks**:
-  - pyproject.toml has proper `[dependency-groups]` or `[project.optional-dependencies]` with test deps
-  - No unrelated files changed
-  - Tests actually pass, not just exist
-  - `uv sync --no-dev` (or equivalent) still works cleanly
-- **Skills**: none beyond project defaults
-
-### Task: fix-variant-equity-pages
-- **Description**: The Stud, Badugi, and Razz variant equity pages exist at `/equity/stud`, `/equity/badugi`, `/equity/razz` but are thin (~100 lines vs NLH equity's 748). Wire them to the `/api/v1/variants/{key}/equity` endpoint and verify they render correct equity results for each variant.
+### Task: keep-api-server-running
+- **Description**: The FastAPI backend on port 8000 crashes on container restart or host reboot. Set up a systemd --user service (or screen/tmux wrapper) that auto-restarts the API when it dies. The API runs from the repo root with `PYTHONPATH=apps/api uv run uvicorn main:app --host 0.0.0.0 --port 8000`. Also install fakeredis (already done) and ensure `uv sync --group runtime` has all needed deps.
 - **Success criteria**:
-  - Stud equity calculator selects 3 down cards, 0-4 up cards per player
-  - Badugi equity calculator selects 4 cards per player, evaluates lowball
-  - Razz equity calculator selects 7 cards, evaluates lowball
-  - Each page returns equity API response with valid hero/villain equity split
-  - No console errors on page load
+  - `curl http://localhost:8000/api/v1/health` returns 200 after the service starts
+  - Service auto-restarts if the process crashes
+  - Service starts on boot (systemd --user enable)
 - **Coach checks**:
-  - Test each variant page loads with a known hand matchup
-  - Verify API call shape matches EquityRequest schema
-  - Check for broken imports or missing component references
-  - Confirm the page is navigable from the /equity index
-- **Skills**: none
+  - Verify the service file exists at ~/.config/systemd/user/gto-api.service
+  - Test stop/start cycle: `systemctl --user stop gto-api && systemctl --user start gto-api` then curl health
+  - Check journalctl for errors
 
-### Task: polish-courses-page
-- **Description**: The courses page exists (327 lines) but needs full integration with the `/api/v1/courses` endpoint. Ensure course listing, filtering by category/difficulty, and detail view all work correctly with the 5 seeded courses.
+### Task: fix-strategy-lookup
+- **Description**: The `GET /api/v1/strategy-lookup` endpoint returns HTTP 500 with error `'dict' object has no attribute 'game_type'`. The root cause is that `get_strategy()` returns a `StoredStrategy` object, but when the strategy is not found in the database and the fallback path (`list_strategies`) is hit, the candidate iteration or subsequent handling produces a dict instead. Fix the type mismatch in `apps/api/routers/strategy_lookup.py` or `apps/api/services/strategy_storage.py` so strategy lookups work correctly.
 - **Success criteria**:
-  - Courses load from API and display correctly
-  - Filter by difficulty (beginner/intermediate/advanced) works
-  - Filter by category (preflop/postflop/icm) works
-  - Clicking a course shows its lessons
-  - Empty state handled gracefully
+  - `curl "http://localhost:8000/api/v1/strategy-lookup?board=preflop&stack_depth=100&position=UTG"` returns a valid JSON response (may be 404 if no seed data — that's acceptable) rather than a 500
+  - Strategy lookup with valid parameters returns strategy data
 - **Coach checks**:
-  - API returns correct course data
-  - No hardcoded mock data in production code paths
-  - Loading states present
-  - Error states handled
-- **Skills**: none
+  - The fix handles both found and not-found paths cleanly
+  - No regression in other endpoint behaviour
+  - The fix doesn't silently swallow errors
 
-### Task: add-e2e-smoke-tests
-- **Description**: Add Playwright E2E smoke tests covering the 5 most important user flows: landing page loads, equity calculator runs, ICM calculator loads, courses list displays, variant selector page loads.
-- **Success criteria**: `cd apps/web && npx playwright test` with 5 passing smoke tests.
-- **Coach checks**:
-  - Tests run against the live dev server (localhost:3000)
-  - Tests check real API responses, not static content
-  - No test overlaps with existing test files
-- **Skills**: none
-
-### Task: add-stud-draw-variant-selectors
-- **Description**: The stud and draw variants (Stud, Razz, Badugi, 2-7 Triple Draw, etc.) exist in the API but lack dedicated landing pages. Create a variant selector page at `/variants` that lists all 10 registered variants from `/api/v1/variants` with descriptions, categories, and links to their equity calculators. Allow filtering by category (flop, stud, draw, community).
+### Task: seed-preflop-strategies
+- **Description**: The strategy_lookup endpoint returns 404 because no strategy data exists in the PostgreSQL database. Create a seed script that inserts the pre-computed preflop GTO ranges (UTG, HJ, CO, BTN, SB, BB for 100bb) from the solver output into the strategies table. The seed data should be generated by the solver or sourced from the existing preflop data embedded in the frontend.
 - **Success criteria**:
-  - 10 variants displayed with correct metadata
-  - Filter by category works
-  - Each variant links to its equity calculator page (existing or stub)
-  - Mobile-responsive layout
+  - `curl "http://localhost:8000/api/v1/strategy-lookup?board=preflop&stack_depth=100&position=UTG"` returns 200 with strategy data
+  - All 6 common positions have preflop data
 - **Coach checks**:
-  - API returns 10 variants with correct categories
-  - All links resolve to existing pages
-  - Missing variant pages redirect gracefully
-  - No console errors
-- **Skills**: none
+  - Seed script is idempotent (safe to run multiple times)
+  - Strategy data matches expected GTO ranges
+  - Seed script is documented in AGENTS.md
+
+### Task: fix-solver-docker-build
+- **Description**: `docker compose build solver` fails with a numpy version conflict (`numpy==2.2.3` vs `numba 0.61.0` requiring `numpy<2.2`). The solver Dockerfile at `apps/solver/Dockerfile` or its requirements.txt has pinned version conflicts. Fix the dependency versions so the solver image builds cleanly.
+- **Success criteria**:
+  - `docker compose build solver` exits 0
+- **Coach checks**:
+  - Check that the solver starts: `docker compose up -d solver` then check logs
+  - Verify the solver gRPC port 50051 is listening
 
 ## Coach Configuration
 - **Review scope**: git diff of latest commit, test output, success criteria from AGENTS.md task, console errors from frontend pages (check via curl/browser)
