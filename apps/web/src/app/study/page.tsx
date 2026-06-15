@@ -228,28 +228,45 @@ export default function StudyPage() {
             </div>
           </div>
 
-          {/* Selected hand action breakdown */}
+          {/* Selected hand action breakdown with interactive buttons */}
           {selectedHandData ? (
             <div style={{ padding: '0 14px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>
-                Actions for {selectedCell}
+                GTO Action for {selectedCell}
                 <span style={{ fontSize: 10, color: '#888', fontWeight: 400, marginLeft: 'auto' }}>
-                  Equity: {(selectedHandData.equity * 100).toFixed(0)}%
+                  Equity: {(selectedHandData.equity * 100).toFixed(1)}%
                 </span>
               </div>
-              <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {(() => {
-                  const actionBg: Record<string, string> = {
-                    'raise': RED_BRIGHT, 'call': BLUE, 'fold': GRAY, 'all_in': RED_DARK
-                  }
-                  return [{ t: actionLabelsShort[selectedHandData.action] || selectedHandData.action.toUpperCase(), p: `${(selectedHandData.frequency * 100).toFixed(1)}%`, c: `${Math.round(selectedHandData.frequency * 6)} combos`, bg: actionBg[selectedHandData.action] || GRAY }]
-                })().map(a => (
-                  <div key={a.t} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: a.bg }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{a.t}</div>
-                    <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{a.p}</div>
-                    <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{a.c}</div>
-                  </div>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {[
+                  { action: 'fold', label: 'Fold', bg: GRAY },
+                  { action: 'call', label: 'Call', bg: BLUE },
+                  { action: 'raise', label: 'Raise', bg: RED_BRIGHT },
+                ].map(a => {
+                  const isGto = selectedHandData.action.startsWith(a.action)
+                  const freq = isGto ? selectedHandData.frequency : 0
+                  const combos = isGto ? Math.round(freq * 6) : 0
+                  return (
+                    <div key={a.action} style={{
+                      borderRadius: 8, padding: '12px 12px 10px', color: '#fff',
+                      background: isGto ? a.bg : '#1a1a1a',
+                      border: isGto ? 'none' : '1px solid #333',
+                      cursor: 'pointer', transition: 'all .1s',
+                      opacity: isGto ? 1 : 0.4,
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>
+                        {a.label}
+                        {isGto && <span style={{ fontSize: 9, marginLeft: 6, opacity: .7 }}>GTO ✓</span>}
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>
+                        {isGto ? `${(freq * 100).toFixed(0)}%` : '—'}
+                      </div>
+                      <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>
+                        {isGto ? `${combos} combos` : ''}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ) : (
