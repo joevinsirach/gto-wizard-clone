@@ -317,7 +317,7 @@ def _generate_range(position: str, stack_depth: int) -> tuple[list[HandCell], st
         elif i < raise_count + call_count:
             action_map[hand] = (config["call_actions"][0] if config["call_actions"] else "call", 1.0, round(eq, 4))
         else:
-            action_map[hand] = ("fold", 0.0, round(eq, 4))
+            action_map[hand] = ("fold", 1.0, round(eq, 4))
 
     # Build response in the original display order (matrix order)
     cells = []
