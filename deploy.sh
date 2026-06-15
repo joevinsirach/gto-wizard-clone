@@ -24,9 +24,10 @@ fi
 
 echo "[$(date)] New commit: $REMOTE_HASH (was: $CURRENT_HASH)"
 
-# Pull and build
+# Pull and build (--force avoids stale turbo cache on app renames)
 git pull origin main 2>&1 || { echo "git pull failed"; exit 1; }
 npm install 2>&1 || { echo "npm install failed"; git reset --hard "$CURRENT_HASH"; exit 1; }
+rm -rf apps/web/.next apps/web/.turbo 2>/dev/null
 npm run build 2>&1 || { echo "build failed"; git reset --hard "$CURRENT_HASH"; exit 1; }
 
 # Run E2E tests — rollback on failure
