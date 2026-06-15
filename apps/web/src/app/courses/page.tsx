@@ -1,20 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { gtoTheme } from "@/styles/gto-tokens";
 
 type Difficulty = "beginner" | "intermediate" | "advanced";
-type Category = "preflop" | "postflop" | "icm" | "exploits";
+type Category = "preflop" | "postflop" | "icm" | "exploits" | "tournament";
+
+interface ApiLesson {
+  id: string;
+  title: string;
+  content: string | null;
+  content_type: string;
+  duration_minutes: number;
+  order_index: number;
+  is_preview: boolean;
+}
+
+interface ApiCourseDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  short_description: string | null;
+  difficulty: Difficulty;
+  category: string;
+  duration_minutes: number;
+  lesson_count: number;
+  is_featured: boolean;
+  tags: string[];
+  author: string;
+  lessons: ApiLesson[];
+}
 
 interface ApiCourse {
   id: string;
   title: string;
-  description: string;
-  short_description: string;
+  description: string | null;
+  short_description: string | null;
   difficulty: Difficulty;
-  category: Category;
+  category: string;
   duration_minutes: number;
   lesson_count: number;
   is_featured: boolean;
@@ -27,12 +51,18 @@ interface Course {
   title: string;
   description: string;
   difficulty: Difficulty;
-  category: Category;
+  category: string;
   lessons: number;
   duration: string;
   progress: number;
   image: string;
   author: string;
+}
+
+interface CourseDetail extends Course {
+  lessonsList: ApiLesson[];
+  loadingLessons: boolean;
+  lessonsError: string | null;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -46,6 +76,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   postflop: "Postflop",
   icm: "ICM",
   exploits: "Exploits",
+  tournament: "Tournament",
 };
 
 const DIFFICULTY_ICONS: Record<string, string> = {
@@ -54,11 +85,11 @@ const DIFFICULTY_ICONS: Record<string, string> = {
   advanced: "🏆",
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  preflop: "♠",
-  postflop: "♣",
-  icm: "💰",
-  exploits: "🎓",
+const CONTENT_TYPE_ICONS: Record<string, string> = {
+  text: "📝",
+  video: "🎬",
+  quiz: "🧠",
+  interactive: "🎮",
 };
 
 function formatDuration(minutes: number): string {
@@ -67,6 +98,15 @@ function formatDuration(minutes: number): string {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+function durationToMinutes(durationStr: string): number {
+  // Parse strings like "3h", "30m", "3h 30m" back to minutes
+  const hMatch = durationStr.match(/(\d+)h/);
+  const mMatch = durationStr.match(/(\d+)m/);
+  const h = hMatch ? parseInt(hMatch[1]) * 60 : 0;
+  const m = mMatch ? parseInt(mMatch[1]) : 0;
+  return h + m;
 }
 
 function apiToCourse(api: ApiCourse): Course {
@@ -89,8 +129,10 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterDifficulty, setFilterDifficulty] = useState<Difficulty | "all">("all");
-  const [filterCategory, setFilterCategory] = useState<Category | "all">("all");
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [selectedCourse, setSelectedCourse] = useState<CourseDetail | null>(null);
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<string[]>(["preflop", "postflop", "icm", "exploits", "tournament"]);
 
   useEffect(() => {
     fetch("/api/v1/courses")
@@ -101,6 +143,16 @@ export default function CoursesPage() {
       .then((data) => {
         const mapped = (data.courses || []).map(apiToCourse);
         setCourses(mapped);
+
+        // Gather unique categories from the API response
+        const cats = new Set<string>();
+        (data.courses || []).forEach((c: ApiCourse) => {
+          if (c.category) cats.add(c.category);
+        });
+        if (cats.size > 0) {
+          setAvailableCategories(Array.from(cats).sort());
+        }
+
         setLoading(false);
       })
       .catch((err) => {
@@ -110,6 +162,60 @@ export default function CoursesPage() {
       });
   }, []);
 
+  const fetchCourseDetail = useCallback(async (course: Course) => {
+    setSelectedCourse({
+      ...course,
+      lessonsList: [],
+      loadingLessons: true,
+      lessonsError: null,
+    });
+
+    try {
+      const res = await fetch(`/api/v1/courses/${course.id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data: ApiCourseDetail = await res.json();
+      const lessonsList = (data.lessons || []).sort(
+        (a, b) => a.order_index - b.order_index
+      );
+
+      setSelectedCourse((prev) =>
+        prev && prev.id === course.id
+          ? {
+              ...prev,
+              lessonsList,
+              loadingLessons: false,
+              lessonsError: null,
+              duration: formatDuration(
+                lessonsList.reduce((sum, l) => sum + l.duration_minutes, 0)
+              ),
+              lessons: lessonsList.length,
+            }
+          : prev
+      );
+    } catch (err: any) {
+      setSelectedCourse((prev) =>
+        prev && prev.id === course.id
+          ? {
+              ...prev,
+              lessonsList: [],
+              loadingLessons: false,
+              lessonsError: err.message || "Failed to load lessons",
+            }
+          : prev
+      );
+    }
+  }, []);
+
+  const handleSelectCourse = useCallback(
+    (course: Course) => {
+      if (selectedCourse?.id === course.id) return;
+      setExpandedLesson(null);
+      fetchCourseDetail(course);
+    },
+    [selectedCourse, fetchCourseDetail]
+  );
+
   const filteredCourses = courses.filter((course) => {
     if (filterDifficulty !== "all" && course.difficulty !== filterDifficulty) return false;
     if (filterCategory !== "all" && course.category !== filterCategory) return false;
@@ -117,7 +223,10 @@ export default function CoursesPage() {
   });
 
   const totalLessons = courses.reduce((sum, c) => sum + c.lessons, 0);
-  const totalDuration = courses.reduce((sum, c) => sum + parseInt(c.duration), 0);
+  const totalDurationMinutes = courses.reduce(
+    (sum, c) => sum + durationToMinutes(c.duration),
+    0
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -146,7 +255,7 @@ export default function CoursesPage() {
         </div>
         <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-blue-400">
-            {courses.reduce((sum, c) => sum + Math.round(parseInt(c.duration) / 60), 0)}h
+            {formatDuration(totalDurationMinutes)}
           </div>
           <div className="text-sm text-gray-400">Total Content</div>
         </div>
@@ -176,14 +285,15 @@ export default function CoursesPage() {
           <label className="text-xs text-gray-500">Category</label>
           <select
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value as Category | "all")}
+            onChange={(e) => setFilterCategory(e.target.value)}
             className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
           >
             <option value="all">All Categories</option>
-            <option value="preflop">Preflop</option>
-            <option value="postflop">Postflop</option>
-            <option value="icm">ICM</option>
-            <option value="exploits">Exploits</option>
+            {availableCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {CATEGORY_LABELS[cat] || cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -212,7 +322,7 @@ export default function CoursesPage() {
                 filteredCourses.map((course) => (
                   <button
                     key={course.id}
-                    onClick={() => setSelectedCourse(course)}
+                    onClick={() => handleSelectCourse(course)}
                     className={cn(
                       "p-5 rounded-lg border bg-gray-900/50 text-left transition-all hover:scale-[1.02]",
                       selectedCourse?.id === course.id
@@ -282,17 +392,149 @@ export default function CoursesPage() {
 
                 <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
                   <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-white">{selectedCourse.lessons}</div>
+                    <div className="text-lg font-bold text-white">
+                      {selectedCourse.loadingLessons
+                        ? "..."
+                        : selectedCourse.lessons}
+                    </div>
                     <div className="text-gray-400">Lessons</div>
                   </div>
                   <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-white">{selectedCourse.duration}</div>
+                    <div className="text-lg font-bold text-white">
+                      {selectedCourse.duration}
+                    </div>
                     <div className="text-gray-400">Duration</div>
                   </div>
                 </div>
 
-                <button className="w-full py-3 px-4 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-all">
-                  Start Course
+                {/* Lessons Section */}
+                {selectedCourse.loadingLessons ? (
+                  <div className="py-4 text-center text-sm text-gray-400 animate-pulse">
+                    Loading lessons...
+                  </div>
+                ) : selectedCourse.lessonsError ? (
+                  <div className="py-4 text-center text-sm text-red-400">
+                    Failed to load lessons: {selectedCourse.lessonsError}
+                  </div>
+                ) : selectedCourse.lessonsList.length > 0 ? (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">
+                      Lessons ({selectedCourse.lessonsList.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedCourse.lessonsList.map((lesson, idx) => (
+                        <div key={lesson.id} className="border border-gray-700 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() =>
+                              setExpandedLesson(
+                                expandedLesson === lesson.id ? null : lesson.id
+                              )
+                            }
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-800/50 transition-colors"
+                          >
+                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-700 text-xs flex items-center justify-center text-gray-300 font-medium">
+                              {idx + 1}
+                            </span>
+                            <span className="flex-1 text-sm text-gray-200 font-medium">
+                              {lesson.title}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {lesson.is_preview && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-poker-gold/20 text-poker-gold uppercase font-semibold">
+                                  Preview
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-500">
+                                {CONTENT_TYPE_ICONS[lesson.content_type] || "📄"}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatDuration(lesson.duration_minutes)}
+                              </span>
+                            </div>
+                          </button>
+                          {expandedLesson === lesson.id && lesson.content && (
+                            <div className="px-4 py-3 border-t border-gray-700 bg-gray-800/30 text-sm text-gray-300 leading-relaxed max-h-60 overflow-y-auto">
+                              <div className="prose prose-invert prose-sm max-w-none">
+                                {lesson.content.split("\n").map((line, i) => {
+                                  // Simple markdown-like rendering
+                                  if (line.startsWith("# ")) {
+                                    return (
+                                      <h1 key={i} className="text-lg font-bold text-white mt-2 mb-1">
+                                        {line.replace("# ", "")}
+                                      </h1>
+                                    );
+                                  }
+                                  if (line.startsWith("## ")) {
+                                    return (
+                                      <h2 key={i} className="text-base font-semibold text-gray-100 mt-3 mb-1">
+                                        {line.replace("## ", "")}
+                                      </h2>
+                                    );
+                                  }
+                                  if (line.startsWith("### ")) {
+                                    return (
+                                      <h3 key={i} className="text-sm font-semibold text-gray-200 mt-2 mb-1">
+                                        {line.replace("### ", "")}
+                                      </h3>
+                                    );
+                                  }
+                                  if (line.startsWith("- **") && line.endsWith("**")) {
+                                    return (
+                                      <p key={i} className="text-gray-300 ml-4">
+                                        • <strong>{line.replace("- **", "").replace("**", "")}</strong>
+                                      </p>
+                                    );
+                                  }
+                                  if (line.startsWith("- ")) {
+                                    return (
+                                      <li key={i} className="text-gray-300 ml-4 list-disc">
+                                        {line.replace("- ", "")}
+                                      </li>
+                                    );
+                                  }
+                                  if (line.startsWith("|") && line.includes("---")) {
+                                    return null;
+                                  }
+                                  if (line.startsWith("|")) {
+                                    return (
+                                      <p key={i} className="text-gray-300 text-xs font-mono">
+                                        {line}
+                                      </p>
+                                    );
+                                  }
+                                  if (line.trim() === "") {
+                                    return <div key={i} className="h-2" />;
+                                  }
+                                  return (
+                                    <p key={i} className="text-gray-300 mb-1">
+                                      {line}
+                                    </p>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <button
+                  onClick={() => {
+                    if (selectedCourse.lessonsList.length > 0) {
+                      setExpandedLesson(
+                        expandedLesson === selectedCourse.lessonsList[0].id
+                          ? null
+                          : selectedCourse.lessonsList[0].id
+                      );
+                    }
+                  }}
+                  className="w-full py-3 px-4 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-all"
+                >
+                  {selectedCourse.lessonsList.length > 0
+                    ? "Start Course"
+                    : "Loading..."}
                 </button>
               </div>
             ) : (
