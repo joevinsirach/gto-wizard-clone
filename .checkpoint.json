@@ -1,15 +1,16 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "add-e2e-smoke-tests",
+  "current_task": "tbd",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
     {"task": "fix-dev-environment", "sha": "f943f99", "date": "2026-06-15", "coach": "approved"},
     {"task": "fix-variant-equity-pages", "sha": "8c1f6b1", "date": "2026-06-15", "coach": "approved"},
-    {"task": "polish-courses-page", "sha": "8686829", "date": "2026-06-15", "coach": "pending"}
+    {"task": "polish-courses-page", "sha": "8686829", "date": "2026-06-15", "coach": "pending"},
+    {"task": "add-e2e-smoke-tests", "sha": "d9c3493", "date": "2026-06-15", "coach": "pending"}
   ],
-  "health": "589_pass_0_error_0_fail",
-  "last_sha": "8686829",
+  "health": "78_pass_0_error_0_fail",
+  "last_sha": "d9c3493",
   "blocker": null
 }
