@@ -303,3 +303,18 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - **Description**: Add a playwright e2e test that navigates to the study page, configures a postflop spot (board KsKc3s, position BTN, street flop), clicks "Solve", and verifies the solver response is rendered (action frequencies, EV values). This validates the full stack: frontend → API → solver. Follow the existing e2e test pattern in `apps/web/e2e/`.
 - **Success criteria**: `cd apps/web && npx playwright test` includes a passing solver test. The test verifies that solver strategy actions appear in the rendered output.
 - **Coach checks**: Run the e2e tests. Verify the solver test specifically passes.
+
+### Task: re-seed-strategy-data
+- **Description**: The PostgreSQL database was recreated and the preflop strategy seed data is gone. The strategies page shows "0 spots found" because the strategy lookup returns `Strategy not found` for all queries. Re-run the existing seed script at `apps/api/prisma/seed_preflop_strategies.py` (docs in AGENTS.md Seed Data section) and verify strategy data is available.
+- **Success criteria**: `curl "http://localhost:8000/api/v1/strategy/lookup?board=preflop&stack_depth=100&position=UTG"` returns 200 with strategy data (not "Strategy not found"). The `/strategies` page shows available strategies instead of "0 spots found".
+- **Coach checks**: Run the seed script, verify the strategy lookup returns real data. Check the strategies page renders data.
+
+### Task: add-push-fold-charts-page
+- **Description**: Create a push/fold Nash equilibrium charts page at `/push-fold` that displays standard tournament push/fold ranges by position and stack depth. Use the existing equity calculation infrastructure. Include a table showing push ranges for positions (UTG through SB) at common stack depths (5-20bb). The page should let users select stack depth and position and see the recommended push/fold range.
+- **Success criteria**: `curl http://localhost:3000/push-fold` returns 200 with a rendered page showing push/fold chart UI. Navigation has a link to the new page.
+- **Coach checks**: Load `/push-fold` page, check for console errors. Verify push/fold ranges are shown for at least 3 stack depths (5bb, 10bb, 15bb).
+
+### Task: add-range-explorer-page
+- **Description**: The `RangeGrid.tsx` component exists at `apps/web/src/components/equity/RangeGrid.tsx` but there's no route that uses it. Create a `/range-explorer` page that renders the range matrix with frequency overlay and allows users to explore GTO ranges by position, stack depth, and board texture. Use the existing RangeGrid component and wire it to the strategy-lookup API.
+- **Success criteria**: `curl http://localhost:3000/range-explorer` returns 200. The page renders the range grid with frequency colors for at least one position-stack combination.
+- **Coach checks**: Load `/range-explorer` page, verify the range grid renders with frequency coloring. Check for console errors. Verify position selector works.
