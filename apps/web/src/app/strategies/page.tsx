@@ -120,11 +120,14 @@ async function fetchStrategy(params: {
     const queryParams = new URLSearchParams({
       board: params.board,
       stack_depth: params.stack_depth.toString(),
-      bet_sizes: "",
+      position: params.position,
     });
+    if (params.street) {
+      queryParams.set("street", params.street);
+    }
 
     const response = await fetch(
-      `/api/v1/strategy/lookup?game_type=nlh&players=2&${queryParams.toString()}&position=${params.position}`
+      `/api/v1/strategy-lookup?${queryParams.toString()}`
     );
 
     if (!response.ok) {
@@ -133,17 +136,8 @@ async function fetchStrategy(params: {
     }
 
     const data = await response.json();
-    if (data.strategy_data) {
-      // Convert array format to Record<string, StrategyCell>
-      const strategy: Record<string, StrategyCell> = {};
-      for (const item of data.strategy_data) {
-        strategy[item.hand] = {
-          action: item.action,
-          frequency: item.frequency,
-          ev: item.ev,
-        };
-      }
-      return strategy;
+    if (data.strategy && data.status === "found") {
+      return data.strategy as Record<string, StrategyCell>;
     }
     return null;
   } catch (error) {
