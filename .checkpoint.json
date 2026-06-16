@@ -35,9 +35,9 @@
     {"task": "add-deploy-health-monitoring", "sha": "a86f899", "date": "2026-06-17", "coach": "approved"},
     {"task": "start-solver-docker-service", "sha": "e176854", "date": "2026-06-17", "coach": "pending"},
     {"task": "add-periodic-health-check-cron", "sha": "no-code-change", "date": "2026-06-17", "coach": "pending"},
-    {"task": "add-solver-e2e-test", "sha": "COMMIT_PENDING", "date": "2026-06-17", "coach": "pending"}
+    {"task": "add-solver-e2e-test", "sha": "fb324b3", "date": "2026-06-17", "coach": "pending"}
   ],
   "health": "368_pass_0_error_0_fail__84_e2e_pass",
-  "last_sha": "COMMIT_PENDING",
+  "last_sha": "fb324b3",
   "blocker": null
 }
