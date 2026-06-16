@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "tbd",
+  "current_task": "auto-seed-strategy-on-db-restart",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -38,9 +38,9 @@
     {"task": "add-solver-e2e-test", "sha": "fb324b3", "date": "2026-06-17", "coach": "approved"},
     {"task": "re-seed-strategy-data", "sha": "254dfdf", "date": "2026-06-17", "coach": "approved"},
     {"task": "add-push-fold-charts-page", "sha": "81d4ee8", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-range-explorer-page", "sha": "5da4bcb", "date": "2026-06-17", "coach": "pending"}
+    {"task": "add-range-explorer-page", "sha": "5da4bcb", "date": "2026-06-17", "coach": "approved"}
   ],
   "health": "368_pass_0_error_0_fail__84_e2e_pass",
-  "last_sha": "5da4bcb",
+  "last_sha": "9f70059",
   "blocker": null
 }

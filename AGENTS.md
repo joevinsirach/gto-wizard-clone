@@ -317,4 +317,19 @@ Ordered by priority. Each task is one unit of work for one player tick.
 ### Task: add-range-explorer-page
 - **Description**: The `RangeGrid.tsx` component exists at `apps/web/src/components/equity/RangeGrid.tsx` but there's no route that uses it. Create a `/range-explorer` page that renders the range matrix with frequency overlay and allows users to explore GTO ranges by position, stack depth, and board texture. Use the existing RangeGrid component and wire it to the strategy-lookup API.
 - **Success criteria**: `curl http://localhost:3000/range-explorer` returns 200. The page renders the range grid with frequency colors for at least one position-stack combination.
-- **Coach checks**: Load `/range-explorer` page, verify the range grid renders with frequency coloring. Check for console errors. Verify position selector works.
+|- **Coach checks**: Load `/range-explorer` page, verify the range grid renders with frequency coloring. Check for console errors. Verify position selector works.
+|
+|### Task: auto-seed-strategy-on-db-restart
+|- **Description**: The PostgreSQL database loses preflop strategy data when recreated (`docker compose down` + `up`), requiring a manual `make seed-preflop` to restore it. Add a docker-compose init container or a systemd Oneshot service that runs the seed script automatically after PostgreSQL starts. The existing seed script at `apps/api/prisma/seed_preflop_strategies.py` is already idempotent and works — just needs automated invocation.
+|- **Success criteria**: After `docker compose down && docker compose up -d`, `curl "http://localhost:8000/api/v1/strategy/lookup?board=preflop&stack_depth=100&position=UTG"` returns strategy data (200) without any manual seeding step.
+|- **Coach checks**: Run `docker compose down && docker compose up -d`, then immediately curl the strategy-lookup endpoint and confirm data is populated. Verify the solution doesn't block PostgreSQL startup if the seed fails.
+|
+|### Task: add-e2e-tests-for-new-pages
+|- **Description**: The `/push-fold` and `/range-explorer` pages have no e2e smoke tests. Add Playwright tests in `apps/web/e2e/` following the existing test pattern — at minimum verify each page returns 200 and has no console errors. Name the test files `push-fold.spec.ts` and `range-explorer.spec.ts`.
+|- **Success criteria**: `cd apps/web && npx playwright test` includes passing tests for both `/push-fold` and `/range-explorer`. Tests verify pages load with no console errors.
+|- **Coach checks**: Run the e2e tests. Verify the new tests pass. Check that the tests follow the existing pattern (matching selector conventions, wait strategies).
+|
+|### Task: fix-strategy-key-bet-size-parsing
+|- **Description**: The `GET /api/v1/strategy/{key}` endpoint in `apps/api/routers/strategy.py` fails with `invalid literal for int() with base 10: '0.5'` when the bet_size component in the strategy key is a float (e.g., `nlh:2:preflop:utg:0.5:100`). The `parse_strategy_key()` function at line 117 naively calls `int(x)` on bet size components. Fix to handle float bet sizes by using `float()` instead of `int()` where appropriate, or by changing the key format to store bet_size as an integer (e.g., 50 for 0.5 = 50% pot).
+|- **Success criteria**: `curl http://localhost:8000/api/v1/strategy/nlh:2:preflop:utg:0.5:100` returns strategy data (or appropriate 404) instead of HTTP 500 or "invalid literal for int()". Both integer bet sizes (e.g., 100) and float sizes (0.5) work.
+|- **Coach checks**: Test with `/strategy/nlh:2:preflop:utg:0.5:100` and `/strategy/nlh:2:preflop:utg:100:` — both should parse without error. Verify `/api/v1/strategy/lookup` still works (no regression).
