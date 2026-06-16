@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "add-range-explorer-page",
+  "current_task": "tbd",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -37,9 +37,10 @@
     {"task": "add-periodic-health-check-cron", "sha": "no-code-change", "date": "2026-06-17", "coach": "approved"},
     {"task": "add-solver-e2e-test", "sha": "fb324b3", "date": "2026-06-17", "coach": "approved"},
     {"task": "re-seed-strategy-data", "sha": "254dfdf", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-push-fold-charts-page", "sha": "81d4ee8", "date": "2026-06-17", "coach": "pending"}
+    {"task": "add-push-fold-charts-page", "sha": "81d4ee8", "date": "2026-06-17", "coach": "approved"},
+    {"task": "add-range-explorer-page", "sha": "5da4bcb", "date": "2026-06-17", "coach": "pending"}
   ],
   "health": "368_pass_0_error_0_fail__84_e2e_pass",
-  "last_sha": "81d4ee8",
+  "last_sha": "5da4bcb",
   "blocker": null
 }
