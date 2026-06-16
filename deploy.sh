@@ -45,6 +45,11 @@ if [ $TEST_EXIT -ne 0 ]; then
     exit 1
 fi
 
+# Seed preflop strategy data (idempotent — safe to run every deploy)
+echo "[$(date)] Seeding preflop strategies..."
+PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py 2>&1 || \
+    echo "[$(date)] ⚠ Seed script failed (non-fatal — maybe DB not ready)"
+
 # Restart services
 systemctl --user restart gto-wizard-web.service 2>&1
 echo "[$(date)] ✅ Deployed: $(git rev-parse --short HEAD)"
