@@ -12,6 +12,7 @@ const navTabs = [
   { href: '/play', label: 'Play' },
   { href: '/study', label: 'Study', highlight: true },
   { href: '/push-fold', label: 'Push/Fold', badge: 'NEW' },
+  { href: '/range-explorer', label: 'Range', badge: 'NEW' },
   { href: '/practice', label: 'Practice' },
   { href: '/analyze', label: 'Analyze' },
 ]
