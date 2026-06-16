@@ -50,8 +50,10 @@ def init_redis():
 async def _auto_seed_strategies():
     """Seed preflop strategies in background after database is ready.
 
-    Idempotent — skips if data already exists. Runs as non-blocking
-    background task so API startup isn't delayed.
+    Seeds all common stack depths (50, 100, 150, 200bb) for idempotent
+    startup seeding.  Each depth runs independently so a failure at one
+    depth doesn't block the others.  Runs as non-blocking background task
+    so API startup isn't delayed.
     """
     try:
         from prisma.seed_preflop_strategies import seed_strategies
@@ -63,8 +65,20 @@ async def _auto_seed_strategies():
 
         # Short delay to let DB connections settle after startup
         await asyncio.sleep(2)
-        count = await seed_strategies(db_url, stack_depth=100)
-        logger.info(f"Auto-seeded {count} preflop strategies on startup")
+
+        stack_depths = [50, 100, 150, 200]
+        total = 0
+        for sd in stack_depths:
+            try:
+                count = await seed_strategies(db_url, stack_depth=sd)
+                total += count
+                logger.info(f"Auto-seeded {count} preflop strategies at {sd}bb")
+            except Exception as e:
+                logger.warning(
+                    f"Auto-seed at {sd}bb skipped (non-fatal — depth available from other depths): {e}"
+                )
+
+        logger.info(f"Auto-seeded {total} preflop strategies across all stack depths")
     except Exception as e:
         logger.warning(f"Auto-seed skipped (non-fatal — will retry on next restart): {e}")
 
