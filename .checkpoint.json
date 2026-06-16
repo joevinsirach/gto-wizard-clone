@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "add-deploy-health-monitoring",
+  "current_task": "start-solver-docker-service",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -31,9 +31,10 @@
     {"task": "fix-double-board-api-url", "sha": "3b6d547", "date": "2026-06-17", "coach": "approved"},
     {"task": "fix-strategies-api-url-prefix", "sha": "14359dc", "date": "2026-06-17", "coach": "approved"},
     {"task": "fix-strategy-route-order", "sha": "024c036", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-strategies-page-e2e-test", "sha": "f8b86fd", "date": "2026-06-17", "coach": "approved"}
+    {"task": "add-strategies-page-e2e-test", "sha": "f8b86fd", "date": "2026-06-17", "coach": "approved"},
+    {"task": "add-deploy-health-monitoring", "sha": "a86f899", "date": "2026-06-17", "coach": "approved"}
   ],
   "health": "368_pass_0_error_0_fail__79_e2e_pass",
-  "last_sha": "f8b86fd",
+  "last_sha": "a86f899",
   "blocker": null
 }

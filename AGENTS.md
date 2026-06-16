@@ -288,3 +288,18 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - **Description**: Add a simple deploy monitoring script that checks key API endpoints and frontend pages are returning 200 after deployment. Create `scripts/deploy-health-check.sh` that curls: `GET /api/v1/health` (backend), `GET /` (frontend), `GET /study` (study page), `POST /api/v1/solver/postflop-strategy` (solver endpoint). Exit 0 only if all checks pass. Integrate into a Makefile `make health-check` target.
 - **Success criteria**: `bash scripts/deploy-health-check.sh` exits 0 and checks at least 4 endpoints. `make health-check` works.
 - **Coach checks**: Run the script, verify all checks pass. Run `make health-check` and verify the target exists.
+
+### Task: start-solver-docker-service
+- **Description**: The solver Docker image was built (via `fix-solver-docker-build` and `fix-solver-protobuf-version`) but the solver container is not running. Only PostgreSQL and Redis are up. Build and start the solver container: `docker compose build solver && docker compose up -d solver`. Verify the solver gRPC port 50051 is listening and the solver health endpoint returns success.
+- **Success criteria**: `docker compose ps` shows the solver container as "Up". `curl http://localhost:8000/api/v1/solver/health` returns 200. `curl -s --max-time 5 http://localhost:50051` connects (or returns gRPC response).
+- **Coach checks**: Check `docker compose ps` for solver container. Verify solver health endpoint. Check `docker logs gto-wizard-clone-solver-1` for errors.
+
+### Task: add-periodic-health-check-cron
+- **Description**: Create a Hermes cron job that runs `make health-check` (or `bash scripts/deploy-health-check.sh`) every 6 hours to proactively detect service degradation. The cron job should report the health check results to the user's origin channel. Name the cron job "gto-wizard-health-check", schedule `0 */6 * * *`.
+- **Success criteria**: Cron job exists with name "gto-wizard-health-check", schedule `0 */6 * * *`, pinned to deepseek-v4-flash/opencode-go, delivers to origin.
+- **Coach checks**: List cron jobs — verify entry exists with correct schedule and delivery.
+
+### Task: add-solver-e2e-test
+- **Description**: Add a playwright e2e test that navigates to the study page, configures a postflop spot (board KsKc3s, position BTN, street flop), clicks "Solve", and verifies the solver response is rendered (action frequencies, EV values). This validates the full stack: frontend → API → solver. Follow the existing e2e test pattern in `apps/web/e2e/`.
+- **Success criteria**: `cd apps/web && npx playwright test` includes a passing solver test. The test verifies that solver strategy actions appear in the rendered output.
+- **Coach checks**: Run the e2e tests. Verify the solver test specifically passes.
