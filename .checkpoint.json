@@ -1,47 +1,244 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "add-e2e-tests-for-new-pages",
+  "current_task": "tbd",
   "completed": [
-    {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
-    {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
-    {"task": "fix-dev-environment", "sha": "f943f99", "date": "2026-06-15", "coach": "approved"},
-    {"task": "fix-variant-equity-pages", "sha": "8c1f6b1", "date": "2026-06-15", "coach": "approved"},
-    {"task": "polish-courses-page", "sha": "8686829", "date": "2026-06-15", "coach": "approved"},
-    {"task": "add-e2e-smoke-tests", "sha": "d9c3493", "date": "2026-06-15", "coach": "approved"},
-    {"task": "add-stud-draw-variant-selectors", "sha": "7806c92", "date": "2026-06-15", "coach": "approved"},
-    {"task": "feat-preflop-solver-ranges", "sha": "4338451", "date": "2026-06-15", "coach": "approved"},
-    {"task": "fix-solver-fold-frequency", "sha": "0573dc9", "date": "2026-06-15", "coach": "approved"},
-    {"task": "keep-api-server-running", "sha": "286af91", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-strategy-lookup", "sha": "86e37bb", "date": "2026-06-16", "coach": "approved"},
-    {"task": "seed-preflop-strategies", "sha": "7d435f0", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-solver-docker-build", "sha": "0ecebb9", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-solver-protobuf-version", "sha": "af3c298", "date": "2026-06-16", "coach": "approved"},
-    {"task": "document-seed-script", "sha": "605b6dc", "date": "2026-06-16", "coach": "approved"},
-    {"task": "automate-seed-on-deploy", "sha": "1b130bb", "date": "2026-06-16", "coach": "approved"},
-    {"task": "quiz-frontend-page", "sha": "7f890ac", "date": "2026-06-16", "coach": "approved"},
-    {"task": "hand-history-frontend-page", "sha": "7875927", "date": "2026-06-16", "coach": "approved"},
-    {"task": "plo4-frontend-page", "sha": "f432aa4", "date": "2026-06-16", "coach": "approved"},
-    {"task": "postflop-solver-api-endpoint", "sha": "ec63aee", "date": "2026-06-16", "coach": "approved"},
-    {"task": "interactive-postflop-study-buttons", "sha": "d78c7e5", "date": "2026-06-16", "coach": "approved"},
-    {"task": "postflop-spot-configuration", "sha": "b87397f", "date": "2026-06-16", "coach": "approved"},
-    {"task": "postflop-street-navigation", "sha": "1b6ce2a", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-omaha-api-url", "sha": "7803ad6", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-bomb-pot-api-url", "sha": "99461c3", "date": "2026-06-17", "coach": "approved"},
-    {"task": "fix-double-board-api-url", "sha": "3b6d547", "date": "2026-06-17", "coach": "approved"},
-    {"task": "fix-strategies-api-url-prefix", "sha": "14359dc", "date": "2026-06-17", "coach": "approved"},
-    {"task": "fix-strategy-route-order", "sha": "024c036", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-strategies-page-e2e-test", "sha": "f8b86fd", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-deploy-health-monitoring", "sha": "a86f899", "date": "2026-06-17", "coach": "approved"},
-    {"task": "start-solver-docker-service", "sha": "e176854", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-periodic-health-check-cron", "sha": "no-code-change", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-solver-e2e-test", "sha": "fb324b3", "date": "2026-06-17", "coach": "approved"},
-    {"task": "re-seed-strategy-data", "sha": "254dfdf", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-push-fold-charts-page", "sha": "81d4ee8", "date": "2026-06-17", "coach": "approved"},
-    {"task": "add-range-explorer-page", "sha": "5da4bcb", "date": "2026-06-17", "coach": "approved"},
-    {"task": "auto-seed-strategy-on-db-restart", "sha": "8ddb3f6", "date": "2026-06-17", "coach": "approved"}
+    {
+      "task": "vendor-pokerkit",
+      "sha": "6879815",
+      "date": "2026-06-14",
+      "coach": "approved"
+    },
+    {
+      "task": "badugi-hand-display",
+      "sha": "cd82e05",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-dev-environment",
+      "sha": "f943f99",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-variant-equity-pages",
+      "sha": "8c1f6b1",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "polish-courses-page",
+      "sha": "8686829",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "add-e2e-smoke-tests",
+      "sha": "d9c3493",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "add-stud-draw-variant-selectors",
+      "sha": "7806c92",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "feat-preflop-solver-ranges",
+      "sha": "4338451",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-solver-fold-frequency",
+      "sha": "0573dc9",
+      "date": "2026-06-15",
+      "coach": "approved"
+    },
+    {
+      "task": "keep-api-server-running",
+      "sha": "286af91",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-strategy-lookup",
+      "sha": "86e37bb",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "seed-preflop-strategies",
+      "sha": "7d435f0",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-solver-docker-build",
+      "sha": "0ecebb9",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-solver-protobuf-version",
+      "sha": "af3c298",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "document-seed-script",
+      "sha": "605b6dc",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "automate-seed-on-deploy",
+      "sha": "1b130bb",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "quiz-frontend-page",
+      "sha": "7f890ac",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "hand-history-frontend-page",
+      "sha": "7875927",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "plo4-frontend-page",
+      "sha": "f432aa4",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "postflop-solver-api-endpoint",
+      "sha": "ec63aee",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "interactive-postflop-study-buttons",
+      "sha": "d78c7e5",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "postflop-spot-configuration",
+      "sha": "b87397f",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "postflop-street-navigation",
+      "sha": "1b6ce2a",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-omaha-api-url",
+      "sha": "7803ad6",
+      "date": "2026-06-16",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-bomb-pot-api-url",
+      "sha": "99461c3",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-double-board-api-url",
+      "sha": "3b6d547",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-strategies-api-url-prefix",
+      "sha": "14359dc",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-strategy-route-order",
+      "sha": "024c036",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-strategies-page-e2e-test",
+      "sha": "f8b86fd",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-deploy-health-monitoring",
+      "sha": "a86f899",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "start-solver-docker-service",
+      "sha": "e176854",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-periodic-health-check-cron",
+      "sha": "no-code-change",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-solver-e2e-test",
+      "sha": "fb324b3",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "re-seed-strategy-data",
+      "sha": "254dfdf",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-push-fold-charts-page",
+      "sha": "81d4ee8",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-range-explorer-page",
+      "sha": "5da4bcb",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "auto-seed-strategy-on-db-restart",
+      "sha": "8ddb3f6",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "add-e2e-tests-for-new-pages",
+      "sha": "b14f067",
+      "date": "2026-06-17",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-strategy-key-bet-size-parsing",
+      "sha": "9cd624b",
+      "date": "2026-06-17",
+      "coach": "pending"
+    }
   ],
-  "health": "386_pass_0_error_0_fail__84_e2e_pass",
-  "last_sha": "8ddb3f6",
+  "health": "598_pass_0_error_0_fail__106_e2e_pass",
+  "last_sha": "9cd624b",
   "blocker": null
 }
