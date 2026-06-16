@@ -1,0 +1,210 @@
+# GTO Wizard Clone — Feature Checklist
+# The coach reads this during Spec Gap Detection (Phase 2.5)
+# to find missing features autonomously.
+#
+# Fields:
+#   status: "present" | "missing" | "stub"
+#   reference: optional path to reference screenshot
+#   evidence: how to verify (auto-populated by coach on audit)
+version: 1
+last_audited: null
+pages:
+  - route: /
+    title: Home
+    status: present
+    components:
+      - hero-section
+      - feature-grid
+      - quick-stats
+  - route: /study
+    title: Study (Training Mode)
+    status: present
+    reference: docs/reference-study-interface.png
+    components:
+      - name: position-selector
+        status: present
+      - name: preflop-range-matrix
+        status: present
+      - name: postflop-board-display
+        status: missing
+      - name: action-button-check
+        status: missing
+      - name: action-button-bet-33
+        status: missing
+      - name: action-button-bet-50
+        status: missing
+      - name: action-button-bet-75
+        status: missing
+      - name: action-button-bet-125
+        status: missing
+      - name: action-button-fold
+        status: missing
+      - name: action-button-call
+        status: missing
+      - name: action-button-raise-50
+        status: missing
+      - name: action-button-raise-100
+        status: missing
+      - name: action-button-allin
+        status: missing
+      - name: street-navigation
+        status: missing
+      - name: pot-size-tracker
+        status: missing
+      - name: action-history-timeline
+        status: missing
+      - name: gto-comparison-overlay
+        status: missing
+    apis:
+      - endpoint: POST /api/v1/solver/preflop-range
+        status: present
+      - endpoint: POST /api/v1/solver/postflop-strategy
+        status: missing
+  - route: /quiz
+    title: Quiz Training
+    status: present
+    components:
+      - name: spot-display
+        status: present
+      - name: action-buttons
+        status: present
+      - name: gto-comparison
+        status: present
+      - name: leaderboard
+        status: present
+      - name: stats-panel
+        status: present
+      - name: filters-category
+        status: present
+      - name: filters-difficulty
+        status: present
+    apis:
+      - endpoint: GET /api/v1/quiz/random
+        status: present
+      - endpoint: POST /api/v1/quiz/submit
+        status: present
+      - endpoint: GET /api/v1/quiz/stats/{user_id}
+        status: present
+      - endpoint: GET /api/v1/quiz/leaderboard
+        status: present
+      - endpoint: GET /api/v1/quiz/categories
+        status: present
+  - route: /practice
+    title: Practice
+    status: present
+    components:
+      - name: practice-interface
+        status: present
+  - route: /analyze
+    title: Analyze
+    status: present
+    components:
+      - name: hand-viewer
+        status: present
+      - name: leak-analyzer
+        status: present
+  - route: /equity
+    title: Equity Calculator
+    status: present
+    components:
+      - name: range-selector
+        status: present
+      - name: equity-bar
+        status: present
+      - name: equity-chart
+        status: present
+      - name: range-grid
+        status: present
+    apis:
+      - endpoint: POST /api/v1/equity/calculate
+        status: present
+  - route: /equity/plo
+    title: PLO Equity
+    status: present
+    components:
+      - name: equity-calculator
+        status: present
+  - route: /courses
+    title: Training Courses
+    status: present
+    components:
+      - name: course-list
+        status: present
+      - name: course-detail
+        status: present
+      - name: progress-tracker
+        status: present
+    apis:
+      - endpoint: GET /api/v1/courses
+        status: present
+      - endpoint: GET /api/v1/courses/{id}
+        status: present
+      - endpoint: POST /api/v1/courses/{id}/progress
+        status: present
+  - route: /icm
+    title: ICM Calculator
+    status: present
+    components:
+      - name: prize-pool-panel
+        status: present
+      - name: chip-stack-panel
+        status: present
+      - name: icm-results
+        status: present
+    apis:
+      - endpoint: GET /api/v1/icm/calculate
+        status: present
+  - route: /hand-history
+    title: Hand History
+    status: missing
+    components:
+      - name: hand-table
+        status: missing
+      - name: batch-import
+        status: missing
+      - name: hand-viewer
+        status: missing
+      - name: search-filter
+        status: missing
+    apis:
+      - endpoint: GET /api/v1/hh/hands
+        status: present
+      - endpoint: POST /api/v1/hh/import
+        status: present
+  - route: /plo4
+    title: PLO4 Calculator
+    status: missing
+    components:
+      - name: equity-calculator
+        status: missing
+    apis:
+      - endpoint: POST /api/v1/plo4/equity
+        status: present
+  - route: /variants
+    title: Game Variants
+    status: present
+  - route: /spots
+    title: Community Spots
+    status: present
+  - route: /strategies
+    title: Strategies
+    status: present
+  - route: /bomb-pot
+    title: Bomb Pot
+    status: present
+  - route: /double-board
+    title: Double Board
+    status: present
+
+apis:
+  general:
+    - endpoint: /api/v1/health
+      status: present
+    - endpoint: /api/v1/variants
+      status: present
+    - endpoint: /api/v1/strategy-lookup
+      status: present
+    - endpoint: /api/v1/solver/health
+      status: present
+    - endpoint: POST /api/v1/solver/solve
+      status: present
