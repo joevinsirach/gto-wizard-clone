@@ -9,3 +9,6 @@ help:           ## Show this help
 
 seed-preflop:   ## Seed preflop GTO strategies into PostgreSQL (idempotent)
 	PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py
+
+health-check:   ## Run deploy health check against API and frontend endpoints
+	bash scripts/deploy-health-check.sh
