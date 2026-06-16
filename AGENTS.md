@@ -382,3 +382,33 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - POST `/api/v1/solver/postflop-strategy` with a 4-card board and `street=turn` returns valid actions
   - POST with a 5-card board and `street=river` returns valid actions
   - The UI shows the new board card when advancing streets
+
+### Task: seed-flop-boards-expanded
+- **Description**: Only 7 flop boards are currently seeded. Add 10 more flop boards covering a wider variety of textures (high-card, low-card, connected, wet monotone, dry paired, flush draw boards) to give users more training variety. Follow the existing pattern in `apps/api/prisma/seed_flop_strategies.py` — add new board strings to the `FLOP_BOARDS` list and re-run the seed. The solver or hardcoded GTO ranges will generate data for each new board.
+- **Success criteria**:
+  - `curl 'http://localhost:8000/api/v1/strategy-lookup?board=Ah8h3h&stack_depth=100&position=BTN'` (or any new board) returns strategy data with `"status":"found"`
+  - At least 17 total flop boards are seeded (7 original + 10 new)
+- **Coach checks**:
+  - Verify the seed script runs without error after adding new boards
+  - Verify curl returns data for at least 3 of the new boards
+  - Verify existing boards still return data (no regression)
+
+### Task: study-page-postflop-e2e-test
+- **Description**: After the postflop street progression is fixed, add a Playwright e2e test that validates the full postflop training workflow: load /study page, toggle to postflop mode, configure a spot (board KsKc3s, BTN vs BB, 100bb), solve the spot, verify action buttons render with GTO frequencies, then advance to the turn and verify the board updates. Follow the existing test pattern in `apps/web/e2e/`.
+- **Success criteria**:
+  - `cd apps/web && npx playwright test` includes a passing postflop study test
+  - The test validates: spot configuration, solve response rendering, action button visibility, street advancement
+- **Coach checks**:
+  - Run the e2e tests and verify the new postflop test passes
+  - Check that the test doesn't depend on external solver availability (uses cached strategy data)
+  - Verify no console errors appear during the test
+
+### Task: study-page-console-error-audit
+- **Description**: The study page loads but may have JavaScript console errors that degrade the user experience. Open the /study page in a headless browser (via Playwright or Puppeteer), capture all console messages (errors, warnings, uncaught exceptions), and fix any that appear. Common issues: missing React keys, undefined API response fields, CSS class mismatches after Tailwind v4 upgrade, deprecated lifecycle method warnings.
+- **Success criteria**:
+  - Loading `/study` in a headless browser produces 0 console errors
+  - 0 uncaught promise rejections
+  - Fixes are minimal (no architecture changes)
+- **Coach checks**:
+  - Run the audit script after fix and verify 0 console errors
+  - Check that the preflop/postflop toggle, position buttons, and action buttons all render without errors
