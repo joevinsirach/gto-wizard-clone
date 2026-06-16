@@ -50,10 +50,10 @@ def init_redis():
 async def _auto_seed_strategies():
     """Seed preflop and flop strategies in background after database is ready.
 
-    Seeds all common stack depths (50, 100, 150, 200bb) for preflop, and
-    common flop boards at 100bb.  Each seed runs independently so a failure
-    at one depth/board doesn't block the others.  Runs as non-blocking
-    background task so API startup isn't delayed.
+    Seeds all common stack depths (50, 100, 150, 200bb) for both preflop and
+    flop strategies.  Each seed runs independently so a failure at one
+    depth/board doesn't block the others.  Runs as non-blocking background
+    task so API startup isn't delayed.
     """
     try:
         from prisma.seed_preflop_strategies import seed_strategies as seed_preflop
@@ -80,11 +80,20 @@ async def _auto_seed_strategies():
 
         logger.info(f"Auto-seeded {total} preflop strategies across all stack depths")
 
-        # Also seed flop strategies (idempotent, 7 common boards at 100bb)
+        # Also seed flop strategies (idempotent, 7 common boards at all depths)
         try:
             from prisma.seed_flop_strategies import seed_flop_strategies
-            flop_count = await seed_flop_strategies(db_url, stack_depth=100)
-            logger.info(f"Auto-seeded {flop_count} flop strategies")
+            flop_total = 0
+            for sd in stack_depths:
+                try:
+                    count = await seed_flop_strategies(db_url, stack_depth=sd)
+                    flop_total += count
+                    logger.info(f"Auto-seeded {count} flop strategies at {sd}bb")
+                except Exception as e:
+                    logger.warning(
+                        f"Flop auto-seed at {sd}bb skipped (non-fatal): {e}"
+                    )
+            logger.info(f"Auto-seeded {flop_total} flop strategies across all stack depths")
         except Exception as e:
             logger.warning(f"Flop auto-seed skipped (non-fatal): {e}")
 

@@ -305,18 +305,25 @@ async def seed_flop_strategies(db_url: str, stack_depth: int = 100):
 
 
 async def main():
-    stack_depth = 100
+    stack_depths = [100]
     if len(sys.argv) > 1:
-        try:
-            stack_depth = int(sys.argv[1])
-        except ValueError:
-            print(f"Usage: {sys.argv[0]} [stack_depth]")
-            sys.exit(1)
+        raw = sys.argv[1]
+        if raw.lower() == "all":
+            stack_depths = [50, 100, 150, 200]
+        else:
+            try:
+                stack_depths = [int(raw)]
+            except ValueError:
+                print(f"Usage: {sys.argv[0]} [stack_depth|'all']")
+                print(f"  stack_depth: integer like 50, 100, 150, 200 (seed one depth)")
+                print(f"  'all': seed all common depths (50, 100, 150, 200)")
+                sys.exit(1)
 
-    logger.info(f"Seeding flop GTO strategies at {stack_depth}bb...")
-    logger.info(f"Database: {DATABASE_URL}")
-
-    count = await seed_flop_strategies(DATABASE_URL, stack_depth)
+    total = 0
+    for sd in stack_depths:
+        logger.info(f"Seeding flop GTO strategies at {sd}bb...")
+        count = await seed_flop_strategies(DATABASE_URL, sd)
+        total += count
 
     # Verify
     try:
@@ -336,6 +343,7 @@ async def main():
     except Exception as e:
         logger.error(f"Verification failed: {e}")
 
+    logger.info(f"Seeded flop strategies across {len(stack_depths)} depths ({', '.join(str(s) for s in stack_depths)}bb), total: {total} entries")
     logger.info("Done! Try: curl 'http://localhost:8000/api/v1/strategy-lookup?board=Kd7h2c&stack_depth=100&position=BTN'")
 
 
