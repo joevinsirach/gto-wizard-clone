@@ -194,3 +194,51 @@ test.describe("Smoke: Variant Selector Page", () => {
     expect(criticalErrors).toHaveLength(0);
   });
 });
+
+test.describe("Smoke: Strategies Page", () => {
+  test("6. Strategies page loads GTO Strategy Browser with form controls", async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+
+    await page.goto("/strategies");
+    await page.waitForLoadState("networkidle");
+
+    // Verify the page loads with the correct heading
+    const heading = page.locator("h1:has-text('GTO Strategy Browser')");
+    await expect(heading).toBeVisible();
+
+    // Verify board card inputs render (5 inputs for flop 1-3, turn, river)
+    const boardInputs = page.locator("input[type='text']");
+    const boardInputCount = await boardInputs.count();
+    expect(boardInputCount).toBeGreaterThanOrEqual(5);
+
+    // Verify position selector exists with known positions
+    const positionOptions = page.locator("select").first().locator("option");
+    const optionCount = await positionOptions.count();
+    expect(optionCount).toBeGreaterThanOrEqual(4);
+
+    // Verify stack depth selector exists
+    const stackSelect = page.locator("select").nth(1);
+    await expect(stackSelect).toBeVisible();
+
+    // Verify bet size selector exists
+    const betSizeSelect = page.locator("select").nth(2);
+    await expect(betSizeSelect).toBeVisible();
+
+    // Verify "Solve New Spot" button renders
+    const solveButton = page.locator("button:has-text('Solve New Spot')");
+    await expect(solveButton).toBeVisible();
+
+    // Empty state text when no board cards entered
+    const emptyState = page.locator("text=Enter at least 3 board cards");
+    await expect(emptyState).toBeVisible();
+
+    // No critical console errors
+    const criticalErrors = consoleErrors.filter(
+      (e) => !e.includes("favicon") && !e.includes("404") && !e.includes("_next/static")
+    );
+    expect(criticalErrors).toHaveLength(0);
+  });
+});
