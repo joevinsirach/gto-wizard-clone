@@ -362,3 +362,23 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Load the study page and verify the stack depth selector is visible
   - Switch to 50bb and verify the position buttons update their stack labels
   - Check browser console for errors
+
+### Task: seed-flop-strategies-all-depths
+- **Description**: The flop strategy seed script (`apps/api/prisma/seed_flop_strategies.py`) only seeds at 100bb. The frontend now has a stack depth selector that lets users pick 50, 100, 150, 200bb, but flop data only exists for 100bb (the strategy lookup returns 100bb data as the closest match when other depths are requested). Extend the seed script to seed flop strategies at 50, 150, and 200bb stack depths as well. Follow the same pattern as the preflop seed script which seeds all depths.
+- **Success criteria**:
+  - `curl 'http://localhost:8000/api/v1/strategy-lookup?board=Kd7h2c&stack_depth=50&position=BTN'` returns strategy data with `"stack_depth":50`
+  - Same for stack_depth=150 and stack_depth=200
+- **Coach checks**:
+  - Verify the seed is idempotent (safe to re-run)
+  - Verify curl returns strategy data with the correct stack_depth for each depth
+  - Verify the existing 100bb data isn't duplicated or corrupted
+
+### Task: fix-postflop-street-progression
+- **Description**: The postflop training component (`apps/web/src/components/study/PostflopTraining.tsx`) has street navigation (flop→turn→river) but the solver API returns `"Invalid board/street"` when asked to solve for turn with only a 3-card flop board. The component needs to pass the correct board state (4 cards for turn, 5 for river) when advancing streets. Either auto-generate a random next card or let the user select which card comes on the next street.
+- **Success criteria**:
+  - Postflop training can advance from flop to turn and get solver output for the turn street
+  - Postflop training can advance from turn to river and get solver output for the river street
+- **Coach checks**:
+  - POST `/api/v1/solver/postflop-strategy` with a 4-card board and `street=turn` returns valid actions
+  - POST with a 5-card board and `street=river` returns valid actions
+  - The UI shows the new board card when advancing streets

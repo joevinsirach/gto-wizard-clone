@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "add-missing-stack-depth-to-frontend-position-buttons",
+  "current_task": "tbd",
   "completed": [
     {
       "task": "vendor-pokerkit",
@@ -247,10 +247,17 @@
       "task": "seed-flop-strategies",
       "sha": "d6c387a",
       "date": "2026-06-17",
-      "coach": "pending"
+      "coach": "approved"
+    },
+    {
+      "task": "add-missing-stack-depth-to-frontend-position-buttons",
+      "sha": "bc2eff7",
+      "date": "2026-06-17",
+      "coach": "approved"
     }
   ],
   "health": "368_pass_0_error_0_fail",
-  "last_sha": "d6c387a",
+  "last_sha": "bc2eff7",
+  "current_task": "seed-flop-strategies-all-depths",
   "blocker": null
 }
