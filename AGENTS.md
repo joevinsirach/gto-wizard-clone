@@ -5,6 +5,8 @@ Open-source GTO poker training platform. Equity calculator, CFR solver, training
 
 **Status:** Active development — core features exist, polish needed.
 
+**Reference target:** See `docs/reference-study-interface.png` for the exact interactive training interface the study page should replicate.
+
 ## Architecture
 
 ### Stack
@@ -33,6 +35,9 @@ Open-source GTO poker training platform. Equity calculator, CFR solver, training
 `/api/v1/equity`, `/api/v1/variants`, `/api/v1/solver`, `/api/v1/courses`, `/api/v1/quiz`,
 `/api/v1/icm`, `/api/v1/hh`, `/api/v1/strategy`, `/api/v1/plo4`, `/api/v1/omaha`,
 `/api/v1/double-board`, `/api/v1/bomb-pot`
+
+### Solver API (for post-flop training)
+`POST /api/v1/solver/solve` accepts `board`, `street`, `pot_size`, `stack_depth`, `bet_sizes`, `position` and returns GTO strategy actions with frequencies and EV. This is the backend that powers the interactive study page training mode. Currently supports river solving with a defined board.
 
 ## Conventions
 - **Setup**: `source .venv/bin/activate && pip install -e packages/poker-core`
@@ -154,6 +159,80 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Load /plo4 and confirm no console errors
   - Verify a PLO4 equity calculation works end-to-end
 
+### Task: postflop-solver-api-endpoint
+- **Description**: Create a dedicated `POST /api/v1/solver/postflop-strategy` endpoint that the study page's interactive training mode will call. Unlike the existing `/solve` endpoint (which runs a live CFR solve — too slow for interactive use), this endpoint returns cached/quick pre-computed strategy data for common postflop spots. Accept `board` (string like "KsKc3s"), `position` (player acting), `street` (flop/turn/river), `pot_size`, `stack_depth`, `hero_hand`. Return top N actions (check, bet sizes, fold, call, raise) with GTO frequency % and EV. The `/solve` endpoint already supports postflop parameters as a fallback — if no cached data exists, fall through to call the live solver engine with a 30-second timeout.
+- **Success criteria**:
+  - `curl -X POST http://localhost:8000/api/v1/solver/postflop-strategy -H 'Content-Type: application/json' -d '{"board":"KsKc3s","position":"BTN","street":"flop","pot_size":5.5,"stack_depth":97.5}'` returns 200 with action list
+  - Each action has `action` (string like "bet_33", "check", "fold"), `frequency` (0-1), `ev` (float)
+  - Response includes the strategy source ("cached" vs "live-solver")
+- **Coach checks**:
+  - Verify the endpoint exists in the API router tree
+  - Test with a known board+position combo, confirm response shape matches spec
+  - Test with invalid board format, confirm graceful error (not 500)
+  - Check the endpoint doesn't block for >5s if live solver is down
+
+### Task: interactive-postflop-study-buttons
+- **Description**: Add an interactive postflop training mode to the /study page. The page currently shows a static preflop range viewer. Add a new mode (toggled via a "Postflop Training" / "Preflop Ranges" switch) that shows:
+  1. **Board cards** — 3-5 community card slots (flop/turn/river). Parse from a card string like "KsKc3s" and render styled cards with suit colors.
+  2. **Pot size** — displays current pot, updates per street.
+  3. **Active player highlight** — green-bordered column showing whose turn it is.
+  4. **Action history** — for each position still in the hand, show whether they folded or their action so far.
+  5. **Interactive action buttons** — user can click an action to make a decision. Buttons should be styled per type: CHECK, BET 33%/50%/75%/125%, FOLD, CALL, RAISE 50%/100%, ALLIN (all-in with remaining stack). Each button shows chip amount + pot %.
+  6. **GTO comparison** — after user picks an action, overlay the GTO strategy from the API for each action option as micro-chips (frequency %, EV). Highlight the user's choice vs the GTO-recommended action.
+  
+  Reference the image at `docs/reference-study-interface.png` for exact layout and styling. The left column should show the strategy matrix (preflop view) or board+actions (postflop view). The right column should always show the GTO action breakdown and EV comparison.
+- **Success criteria**:
+  - `/study` page loads without console errors
+  - Toggle between "Preflop Ranges" and "Postflop Training" modes works
+  - Postflop mode shows: board cards, pot size, active player highlight, action history per position
+  - All action buttons render: CHECK, BET (33%/50%/75%/125%), FOLD, CALL, RAISE (50%/100%), ALLIN
+  - Clicking an action button calls `POST /api/v1/solver/postflop-strategy` and shows GTO comparison feedback
+  - Reference screenshot at `docs/reference-study-interface.png` matches the rendered UI layout
+- **Coach checks**:
+  - Open browser to /study, check for console errors (0 errors)
+  - Verify the preflop/postflop toggle exists and switches views
+  - Verify board cards render with correct suit symbols and colors
+  - Click each action button type — verify API call happens and response renders
+  - Compare rendered UI against `docs/reference-study-interface.png`: verify action button layout, bet sizing notation, pot size display, position column layout all match
+  - Check mobile/small viewport doesn't break the layout entirely (responsive enough to not lose buttons)
+
+### Task: postflop-spot-configuration
+- **Description**: Add a configuration panel to the postflop training mode that lets the user set up a training scenario. Before starting a postflop hand, the user should be able to:
+  1. Select which positions are in the hand (e.g., BTN vs BB heads-up, or multi-way)
+  2. Input the board cards (3-5 community cards)
+  3. Set pot size and stack depths
+  4. Choose the street (flop/turn/river)
+  5. Optionally input hero's hole cards to see personalized GTO strategy
+  
+  The configuration should be a collapsible panel that opens with a "Configure Spot" button and collapses after setup. Default configuration: BTN vs BB, K♠K♣3♠ flop, 5.5bb pot, 100bb stacks — matching the reference image at `docs/reference-study-interface.png`.
+- **Success criteria**:
+  - Configuration panel opens/closes with button toggle
+  - User can select positions, enter board cards, set pot/stack
+  - Changes take effect and the action buttons update
+  - Default config matches the reference image
+- **Coach checks**:
+  - Open the config panel, change a setting, verify the board/pot/position updates
+  - Close and re-open the config panel, verify settings persist
+  - Verify the default config renders identically to `docs/reference-study-interface.png`
+
+### Task: postflop-street-navigation
+- **Description**: Add street-by-street navigation to the postflop training mode. After the user makes an action on one street (e.g., flop), they should be able to advance to the next street (turn, then river). Each street:
+  1. Reveals new community cards
+  2. Updates the pot size based on previous action
+  3. Generates a new set of GTO action buttons for the active player
+  
+  Include a hand history breadcrumb at the top showing: Preflop actions → Flop (current) → Turn (locked) → River (locked) — with past streets showing what action was taken.
+- **Success criteria**:
+  - After selecting an action, user can advance to next street
+  - New board cards appear on turn/river
+  - Pot size updates correctly
+  - New action buttons appear for the active player on each street
+  - Street breadcrumb shows past actions per street
+- **Coach checks**:
+  - Advance through flop → turn → river, verify each street shows correct board + pot
+  - Verify the street breadcrumb updates correctly
+  - Verify the action buttons change per street (more options on river with all-in)
+
 ## Coach Configuration
 - **Review scope**: git diff of latest commit, test output, success criteria from AGENTS.md task, console errors from frontend pages (check via curl/browser)
 - **Pass conditions**: All success criteria for the task are met. No regression in previously passing tests. No console errors introduced.
@@ -161,6 +240,13 @@ Ordered by priority. Each task is one unit of work for one player tick.
   1. Coach creates a corrective commit fixing the issue directly
   2. Coach reverts the commit and creates a fix task pinned to the issue
   3. For ambiguous or high-risk failures, coach blocks and tags for human review
+
+**Reference for visual comparison**: The file `docs/reference-study-interface.png` is a screenshot of the target interactive postflop training interface. When reviewing tasks `interactive-postflop-study-buttons`, `postflop-spot-configuration`, and `postflop-street-navigation`, the coach SHOULD load this image via `vision_analyze` to compare the player's rendered output against the visual reference. Specific visual elements to match:
+- Action button layout (BET sizes as 33%/50%/75%/125% of pot)
+- Position column layout (UTG/HJ/CO/BTN/SB/BB in that order, with green highlight on active)
+- Board card display (centered, with suit colors)
+- Pot size notation (e.g., "5.5" next to "FLOP" label)
+- Street breadcrumb style (tabs with active street highlighted)
 
 ## Seed Data
 - **Run**: `cd /home/sc/repos/gto-wizard-clone && PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py`
