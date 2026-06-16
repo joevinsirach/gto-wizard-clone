@@ -121,6 +121,39 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Check the Makefile or deploy script for the new target
   - Run it twice and verify idempotency
 
+### Task: quiz-frontend-page
+- **Description**: Create a `/quiz` frontend page at `apps/web/src/app/quiz/page.tsx` that uses the existing `GET /api/v1/quiz/random` and related quiz API endpoints to deliver GTO training spots. The page should fetch a random spot, display the board/hand/options, let the user pick an action, and show the GTO answer with EV comparison.
+- **Success criteria**:
+  - `curl http://localhost:3000/quiz` returns 200 with rendered HTML
+  - Page loads a random spot from the API and displays it
+  - User can select an action and see GTO comparison feedback
+- **Coach checks**:
+  - Verify the page route exists at apps/web/src/app/quiz/page.tsx
+  - Load /quiz and confirm no console errors
+  - Verify quiz spots load and interaction works
+
+### Task: hand-history-frontend-page
+- **Description**: Create a `/hand-history` frontend page at `apps/web/src/app/hand-history/page.tsx` that uses the existing `GET /api/v1/hh/hands` and related HH API endpoints. The page should show a searchable/filterable list of imported hands with key details (position, board, action, EV).
+- **Success criteria**:
+  - `curl http://localhost:3000/hand-history` returns 200 with rendered HTML
+  - Page connects to the HH API and displays hand data
+  - Filter/search controls are functional
+- **Coach checks**:
+  - Verify the page route exists at apps/web/src/app/hand-history/page.tsx
+  - Load /hand-history and confirm no console errors
+  - Verify the page renders hand data from the API
+
+### Task: plo4-frontend-page
+- **Description**: Create a `/plo4` frontend page at `apps/web/src/app/plo4/page.tsx` for Pot-Limit Omaha 4-card equity calculations. The API has a `/api/v1/plo4` router (plo4_equity.py) — wire it up so users can input PLO4 hand combos and see equity results.
+- **Success criteria**:
+  - `curl http://localhost:3000/plo4` returns 200 with rendered HTML
+  - Page loads the PLO4 equity calculator interface
+  - Users can input hands and get equity results from the API
+- **Coach checks**:
+  - Verify the page route exists at apps/web/src/app/plo4/page.tsx
+  - Load /plo4 and confirm no console errors
+  - Verify a PLO4 equity calculation works end-to-end
+
 ## Coach Configuration
 - **Review scope**: git diff of latest commit, test output, success criteria from AGENTS.md task, console errors from frontend pages (check via curl/browser)
 - **Pass conditions**: All success criteria for the task are met. No regression in previously passing tests. No console errors introduced.
