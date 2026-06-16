@@ -6,11 +6,12 @@ import { usePathname } from 'next/navigation'
 const navTabs = [
   { href: '/equity', label: "Hold'em" },
   { href: '/equity/plo', label: 'PLO' },
-  { href: '/equity/stud', label: 'Stud', badge: 'NEW' },
+  { href: '/equity/stud', label: 'Stud' },
   { href: '/equity/razz', label: 'Razz' },
   { href: '/equity/badugi', label: 'Badugi' },
   { href: '/play', label: 'Play' },
   { href: '/study', label: 'Study', highlight: true },
+  { href: '/push-fold', label: 'Push/Fold', badge: 'NEW' },
   { href: '/practice', label: 'Practice' },
   { href: '/analyze', label: 'Analyze' },
 ]
