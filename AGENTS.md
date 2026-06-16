@@ -252,3 +252,23 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - **Run**: `cd /home/sc/repos/gto-wizard-clone && PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py`
 - **Note**: Idempotent — safe to run multiple times. Seeds 7 preflop GTO strategies (6 positions + default) at 100bb. Requires the venv (`.venv`) with asyncpg installed (run `uv sync --group runtime` first if needed).
 - **Verify**: After seeding, test with `curl 'http://localhost:8000/api/v1/strategy-lookup?board=preflop&stack_depth=100&position=UTG'`
+
+### Task: fix-omaha-api-url
+- **Description**: The `/omaha` frontend page calls `/api/omaha/plo5/equity`, `/api/omaha/hi-lo/equity`, and `/api/omaha/shortdeck/equity` but the backend serves these at `/omaha/plo5/equity/calculate`, `/omaha/hi-lo/equity/calculate`, `/omaha/shortdeck/equity/calculate`. Fix the API URLs in `apps/web/src/app/omaha/page.tsx` — remove the `/api` prefix and add the `/calculate` suffix.
+- **Success criteria**: Clicking "Calculate Equity" on the Omaha page for any variant (PLO5, Hi-Lo, Shortdeck) returns results instead of a 404 error. Confirm with `curl http://localhost:8000/omaha/plo5/equity/calculate -X POST -H 'Content-Type: application/json' -d '{"hand1": "AhKhQsJd", "hand2": "KsQsJhTd"}'` returns 200.
+- **Coach checks**: Load `/omaha` page, submit an Omaha equity calculation, verify response renders correctly. Check browser console for 404 errors on API calls.
+
+### Task: fix-bomb-pot-api-url
+- **Description**: The `/bomb-pot` frontend page calls `/api/bomb-pot/game-state` and `/api/bomb-pot/equity` but the backend serves these at `/bomb-pot/game-state` and `/bomb-pot/equity` (no `/api` prefix). Fix the fetch URLs in `apps/web/src/app/bomb-pot/page.tsx` to remove the `/api` prefix from the paths.
+- **Success criteria**: Clicking "Create Game" on the bomb-pot page creates a game state instead of getting a 404. Confirm with `curl http://localhost:8000/bomb-pot/game-state -X POST -H 'Content-Type: application/json' -d '{}'` returns a valid game state object.
+- **Coach checks**: Load `/bomb-pot` page, try creating a game state, verify game renders. Check console for 404 errors.
+
+### Task: fix-double-board-api-url
+- **Description**: The `/double-board` frontend page calls `/api/double-board/equity` but the backend serves this at `/double-board/equity` (no `/api` prefix). Fix the fetch URL in `apps/web/src/app/double-board/page.tsx` to remove the `/api` prefix.
+- **Success criteria**: Clicking "Calculate Equity" on the double-board page returns equity results instead of a 404. Confirm with `curl http://localhost:8000/double-board/equity -X POST -H 'Content-Type: application/json' -d '{"hero": "AhKh", "villain": "QsQd", "board1": ["Ks", "7c", "2d"], "board2": ["3h", "9d"]}'` — adjust field names as needed to match the API schema.
+- **Coach checks**: Load `/double-board` page, submit a calculation, verify results render. Check console for 404 errors.
+
+### Task: fix-strategies-api-url-prefix
+- **Description**: The `/strategies` frontend page defines `API_BASE = "http://localhost:8080"` and then constructs URLs like `${API_BASE}/api/v1/strategy/lookup`. This results in double-prefix URLs that break in production (calls `http://localhost:8080/api/v1/...` directly instead of using the Next.js proxy). Fix by removing the hardcoded API_BASE and using relative paths (`/api/v1/strategy/lookup` etc.) so the Next.js rewrite proxy handles routing. Update `apps/web/src/app/strategies/page.tsx`.
+- **Success criteria**: The strategies page loads strategy data via the Next.js proxy instead of bypassing it. `curl http://localhost:3000/strategies` returns a page that successfully loads strategy data from the API.
+- **Coach checks**: Load `/strategies` page, verify strategy data loads (no 404 or connection refused errors in browser console). Verify all three API calls (strategy lookup, solver solve, solver WS) use relative paths.

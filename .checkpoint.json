@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "postflop-street-navigation",
+  "current_task": "fix-omaha-api-url",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -24,9 +24,10 @@
     {"task": "plo4-frontend-page", "sha": "f432aa4", "date": "2026-06-16", "coach": "approved"},
     {"task": "postflop-solver-api-endpoint", "sha": "ec63aee", "date": "2026-06-16", "coach": "approved"},
     {"task": "interactive-postflop-study-buttons", "sha": "d78c7e5", "date": "2026-06-16", "coach": "approved"},
-    {"task": "postflop-spot-configuration", "sha": "b87397f", "date": "2026-06-16", "coach": "approved"}
+    {"task": "postflop-spot-configuration", "sha": "b87397f", "date": "2026-06-16", "coach": "approved"},
+    {"task": "postflop-street-navigation", "sha": "1b6ce2a", "date": "2026-06-16", "coach": "approved"}
   ],
   "health": "598_pass_0_error_0_fail",
-  "last_sha": "b87397f",
+  "last_sha": "1b6ce2a",
   "blocker": null
 }
