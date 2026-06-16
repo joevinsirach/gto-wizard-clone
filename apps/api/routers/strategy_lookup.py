@@ -13,7 +13,11 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from apps.api.services.strategy_storage import StrategyStorageService, get_strategy_storage
+from apps.api.services.strategy_storage import (
+    StrategyStorageService,
+    StrategyFilters,
+    get_strategy_storage,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/strategy-lookup", tags=["strategy-lookup"])
@@ -155,15 +159,15 @@ async def lookup_strategy(
         if strategy is None:
             # Try to find closest match
             candidates = await storage.list_strategies(
-                filters={
-                    "game_type": game_type,
-                    "players": players,
-                    "street": detected_street,
-                    "board_hash": board_hash if board_hash else None,
-                    "stack_depth": None,
-                    "limit": 10,
-                    "offset": 0,
-                }
+                filters=StrategyFilters(
+                    game_type=game_type,
+                    players=players,
+                    street=detected_street,
+                    board_hash=board_hash if board_hash else None,
+                    stack_depth=None,
+                    limit=10,
+                    offset=0,
+                )
             )
             
             if candidates:

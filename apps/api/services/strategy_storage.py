@@ -396,9 +396,20 @@ class StrategyStorageService:
             except Exception as e:
                 logger.warning(f"Could not save to database for {key}: {e}")
         
-        # Update caches
-        self._set_in_memory_cache(key, strategy_data)
-        await self._set_in_redis_cache(key, strategy_data)
+        # Update caches — store full metadata so get_strategy can reconstruct StoredStrategy
+        cache_data = {
+            "game_type": game_type,
+            "players": players,
+            "street": street,
+            "board_hash": board_hash,
+            "bet_size": bet_size,
+            "stack_depth": stack_depth,
+            "strategy_data": strategy_data,
+            "created_at": now.isoformat() if isinstance(now, datetime) else None,
+            "updated_at": now.isoformat() if isinstance(now, datetime) else None,
+        }
+        self._set_in_memory_cache(key, cache_data)
+        await self._set_in_redis_cache(key, cache_data)
         
         logger.info(f"Stored strategy: {key}")
         return strategy
