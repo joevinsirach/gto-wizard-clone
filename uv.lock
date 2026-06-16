@@ -11,6 +11,7 @@ members = [
 dev = [
     { name = "fakeredis", specifier = ">=2.36.1" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "phevaluator", specifier = ">=0.5.3.1" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
 ]
