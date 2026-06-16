@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "fix-double-board-api-url",
+  "current_task": "fix-strategies-api-url-prefix",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -27,9 +27,10 @@
     {"task": "postflop-spot-configuration", "sha": "b87397f", "date": "2026-06-16", "coach": "approved"},
     {"task": "postflop-street-navigation", "sha": "1b6ce2a", "date": "2026-06-16", "coach": "approved"},
     {"task": "fix-omaha-api-url", "sha": "7803ad6", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-bomb-pot-api-url", "sha": "99461c3", "date": "2026-06-17", "coach": "pending"}
+    {"task": "fix-bomb-pot-api-url", "sha": "99461c3", "date": "2026-06-17", "coach": "approved"},
+    {"task": "fix-double-board-api-url", "sha": "3b6d547", "date": "2026-06-17", "coach": "approved"}
   ],
   "health": "368_pass_0_error_0_fail",
-  "last_sha": "99461c3",
+  "last_sha": "3b6d547",
   "blocker": null
 }

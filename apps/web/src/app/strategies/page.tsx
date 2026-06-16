@@ -110,8 +110,6 @@ const MOCK_STRATEGIES: StrategySpot[] = [
 // API Functions
 // ============================================================================
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
 async function fetchStrategy(params: {
   board: string;
   stack_depth: number;
@@ -126,7 +124,7 @@ async function fetchStrategy(params: {
     });
 
     const response = await fetch(
-      `${API_BASE}/api/v1/strategy/lookup?game_type=nlh&players=2&${queryParams.toString()}&position=${params.position}`
+      `/api/v1/strategy/lookup?game_type=nlh&players=2&${queryParams.toString()}&position=${params.position}`
     );
 
     if (!response.ok) {
@@ -156,7 +154,7 @@ async function fetchStrategy(params: {
 
 async function submitSolveJob(request: SolveRequest): Promise<SolveJobResponse | null> {
   try {
-    const response = await fetch(`${API_BASE}/api/v1/solver/solve`, {
+    const response = await fetch(`/api/v1/solver/solve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -193,7 +191,7 @@ function useSolverWebSocket(jobId: string | null) {
     let ws: WebSocket | null = null;
 
     const connect = () => {
-      const wsUrl = `${API_BASE.replace("http", "ws")}/api/v1/solver/ws/${jobId}`;
+      const wsUrl = `/api/v1/solver/ws/${jobId}`;
       
       try {
         ws = new WebSocket(wsUrl);
