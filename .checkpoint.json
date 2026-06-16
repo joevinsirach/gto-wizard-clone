@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "seed-preflop-strategies",
+  "current_task": "tbd",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -13,9 +13,11 @@
     {"task": "feat-preflop-solver-ranges", "sha": "4338451", "date": "2026-06-15", "coach": "approved"},
     {"task": "fix-solver-fold-frequency", "sha": "0573dc9", "date": "2026-06-15", "coach": "approved"},
     {"task": "keep-api-server-running", "sha": "286af91", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-strategy-lookup", "sha": "86e37bb", "date": "2026-06-16", "coach": "approved"}
+    {"task": "fix-strategy-lookup", "sha": "86e37bb", "date": "2026-06-16", "coach": "approved"},
+    {"task": "seed-preflop-strategies", "sha": "7d435f0", "date": "2026-06-16", "coach": "pending"},
+    {"task": "fix-solver-docker-build", "sha": "0ecebb9", "date": "2026-06-16", "coach": "pending"}
   ],
-  "health": "377_pass_0_error_0_fail",
-  "last_sha": "86e37bb",
+  "health": "580_pass_0_error_0_fail",
+  "last_sha": "0ecebb9",
   "blocker": null
 }
