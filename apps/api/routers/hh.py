@@ -17,7 +17,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -521,7 +521,7 @@ async def query_hands(
     - position: player's position
     """
     # Build query
-    query = db.query(HandHistory).options(selectinload(HandHistory.tags))
+    query = select(HandHistory).options(selectinload(HandHistory.tags))
     
     # Apply filters
     filters = [HandHistory.user_id == user_id]
@@ -563,7 +563,7 @@ async def query_hands(
         filters.append(HandHistory.hero_name == hero_name)
     
     if tag:
-        query = query.join(HandTag).filter(HandTag.tag == tag)
+        query = query.join(HandTag).where(HandTag.tag == tag)
     
     # Position filter: check if hero is in that position from players JSONB
     if position:
@@ -573,8 +573,8 @@ async def query_hands(
             HandHistory.players.contains([{"position": pos_upper}])
         )
     
-    # Apply all filters
-    query = query.filter(and_(*filters))
+    if filters:
+        query = query.where(and_(*filters))
     
     # Order by created_at desc and paginate
     query = query.order_by(HandHistory.created_at.desc()).offset(offset).limit(limit)
@@ -617,10 +617,10 @@ async def get_hand(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get detailed information about a specific hand."""
-    query = db.query(HandHistory).options(
+    query = select(HandHistory).options(
         selectinload(HandHistory.tags),
         selectinload(HandHistory.actions),
-    ).filter(HandHistory.id == hand_id)
+    ).where(HandHistory.id == hand_id)
     
     result = await db.execute(query)
     hand = result.scalar_one_or_none()
@@ -667,7 +667,7 @@ async def update_hand_tags(
     Replaces all existing tags with the new list.
     """
     # Verify hand exists and belongs to user
-    query = db.query(HandHistory).filter(
+    query = select(HandHistory).where(
         HandHistory.id == hand_id,
         HandHistory.user_id == user_id,
     )
@@ -678,8 +678,7 @@ async def update_hand_tags(
         raise HTTPException(status_code=404, detail="Hand not found")
     
     # Delete existing tags
-    delete_query = db.query(HandTag).filter(HandTag.hand_id == hand_id)
-    await db.execute(delete_query)
+    await db.execute(delete(HandTag).where(HandTag.hand_id == hand_id))
     
     # Add new tags
     new_tags = []
@@ -720,7 +719,7 @@ async def export_hands(
     Returns a CSV file with hand data.
     """
     # Build query (same as query_hands but with different result processing)
-    query = db.query(HandHistory).options(selectinload(HandHistory.actions))
+    query = select(HandHistory).options(selectinload(HandHistory.actions))
     
     filters = [HandHistory.user_id == user_id]
     
@@ -757,7 +756,8 @@ async def export_hands(
     if pot_max is not None:
         filters.append(HandHistory.pot <= pot_max)
     
-    query = query.filter(and_(*filters))
+    if filters:
+        query = query.where(and_(*filters))
     query = query.order_by(HandHistory.created_at.desc()).limit(limit)
     
     result = await db.execute(query)
@@ -843,7 +843,7 @@ async def get_stats(
         except ValueError:
             pass
     
-    query = db.query(HandHistory).filter(and_(*filters))
+    query = select(HandHistory).where(and_(*filters))
     result = await db.execute(query)
     hands = result.scalars().all()
     
@@ -913,7 +913,7 @@ async def analyze_leaks(
     if request.date_to:
         filters.append(HandHistory.created_at <= request.date_to)
     
-    query = db.query(HandHistory).filter(and_(*filters))
+    query = select(HandHistory).where(and_(*filters))
     result = await db.execute(query)
     hands = result.scalars().all()
     
@@ -1006,7 +1006,7 @@ async def get_hands_by_board_texture(
             detail=f"Invalid board texture. Valid types: {[t.value for t in BoardTexture]}"
         )
     
-    query = db.query(HandHistory).filter(
+    query = select(HandHistory).where(
         HandHistory.user_id == user_id,
         HandHistory.board_texture == texture_enum,
     ).order_by(HandHistory.created_at.desc()).limit(limit)
@@ -1061,7 +1061,7 @@ async def get_hands_by_spot(
             detail=f"Invalid spot category. Valid types: {[c.value for c in SpotCategory]}"
         )
     
-    query = db.query(HandHistory).filter(
+    query = select(HandHistory).where(
         HandHistory.user_id == user_id,
         HandHistory.spot_category == category_enum,
     ).order_by(HandHistory.created_at.desc()).limit(limit)
@@ -1133,9 +1133,9 @@ async def recalculate_ev(
     """
     from apps.api.services.gto_comparison import compare_to_gto
     
-    query = db.query(HandHistory).options(
+    query = select(HandHistory).options(
         selectinload(HandHistory.actions),
-    ).filter(HandHistory.id == hand_id)
+    ).where(HandHistory.id == hand_id)
     
     result = await db.execute(query)
     hand = result.scalar_one_or_none()
@@ -1195,9 +1195,9 @@ async def get_hand_playback(
     """
     Get step-by-step playback data for a hand.
     """
-    query = db.query(HandHistory).options(
+    query = select(HandHistory).options(
         selectinload(HandHistory.actions),
-    ).filter(HandHistory.id == hand_id)
+    ).where(HandHistory.id == hand_id)
     
     result = await db.execute(query)
     hand = result.scalar_one_or_none()
