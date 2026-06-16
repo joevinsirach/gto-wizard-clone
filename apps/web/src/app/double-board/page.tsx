@@ -119,7 +119,7 @@ export default function DoubleBoardPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/double-board/equity", {
+      const response = await fetch("/double-board/equity", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
