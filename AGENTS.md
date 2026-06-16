@@ -130,5 +130,6 @@ Ordered by priority. Each task is one unit of work for one player tick.
   3. For ambiguous or high-risk failures, coach blocks and tags for human review
 
 ## Seed Data
-- **Run**: `PYTHONPATH=apps/api python apps/api/prisma/seed_preflop_strategies.py`
-- **Note**: Idempotent — safe to run multiple times. Seeds 7 preflop GTO strategies (6 positions + default) at 100bb.
+- **Run**: `cd /home/sc/repos/gto-wizard-clone && PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py`
+- **Note**: Idempotent — safe to run multiple times. Seeds 7 preflop GTO strategies (6 positions + default) at 100bb. Requires the venv (`.venv`) with asyncpg installed (run `uv sync --group runtime` first if needed).
+- **Verify**: After seeding, test with `curl 'http://localhost:8000/api/v1/strategy-lookup?board=preflop&stack_depth=100&position=UTG'`

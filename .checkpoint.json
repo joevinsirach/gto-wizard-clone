@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "fix-solver-protobuf-version",
+  "current_task": "document-seed-script",
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
     {"task": "badugi-hand-display", "sha": "cd82e05", "date": "2026-06-15", "coach": "approved"},
@@ -15,9 +15,10 @@
     {"task": "keep-api-server-running", "sha": "286af91", "date": "2026-06-16", "coach": "approved"},
     {"task": "fix-strategy-lookup", "sha": "86e37bb", "date": "2026-06-16", "coach": "approved"},
     {"task": "seed-preflop-strategies", "sha": "7d435f0", "date": "2026-06-16", "coach": "approved"},
-    {"task": "fix-solver-docker-build", "sha": "0ecebb9", "date": "2026-06-16", "coach": "approved"}
+    {"task": "fix-solver-docker-build", "sha": "0ecebb9", "date": "2026-06-16", "coach": "approved"},
+    {"task": "fix-solver-protobuf-version", "sha": "af3c298", "date": "2026-06-16", "coach": null}
   ],
   "health": "580_pass_0_error_0_fail",
-  "last_sha": "0158562",
+  "last_sha": "af3c298",
   "blocker": null
 }
