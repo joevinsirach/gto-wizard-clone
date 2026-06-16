@@ -111,9 +111,12 @@ interface PostflopTrainingProps {
 export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
   const [boardStr, setBoardStr] = useState('KsKc3s')
   const [potSize, setPotSize] = useState(5.5)
-  const [stackDepth] = useState(97.5)
-  const [street] = useState('flop')
-  const [activePosition] = useState('BTN')
+  const [stackDepth, setStackDepth] = useState(100)
+  const [street, setStreet] = useState('flop')
+  const [activePosition, setActivePosition] = useState('BTN')
+  const [handPositions, setHandPositions] = useState<string[]>(['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'])
+  const [heroCards, setHeroCards] = useState('')
+  const [configOpen, setConfigOpen] = useState(false)
   const [history] = useState<ActionHistory[]>([])
   const [strategy, setStrategy] = useState<StrategyResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -174,6 +177,148 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
 
   return (
     <div style={{ padding: 16 }}>
+      {/* Configure Spot Button & Panel */}
+      <div style={{ marginBottom: 12 }}>
+        <button onClick={() => setConfigOpen(!configOpen)}
+          style={{
+            background: configOpen ? '#1a3a2b' : '#161616',
+            border: configOpen ? `1px solid ${GREEN}` : '1px solid #262626',
+            color: configOpen ? GREEN : '#ccc',
+            padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', transition: 'all .1s', display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+          <span style={{ fontSize: 14 }}>{configOpen ? '▾' : '▸'}</span>
+          Configure Spot
+        </button>
+
+        {configOpen && (
+          <div style={{
+            marginTop: 8, background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 10,
+            padding: '14px 16px',
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
+
+              {/* Position selection */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Positions in Hand
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {POSITIONS.map(pos => (
+                    <label key={pos} style={{
+                      fontSize: 12, color: TEXT_BRIGHT, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: handPositions.includes(pos) ? '#1a3a2b' : '#151515',
+                      border: `1px solid ${handPositions.includes(pos) ? GREEN + '44' : '#2a2a2a'}`,
+                      borderRadius: 6, padding: '4px 8px',
+                    }}>
+                      <input type="checkbox" checked={handPositions.includes(pos)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setHandPositions([...handPositions, pos])
+                          } else {
+                            const next = handPositions.filter(p => p !== pos)
+                            if (next.length > 0) {
+                              setHandPositions(next)
+                              if (activePosition === pos) setActivePosition(next[0])
+                            }
+                          }
+                        }}
+                        style={{ accentColor: GREEN, width: 14, height: 14 }} />
+                      {pos}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active position */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Active Position
+                </label>
+                <select value={activePosition} onChange={(e) => setActivePosition(e.target.value)}
+                  style={{
+                    background: '#151515', border: `1px solid ${BORDER}`, borderRadius: 6,
+                    color: TEXT_BRIGHT, padding: '6px 8px', fontSize: 12, width: '100%',
+                  }}>
+                  {handPositions.map(pos => (
+                    <option key={pos} value={pos}>{pos}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Board cards */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Board Cards (e.g. KsKc3s)
+                </label>
+                <input type="text" value={boardStr} onChange={(e) => setBoardStr(e.target.value)}
+                  placeholder="KsKc3s"
+                  style={{
+                    background: '#151515', border: `1px solid ${BORDER}`, borderRadius: 6,
+                    color: TEXT_BRIGHT, padding: '6px 8px', fontSize: 12, width: '100%',
+                  }} />
+              </div>
+
+              {/* Pot size */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Pot Size (bb)
+                </label>
+                <input type="number" value={potSize} onChange={(e) => setPotSize(Number(e.target.value))}
+                  min={0} step={0.1}
+                  style={{
+                    background: '#151515', border: `1px solid ${BORDER}`, borderRadius: 6,
+                    color: TEXT_BRIGHT, padding: '6px 8px', fontSize: 12, width: '100%',
+                  }} />
+              </div>
+
+              {/* Stack depth */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Stack Depth (bb)
+                </label>
+                <input type="number" value={stackDepth} onChange={(e) => setStackDepth(Number(e.target.value))}
+                  min={0} step={5}
+                  style={{
+                    background: '#151515', border: `1px solid ${BORDER}`, borderRadius: 6,
+                    color: TEXT_BRIGHT, padding: '6px 8px', fontSize: 12, width: '100%',
+                  }} />
+              </div>
+
+              {/* Street */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Street
+                </label>
+                <select value={street} onChange={(e) => setStreet(e.target.value)}
+                  style={{
+                    background: '#151515', border: `1px solid ${BORDER}`, borderRadius: 6,
+                    color: TEXT_BRIGHT, padding: '6px 8px', fontSize: 12, width: '100%',
+                  }}>
+                  <option value="flop">Flop</option>
+                  <option value="turn">Turn</option>
+                  <option value="river">River</option>
+                </select>
+              </div>
+
+              {/* Hero cards (optional) */}
+              <div>
+                <label style={{ fontSize: 11, color: TEXT_DIM, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                  Hero Cards (optional)
+                </label>
+                <input type="text" value={heroCards} onChange={(e) => setHeroCards(e.target.value)}
+                  placeholder="e.g. AhKh"
+                  style={{
+                    background: '#151515', border: `1px solid ${BORDER}`, borderRadius: 6,
+                    color: TEXT_BRIGHT, padding: '6px 8px', fontSize: 12, width: '100%',
+                  }} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Board display */}
       <div style={{
         background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 10,
@@ -211,7 +356,7 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
 
         {/* Position columns */}
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-          {POSITIONS.map(pos => {
+          {handPositions.map(pos => {
             const hist = history.find(h => h.position === pos)
             const isActive = pos === activePosition
             return (
