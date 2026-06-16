@@ -94,6 +94,33 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Check that the solver starts: `docker compose up -d solver` then check logs
   - Verify the solver gRPC port 50051 is listening
 
+### Task: fix-solver-protobuf-version
+- **Description**: The solver Docker image builds but crashes at runtime with `VersionError: Detected incompatible Protobuf Gencode/Runtime versions when loading solver.proto: gencode 6.31.1 runtime 5.29.6`. Pin `protobuf>=6.31.1` or re-pin grpcio-tools to match the runtime protobuf in `apps/solver/requirements.txt` so the solver service starts without crashing.
+- **Success criteria**:
+  - `docker compose up -d solver` starts without protobuf error
+  - `docker logs gto-wizard-clone-solver-1` shows no VersionError
+  - `curl http://localhost:8000/api/v1/solver/health` returns 200 or the solver gRPC port 50051 is listening
+- **Coach checks**:
+  - Verify protobuf version in requirements.txt is compatible with the compiled proto files
+  - Verify solver health endpoint responds
+
+### Task: document-seed-script
+- **Description**: Add usage instructions for `apps/api/prisma/seed_preflop_strategies.py` to the AGENTS.md Conventions or Seed Data section. Ensure a newcomer can read AGENTS.md and know how to populate the strategy database.
+- **Success criteria**:
+  - AGENTS.md has explicit instructions for running the seed script
+- **Coach checks**:
+  - Verify the documentation exists in AGENTS.md
+  - Verify the instructions are accurate (run the command and confirm it works)
+
+### Task: automate-seed-on-deploy
+- **Description**: Add a Makefile target or post-deploy hook (e.g., in docker-compose or a systemd service unit) that runs `seed_preflop_strategies.py` after database migrations to ensure preflop strategy data exists in all environments (local, preview, production).
+- **Success criteria**:
+  - Running `make seed-preflop` (or equivalent) seeds strategies without errors
+  - Running the command twice is idempotent (same result)
+- **Coach checks**:
+  - Check the Makefile or deploy script for the new target
+  - Run it twice and verify idempotency
+
 ## Coach Configuration
 - **Review scope**: git diff of latest commit, test output, success criteria from AGENTS.md task, console errors from frontend pages (check via curl/browser)
 - **Pass conditions**: All success criteria for the task are met. No regression in previously passing tests. No console errors introduced.
@@ -101,3 +128,7 @@ Ordered by priority. Each task is one unit of work for one player tick.
   1. Coach creates a corrective commit fixing the issue directly
   2. Coach reverts the commit and creates a fix task pinned to the issue
   3. For ambiguous or high-risk failures, coach blocks and tags for human review
+
+## Seed Data
+- **Run**: `PYTHONPATH=apps/api python apps/api/prisma/seed_preflop_strategies.py`
+- **Note**: Idempotent — safe to run multiple times. Seeds 7 preflop GTO strategies (6 positions + default) at 100bb.
