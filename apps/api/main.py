@@ -3,6 +3,7 @@ GTO Wizard Clone — FastAPI Backend
 REST API + WebSocket server for poker training platform
 """
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timezone
@@ -46,6 +47,28 @@ def init_redis():
         app.state.redis = fakeredis.FakeRedis(decode_responses=True)
 
 
+async def _auto_seed_strategies():
+    """Seed preflop strategies in background after database is ready.
+
+    Idempotent — skips if data already exists. Runs as non-blocking
+    background task so API startup isn't delayed.
+    """
+    try:
+        from prisma.seed_preflop_strategies import seed_strategies
+
+        db_url = os.environ.get(
+            "DATABASE_URL",
+            "postgresql://postgres:***@localhost:5432/gto_wizard",
+        ).replace(":***@", ":postgres@")
+
+        # Short delay to let DB connections settle after startup
+        await asyncio.sleep(2)
+        count = await seed_strategies(db_url, stack_depth=100)
+        logger.info(f"Auto-seeded {count} preflop strategies on startup")
+    except Exception as e:
+        logger.warning(f"Auto-seed skipped (non-fatal — will retry on next restart): {e}")
+
+
 @app.on_event("startup")
 async def startup_event():
     init_redis()
@@ -56,6 +79,9 @@ async def startup_event():
         logger.info("Database initialized")
     except Exception as e:
         logger.warning(f"Database init skipped: {e}")
+
+    # Seed preflop strategies in background (idempotent, non-blocking)
+    asyncio.create_task(_auto_seed_strategies())
 
 
 @app.on_event("shutdown")
