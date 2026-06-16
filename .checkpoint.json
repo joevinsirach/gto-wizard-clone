@@ -39,7 +39,7 @@
     {"task": "re-seed-strategy-data", "sha": "254dfdf", "date": "2026-06-17", "coach": "approved"},
     {"task": "add-push-fold-charts-page", "sha": "81d4ee8", "date": "2026-06-17", "coach": "approved"},
     {"task": "add-range-explorer-page", "sha": "5da4bcb", "date": "2026-06-17", "coach": "approved"},
-    {"task": "auto-seed-strategy-on-db-restart", "sha": "8ddb3f6", "date": "2026-06-17", "coach": "pending"}
+    {"task": "auto-seed-strategy-on-db-restart", "sha": "8ddb3f6", "date": "2026-06-17", "coach": "approved"}
   ],
   "health": "386_pass_0_error_0_fail__84_e2e_pass",
   "last_sha": "8ddb3f6",
