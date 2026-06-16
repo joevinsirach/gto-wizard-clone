@@ -37,7 +37,7 @@ class StrategyStoreRequest(BaseModel):
     players: int = 2
     board: str = "preflop"
     stack_depth: int
-    bet_sizes: List[int] = []
+    bet_sizes: List[float] = []
     strategy_data: List[Dict[str, Any]]
     pot_size: int = 100
 
@@ -49,7 +49,7 @@ class StrategyResponse(BaseModel):
     players: int
     board: str
     stack_depth: int
-    bet_sizes: List[int]
+    bet_sizes: List[float]
     pot_size: int
     strategy_data: List[Dict[str, Any]]
     status: str = "found"
@@ -67,14 +67,14 @@ class LookupQuery(BaseModel):
     players: int = Query(2, description="Number of players")
     board: str = Query("preflop", description="Board cards or 'preflop'")
     stack_depth: int = Query(100, description="Stack depth in big blinds")
-    bet_sizes: List[int] = Query([], description="Bet sizes")
+    bet_sizes: List[float] = Query([], description="Bet sizes")
 
 
 def make_strategy_key(
     game_type: str,
     players: int,
     board: str,
-    bet_sizes: List[int],
+    bet_sizes: List[float],
     stack_depth: int,
 ) -> str:
     """Generate a strategy key.
@@ -114,7 +114,7 @@ def parse_strategy_key(key: str) -> Dict[str, Any]:
     
     bet_sizes = []
     if bet_sizes_str:
-        bet_sizes = [int(x) for x in bet_sizes_str.split(",") if x]
+        bet_sizes = [float(x) for x in bet_sizes_str.split(",") if x]
     
     return {
         "game_type": game_type,
@@ -206,7 +206,7 @@ async def lookup_strategy(
     bet_sizes_list = []
     if bet_sizes:
         try:
-            bet_sizes_list = [int(x.strip()) for x in bet_sizes.split(",")]
+            bet_sizes_list = [float(x.strip()) for x in bet_sizes.split(",")]
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid bet_sizes format")
     
