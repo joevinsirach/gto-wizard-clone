@@ -25,4 +25,4 @@ COPY apps/solver/ .
 EXPOSE 50051
 
 # Run solver service
-CMD ["python", "-m", "solver.service"]
+CMD ["python", "-m", "service"]
