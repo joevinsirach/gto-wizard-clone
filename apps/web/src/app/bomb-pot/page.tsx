@@ -58,7 +58,7 @@ export default function BombPotPage() {
     const positions = POSITION_NAMES.slice(0, playerCount);
 
     try {
-      const response = await fetch("/api/bomb-pot/game-state", {
+      const response = await fetch("/bomb-pot/game-state", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -95,7 +95,7 @@ export default function BombPotPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/bomb-pot/equity", {
+      const response = await fetch("/bomb-pot/equity", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
