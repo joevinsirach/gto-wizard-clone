@@ -455,6 +455,15 @@ class StrategyStorageService:
                     )
                     
                     if row:
+                        # asyncpg returns JSONB as str in some configurations,
+                        # parse it to dict for StoredStrategy compatibility
+                        raw_strategy_data = row["strategy_data"]
+                        if isinstance(raw_strategy_data, str):
+                            try:
+                                raw_strategy_data = json.loads(raw_strategy_data)
+                            except (json.JSONDecodeError, TypeError):
+                                logger.warning(f"Could not parse strategy_data JSON for {key}")
+                        
                         strategy = StoredStrategy(
                             key=row["key"],
                             game_type=row["game_type"],
@@ -463,7 +472,7 @@ class StrategyStorageService:
                             board_hash=row["board_hash"],
                             bet_size=row["bet_size"],
                             stack_depth=row["stack_depth"],
-                            strategy_data=row["strategy_data"],
+                            strategy_data=raw_strategy_data,
                             created_at=row["created_at"],
                             updated_at=row["updated_at"],
                         )
