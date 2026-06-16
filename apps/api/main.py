@@ -48,15 +48,15 @@ def init_redis():
 
 
 async def _auto_seed_strategies():
-    """Seed preflop strategies in background after database is ready.
+    """Seed preflop and flop strategies in background after database is ready.
 
-    Seeds all common stack depths (50, 100, 150, 200bb) for idempotent
-    startup seeding.  Each depth runs independently so a failure at one
-    depth doesn't block the others.  Runs as non-blocking background task
-    so API startup isn't delayed.
+    Seeds all common stack depths (50, 100, 150, 200bb) for preflop, and
+    common flop boards at 100bb.  Each seed runs independently so a failure
+    at one depth/board doesn't block the others.  Runs as non-blocking
+    background task so API startup isn't delayed.
     """
     try:
-        from prisma.seed_preflop_strategies import seed_strategies
+        from prisma.seed_preflop_strategies import seed_strategies as seed_preflop
 
         db_url = os.environ.get(
             "DATABASE_URL",
@@ -70,7 +70,7 @@ async def _auto_seed_strategies():
         total = 0
         for sd in stack_depths:
             try:
-                count = await seed_strategies(db_url, stack_depth=sd)
+                count = await seed_preflop(db_url, stack_depth=sd)
                 total += count
                 logger.info(f"Auto-seeded {count} preflop strategies at {sd}bb")
             except Exception as e:
@@ -79,6 +79,15 @@ async def _auto_seed_strategies():
                 )
 
         logger.info(f"Auto-seeded {total} preflop strategies across all stack depths")
+
+        # Also seed flop strategies (idempotent, 7 common boards at 100bb)
+        try:
+            from prisma.seed_flop_strategies import seed_flop_strategies
+            flop_count = await seed_flop_strategies(db_url, stack_depth=100)
+            logger.info(f"Auto-seeded {flop_count} flop strategies")
+        except Exception as e:
+            logger.warning(f"Flop auto-seed skipped (non-fatal): {e}")
+
     except Exception as e:
         logger.warning(f"Auto-seed skipped (non-fatal — will retry on next restart): {e}")
 
