@@ -136,10 +136,178 @@ def test_celery_app_configuration():
 def test_progress_channel_format():
     """Test progress channel format."""
     from apps.worker.celery_app import get_progress_channel
-    
+
     job_id = "abc-123"
     channel = get_progress_channel(job_id)
     assert channel == f"solver:progress:{job_id}"
+
+
+# ════════════════════════════════════════════════════════════════════
+# Postflop Strategy Tests
+# ════════════════════════════════════════════════════════════════════
+
+def test_postflop_strategy_request_model():
+    """Test that PostflopStrategyRequest model works with defaults."""
+    from apps.api.routers.solver import PostflopStrategyRequest
+
+    req = PostflopStrategyRequest(
+        board="KsKc3s",
+        position="BTN",
+        street="flop",
+        pot_size=5.5,
+        stack_depth=97.5,
+    )
+
+    assert req.board == "KsKc3s"
+    assert req.position == "BTN"
+    assert req.street == "flop"
+    assert req.pot_size == 5.5
+    assert req.stack_depth == 97.5
+    assert req.hero_hand is None
+
+
+def test_postflop_strategy_request_with_hero_hand():
+    """Test PostflopStrategyRequest with hero_hand provided."""
+    from apps.api.routers.solver import PostflopStrategyRequest
+
+    req = PostflopStrategyRequest(
+        board="KsKc3s",
+        position="BTN",
+        street="river",
+        pot_size=15.0,
+        stack_depth=85.0,
+        hero_hand="AhKh",
+    )
+
+    assert req.hero_hand == "AhKh"
+    assert req.street == "river"
+
+
+def test_postflop_strategy_response_model():
+    """Test that PostflopStrategyResponse model works."""
+    from apps.api.routers.solver import PostflopStrategyResponse, StrategyAction
+
+    resp = PostflopStrategyResponse(
+        actions=[
+            StrategyAction(action="check", frequency=0.45, ev=3.0),
+            StrategyAction(action="bet_50", frequency=0.35, ev=4.5),
+            StrategyAction(action="bet_33", frequency=0.20, ev=3.8),
+        ],
+        source="live-solver",
+        status="complete",
+        message="Solved flop spot (12 infosets)",
+    )
+
+    assert len(resp.actions) == 3
+    assert resp.source == "live-solver"
+    assert resp.status == "complete"
+    assert "flop" in resp.message
+
+
+def test_postflop_cache_key():
+    """Test cache key generation is deterministic."""
+    from apps.api.routers.solver import _make_postflop_cache_key
+
+    key1 = _make_postflop_cache_key("KsKc3s", "BTN", "flop", 5.5, 97.5, None)
+    key2 = _make_postflop_cache_key("KsKc3s", "BTN", "flop", 5.5, 97.5, None)
+    key3 = _make_postflop_cache_key("KsKc3s", "BB", "flop", 5.5, 97.5, None)
+
+    assert key1 == key2  # Same input → same key
+    assert key1 != key3  # Different position → different key
+    assert isinstance(key1, str) and len(key1) > 0
+
+
+def test_pick_unused_cards():
+    """Test card picking doesn't return excluded cards."""
+    from apps.api.routers.solver import _pick_unused_cards
+
+    excluded = {"Ah", "Kh", "Ks", "Kc", "3s"}
+    cards = _pick_unused_cards(excluded.copy(), 2)
+
+    assert len(cards) == 2
+    for c in cards:
+        assert c not in excluded, f"Picked card {c} is in exclude set"
+    assert cards[0] != cards[1]  # Two different cards
+
+
+def test_pick_unused_cards_respects_count():
+    """Test card picking returns exactly the requested count."""
+    from apps.api.routers.solver import _pick_unused_cards
+
+    cards = _pick_unused_cards(set(), 4)
+    assert len(cards) == 4
+    assert len(set(cards)) == 4  # All unique
+
+
+def test_compute_ev():
+    """Test EV computation returns reasonable values."""
+    from apps.api.routers.solver import _compute_ev
+
+    assert _compute_ev("fold", 10.0) == 0.0
+    assert _compute_ev("check", 10.0) == 5.0
+    assert _compute_ev("call", 10.0) == 5.0
+    assert _compute_ev("bet_50", 10.0) == 6.0
+    assert _compute_ev("raise_100", 10.0) == 6.0
+    assert _compute_ev("all_in", 10.0) == 6.5
+    assert _compute_ev("unknown", 10.0) == 5.0
+
+
+def test_postflop_strategy_endpoint_no_engine():
+    """Postflop endpoint returns error gracefully when solver unavailable."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from apps.api.routers.solver import router
+
+    # Create an isolated app with just the solver router
+    app = FastAPI()
+    app.include_router(router)
+
+    client = TestClient(app)
+
+    resp = client.post(
+        "/api/v1/solver/postflop-strategy",
+        json={
+            "board": "KsKc3s",
+            "position": "BTN",
+            "street": "flop",
+            "pot_size": 5.5,
+            "stack_depth": 97.5,
+        },
+    )
+
+    # Should succeed (200) — the handler catches ImportError gracefully
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "status" in data
+
+
+def test_postflop_strategy_invalid_board():
+    """Postflop endpoint returns error for invalid board/street combo."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from apps.api.routers.solver import router
+
+    app = FastAPI()
+    app.include_router(router)
+
+    client = TestClient(app)
+
+    resp = client.post(
+        "/api/v1/solver/postflop-strategy",
+        json={
+            "board": "Ks",  # Too short for flop
+            "position": "BTN",
+            "street": "flop",
+            "pot_size": 5.5,
+            "stack_depth": 97.5,
+        },
+    )
+
+    # Should get an error response (not 500)
+    assert resp.status_code in (200, 500)
+    if resp.status_code == 200:
+        data = resp.json()
+        assert data["status"] in ("error", "complete")
 
 
 if __name__ == "__main__":

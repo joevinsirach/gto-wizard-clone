@@ -112,6 +112,236 @@ class PreflopRangeResponse(BaseModel):
     source: str = ""
 
 
+# ── Postflop Strategy Cache ──
+import hashlib
+import asyncio
+
+# In-memory cache for postflop strategy results (board:position:street key → strategy data)
+_postflop_cache: dict[str, dict] = {}
+
+
+class PostflopStrategyRequest(BaseModel):
+    """Request for postflop GTO strategy data for interactive training."""
+    board: str = "KsKc3s"
+    position: str = "BTN"
+    street: str = "flop"
+    pot_size: float = 5.5
+    stack_depth: float = 97.5
+    hero_hand: Optional[str] = None
+
+
+class PostflopStrategyResponse(BaseModel):
+    """Response containing GTO strategy actions for a postflop spot."""
+    actions: List[StrategyAction] = []
+    source: str = ""       # "cached" or "live-solver"
+    status: str = ""
+    message: Optional[str] = None
+    error: Optional[str] = None
+
+
+def _make_postflop_cache_key(
+    board: str, position: str, street: str,
+    pot_size: float, stack_depth: float, hero_hand: Optional[str]
+) -> str:
+    """Deterministic MD5 cache key for a postflop strategy request."""
+    raw = f"{board.strip()}:{position}:{street}:{pot_size}:{stack_depth}:{hero_hand or 'generic'}"
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _pick_unused_cards(exclude: set[str], count: int = 2) -> list[str]:
+    """Pick *count* cards that are not in the exclude set."""
+    suits = "hdcs"
+    ranks = "AKQJT98765432"
+    chosen: list[str] = []
+    for r in ranks:
+        for s in suits:
+            c = r + s
+            if c not in exclude:
+                chosen.append(c)
+                exclude.add(c)
+                if len(chosen) >= count:
+                    return chosen
+    return chosen
+
+
+def _compute_ev(action_name: str, pot_size: float) -> float:
+    """Approximate EV for an action — real EV requires full game-tree traversal."""
+    if action_name == "fold":
+        return 0.0
+    if action_name == "check":
+        return round(pot_size * 0.5, 4)
+    if action_name == "call":
+        return round(pot_size * 0.5, 4)
+    if action_name in ("all_in", "allin"):
+        return round(pot_size * 0.65, 4)
+    if action_name.startswith("bet") or action_name.startswith("raise"):
+        return round(pot_size * 0.6, 4)
+    return round(pot_size * 0.5, 4)
+
+
+@router.post("/postflop-strategy", response_model=PostflopStrategyResponse)
+async def postflop_strategy(req: PostflopStrategyRequest):
+    """
+    Get GTO strategy for a postflop spot.
+
+    Checks an in-memory cache first.  If no cached data exists, falls through
+    to the live MCCFR solver with a 30‑second timeout.
+    """
+    cache_key = _make_postflop_cache_key(
+        req.board, req.position, req.street,
+        req.pot_size, req.stack_depth, req.hero_hand,
+    )
+
+    # 1. In-memory cache hit
+    if cache_key in _postflop_cache:
+        cached = _postflop_cache[cache_key]
+        return PostflopStrategyResponse(
+            actions=[StrategyAction(**a) for a in cached["actions"]],
+            source="cached",
+            status="complete",
+        )
+
+    # 2. Live solver
+    if not _check_engine():
+        return PostflopStrategyResponse(
+            status="error",
+            error="Solver engine not available",
+            message="Install phevaluator and rebuild",
+        )
+
+    board_str = req.board.strip()
+    board_cards = [board_str[i:i+2] for i in range(0, len(board_str), 2)]
+
+    # Hero hole cards
+    if req.hero_hand and len(req.hero_hand) >= 4:
+        hh = req.hero_hand.strip()
+        hero_cards = [hh[i:i+2] for i in range(0, len(hh), 2)]
+    else:
+        hero_cards = ["Ah", "Kh"]
+
+    # Opponent hole cards (pick ones that don't conflict with board/hero)
+    used: set[str] = set(hero_cards + board_cards)
+    opponent_cards = _pick_unused_cards(used, 2)
+
+    stacks = [req.stack_depth, req.stack_depth]
+    bet_sizes = [0.33, 0.5, 0.75, 1.0]
+
+    try:
+        from cfr.engine import CFREngine
+        from games.texas_hold_em import TexasHoldEm
+
+        async def _solve() -> tuple[dict, TexasHoldEm, CFREngine]:
+            """Run the solver in a thread executor (it's CPU‑bound)."""
+            loop = asyncio.get_running_loop()
+
+            def _run():
+                nonlocal bet_sizes
+                if req.street == "river" and len(board_cards) >= 5:
+                    from cfr.river_solver import create_river_state_from_params
+                    state = create_river_state_from_params(
+                        p0_cards=hero_cards,
+                        p1_cards=opponent_cards,
+                        board=board_cards[:5],
+                        pot=req.pot_size,
+                        stacks=stacks,
+                    )
+                    game = TexasHoldEm(bet_sizes=bet_sizes)
+                    engine = CFREngine(game)
+                    strategies = engine.solve(state, iterations=200, sample_chance=False)
+                    return strategies, game, engine
+
+                elif req.street == "turn" and len(board_cards) >= 4:
+                    from cfr.turn_solver import create_turn_state
+                    state = create_turn_state(
+                        p0_cards=hero_cards,
+                        p1_cards=opponent_cards,
+                        flop=board_cards[:3],
+                        turn=board_cards[3],
+                        pot=req.pot_size,
+                        stacks=stacks,
+                    )
+                    game = TexasHoldEm(bet_sizes=bet_sizes)
+                    engine = CFREngine(game)
+                    strategies = engine.solve(state, iterations=200, sample_chance=True)
+                    return strategies, game, engine
+
+                elif req.street == "flop" and len(board_cards) >= 3:
+                    from cfr.flop_solver import create_flop_state
+                    state = create_flop_state(
+                        p0_cards=hero_cards,
+                        p1_cards=opponent_cards,
+                        flop=board_cards[:3],
+                        pot=req.pot_size,
+                        stacks=stacks,
+                    )
+                    game = TexasHoldEm(bet_sizes=bet_sizes)
+                    engine = CFREngine(game)
+                    strategies = engine.solve(state, iterations=200, sample_chance=True)
+                    return strategies, game, engine
+
+                else:
+                    raise ValueError(
+                        f"Invalid board/street: board={req.board!r}, street={req.street!r}"
+                    )
+
+            return await loop.run_in_executor(None, _run)
+
+        strategies, game, engine = await asyncio.wait_for(_solve(), timeout=30.0)
+
+        # 3. Extract actions from solver output using engine's infoset_manager
+        actions: list[StrategyAction] = []
+        for key, avg_strat in strategies.items():
+            info = engine.infoset_manager.get(key) if hasattr(engine, 'infoset_manager') else None
+            if info is None:
+                continue
+            valid_actions = info.actions if hasattr(info, 'actions') and info.actions else []
+            for i, act in enumerate(valid_actions):
+                freq = float(avg_strat[i]) if i < len(avg_strat) else 0.0
+                if freq > 0.01:
+                    ev = _compute_ev(str(act), req.pot_size)
+                    actions.append(StrategyAction(
+                        action=str(act),
+                        frequency=round(freq, 4),
+                        ev=ev,
+                    ))
+
+        actions.sort(key=lambda a: -a.frequency)
+
+        # 4. Cache for future use
+        _postflop_cache[cache_key] = {
+            "actions": [a.model_dump() for a in actions],
+        }
+
+        return PostflopStrategyResponse(
+            actions=actions,
+            source="live-solver",
+            status="complete",
+            message=f"Solved {req.street} spot ({len(strategies)} infosets)",
+        )
+
+    except asyncio.TimeoutError:
+        return PostflopStrategyResponse(
+            status="error",
+            error="Solver timed out after 30s",
+            message="Live solver exceeded timeout",
+        )
+    except ImportError as e:
+        logger.warning(f"Solver engine not available: {e}")
+        return PostflopStrategyResponse(
+            status="error",
+            error=str(e),
+            message="Solver engine unavailable",
+        )
+    except ValueError as e:
+        return PostflopStrategyResponse(
+            status="error",
+            error=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Postflop solver error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── Solver endpoints ──
 
 @router.post("/solve", response_model=SolveResponse)
