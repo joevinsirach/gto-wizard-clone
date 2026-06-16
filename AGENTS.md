@@ -272,4 +272,19 @@ Ordered by priority. Each task is one unit of work for one player tick.
 ### Task: fix-strategies-api-url-prefix
 - **Description**: The `/strategies` frontend page defines `API_BASE = "http://localhost:8080"` and then constructs URLs like `${API_BASE}/api/v1/strategy/lookup`. This results in double-prefix URLs that break in production (calls `http://localhost:8080/api/v1/...` directly instead of using the Next.js proxy). Fix by removing the hardcoded API_BASE and using relative paths (`/api/v1/strategy/lookup` etc.) so the Next.js rewrite proxy handles routing. Update `apps/web/src/app/strategies/page.tsx`.
 - **Success criteria**: The strategies page loads strategy data via the Next.js proxy instead of bypassing it. `curl http://localhost:3000/strategies` returns a page that successfully loads strategy data from the API.
-- **Coach checks**: Load `/strategies` page, verify strategy data loads (no 404 or connection refused errors in browser console). Verify all three API calls (strategy lookup, solver solve, solver WS) use relative paths.
+|- **Coach checks**: Load `/strategies` page, verify strategy data loads (no 404 or connection refused errors in browser console). Verify all three API calls (strategy lookup, solver solve, solver WS) use relative paths.
+
+### Task: fix-strategy-route-order
+- **Description**: The `GET /api/v1/strategy/{key}` route in `apps/api/routers/strategy.py` (line 185) is defined before `GET /api/v1/strategy/lookup` (line 228), causing `/api/v1/strategy/lookup` requests to be intercepted by `/{key}` with `key="lookup"`, which then fails `parse_strategy_key("lookup")` with `Invalid strategy key format: lookup`. Move the `/lookup` route before `/{key}` in strategy.py so the static path matches first. Verify with `curl http://localhost:8000/api/v1/strategy/lookup?game_type=nlh&players=2&board=preflop&stack_depth=100` returns a valid response (not the `Invalid strategy key format` error).
+- **Success criteria**: `curl "http://localhost:8000/api/v1/strategy/lookup?game_type=nlh&players=2&board=preflop&stack_depth=100"` returns a strategy response or 404 (not 400 with "Invalid strategy key format"). The `/api/v1/strategy/{key}` endpoint still works for valid keys.
+- **Coach checks**: Run the lookup curl and verify no "Invalid strategy key format" error. Also test `GET /api/v1/strategy/nlh:2:preflop::100` still returns proper response or 404 (not shadowed by lookup). Check that all 368 tests still pass.
+
+### Task: add-strategies-page-e2e-test
+- **Description**: The `/strategies` page currently shows "0 spots found" because the strategy lookup API call fails with the route shadowing bug. After `fix-strategy-route-order` is deployed, the strategies page should be able to load strategy data. Add a basic e2e smoke test that loads `/strategies` and verifies the page renders the strategy browser UI without console errors. The test can be a simple Playwright or curl-based check.
+- **Success criteria**: `curl http://localhost:3000/strategies` returns 200 with the HTML strategy browser UI. Loading the page in a browser shows no console errors. The "0 spots found" text appears if no seed data exists (expected), not because of API errors.
+- **Coach checks**: Load `/strategies` page. Check console for errors. Verify the board card inputs, position selector, and "Solve New Spot" button all render.
+
+### Task: add-deploy-health-monitoring
+- **Description**: Add a simple deploy monitoring script that checks key API endpoints and frontend pages are returning 200 after deployment. Create `scripts/deploy-health-check.sh` that curls: `GET /api/v1/health` (backend), `GET /` (frontend), `GET /study` (study page), `POST /api/v1/solver/postflop-strategy` (solver endpoint). Exit 0 only if all checks pass. Integrate into a Makefile `make health-check` target.
+- **Success criteria**: `bash scripts/deploy-health-check.sh` exits 0 and checks at least 4 endpoints. `make health-check` works.
+- **Coach checks**: Run the script, verify all checks pass. Run `make health-check` and verify the target exists.
