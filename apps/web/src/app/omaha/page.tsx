@@ -23,7 +23,7 @@ const TAB_CONFIGS = {
   plo5: {
     title: "PLO5 Equity Calculator",
     description: "5-card Pot-Limit Omaha equity calculator powered by PH Evaluator",
-    endpoint: "/api/omaha/plo5/equity",
+    endpoint: "/omaha/plo5/equity/calculate",
     cardCount: 5,
     tips: [
       "• PLO5 uses 5 hole cards, must use exactly 2 + 3 board",
@@ -35,7 +35,7 @@ const TAB_CONFIGS = {
   hilo: {
     title: "Omaha Hi/Lo Equity Calculator",
     description: "8-or-better split pot Omaha equity calculator",
-    endpoint: "/api/omaha/hi-lo/equity",
+    endpoint: "/omaha/hi-lo/equity/calculate",
     cardCount: 4,
     tips: [
       "• Omaha Hi/Lo uses 4 hole cards, must use exactly 2 + 3 board",
@@ -48,7 +48,7 @@ const TAB_CONFIGS = {
   shortdeck: {
     title: "Shortdeck Equity Calculator",
     description: "6+ Hold'em (Shortdeck) equity calculator",
-    endpoint: "/api/omaha/shortdeck/equity",
+    endpoint: "/omaha/shortdeck/equity/calculate",
     cardCount: 2,
     tips: [
       "• Shortdeck uses 2 hole cards (like regular Hold'em)",

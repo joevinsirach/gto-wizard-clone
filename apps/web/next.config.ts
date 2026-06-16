@@ -30,6 +30,10 @@ const nextConfig = {
         destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/icm/:path*`,
       },
       {
+        source: '/omaha/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/omaha/:path*`,
+      },
+      {
         source: '/plo4/:path*',
         destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/plo4/:path*`,
       },
