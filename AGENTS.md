@@ -55,6 +55,7 @@ These skills are loaded automatically when the Player works on this project:
 | `subagent-driven-development` | Complex features with multiple independent components | Parallel delegation for speed |
 | `test-driven-development` | Test-heavy tasks (fix-dev-env, add-e2e-tests) | Enforce red-green-refactor discipline |
 | `systematic-debugging` | Any task where tests fail or behavior is unexpected | 4-phase root cause debugging |
+| `scout-agent` | Insufficient task context — need to research libraries, APIs, or approaches | Bounded 1-page research brief with options and trade-offs |
 
 ## Tasks
 
