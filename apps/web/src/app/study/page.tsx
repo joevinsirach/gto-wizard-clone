@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import PostflopTraining from '@/components/study/PostflopTraining'
 
 const RED = '#D32F2F'
 const RED_BRIGHT = '#E53935'
@@ -47,6 +48,7 @@ const ACTION_COLORS: Record<string, string> = {
 }
 
 export default function StudyPage() {
+  const [mode, setMode] = useState<'preflop' | 'postflop'>('preflop')
   const [activePosition, setActivePosition] = useState('UTG')
   const [selectedCell, setSelectedCell] = useState<string | null>(null)
   const [rangeData, setRangeData] = useState<Map<string, HandData>>(new Map())
@@ -149,6 +151,31 @@ export default function StudyPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0E' }}>
+      {/* Mode Toggle */}
+      <div style={{ display: 'flex', gap: 8, padding: '8px 16px', borderBottom: '1px solid #141414', background: '#0E0E0E' }}>
+        <button onClick={() => setMode('preflop')}
+          style={{
+            background: mode === 'preflop' ? '#16241a' : '#161616',
+            border: mode === 'preflop' ? `1px solid ${GREEN}` : '1px solid #262626',
+            color: mode === 'preflop' ? '#fff' : '#888',
+            padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', transition: 'all .1s',
+          }}>
+          Preflop Ranges
+        </button>
+        <button onClick={() => setMode('postflop')}
+          style={{
+            background: mode === 'postflop' ? '#16241a' : '#161616',
+            border: mode === 'postflop' ? `1px solid ${GREEN}` : '1px solid #262626',
+            color: mode === 'postflop' ? '#fff' : '#888',
+            padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', transition: 'all .1s',
+          }}>
+          Postflop Training
+        </button>
+      </div>
+
+      {mode === 'preflop' ? (<div>
       {/* Position Bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px', overflowX: 'auto', background: '#0E0E0E', borderBottom: '1px solid #141414' }}>
         <div style={{ background: '#1A1A1A', border: '1px solid #2a2a2a', color: '#d0d0d0', padding: '8px 12px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
@@ -318,6 +345,9 @@ export default function StudyPage() {
           </div>
         </div>
       </div>
+      </div>) : (
+        <PostflopTraining />
+      )}
     </div>
   )
 }
