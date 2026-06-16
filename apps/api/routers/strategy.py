@@ -182,49 +182,6 @@ async def store_strategy(request: StrategyStoreRequest):
         raise HTTPException(status_code=500, detail=f"Failed to store strategy: {str(e)}")
 
 
-@router.get("/{key}", response_model=StrategyResponse)
-async def get_strategy(key: str):
-    """
-    Retrieve a stored strategy by key.
-    
-    Key format: nlh:2:{board}:{stack_depth}:{bet_sizes}
-    Example: nlh:2:preflop:100:
-    """
-    redis_service = RedisService.get_instance()
-    
-    try:
-        # Parse key to validate format
-        parse_strategy_key(key)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
-    try:
-        data = redis_service.client.get(f"strategy:{key}")
-        
-        if not data:
-            raise HTTPException(status_code=404, detail=f"Strategy not found: {key}")
-        
-        strategy = json.loads(data)
-        
-        return StrategyResponse(
-            key=strategy["key"],
-            game_type=strategy["game_type"],
-            players=strategy["players"],
-            board=strategy["board"],
-            stack_depth=strategy["stack_depth"],
-            bet_sizes=strategy["bet_sizes"],
-            pot_size=strategy["pot_size"],
-            strategy_data=strategy["strategy_data"],
-            status="found",
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to retrieve strategy {key}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve strategy: {str(e)}")
-
-
 @router.get("/lookup", response_model=StrategyResponse)
 async def lookup_strategy(
     game_type: str = Query("nlh", description="Game type (nlh, plo)"),
@@ -296,6 +253,49 @@ async def lookup_strategy(
     except Exception as e:
         logger.error(f"Failed to lookup strategy: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to lookup strategy: {str(e)}")
+
+
+@router.get("/{key}", response_model=StrategyResponse)
+async def get_strategy(key: str):
+    """
+    Retrieve a stored strategy by key.
+    
+    Key format: nlh:2:{board}:{stack_depth}:{bet_sizes}
+    Example: nlh:2:preflop:100:
+    """
+    redis_service = RedisService.get_instance()
+    
+    try:
+        # Parse key to validate format
+        parse_strategy_key(key)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    try:
+        data = redis_service.client.get(f"strategy:{key}")
+        
+        if not data:
+            raise HTTPException(status_code=404, detail=f"Strategy not found: {key}")
+        
+        strategy = json.loads(data)
+        
+        return StrategyResponse(
+            key=strategy["key"],
+            game_type=strategy["game_type"],
+            players=strategy["players"],
+            board=strategy["board"],
+            stack_depth=strategy["stack_depth"],
+            bet_sizes=strategy["bet_sizes"],
+            pot_size=strategy["pot_size"],
+            strategy_data=strategy["strategy_data"],
+            status="found",
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve strategy {key}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve strategy: {str(e)}")
 
 
 @router.delete("/{key}")
