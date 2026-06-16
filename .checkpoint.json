@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "tbd",
+  "current_task": "seed-all-stack-depths",
   "completed": [
     {
       "task": "vendor-pokerkit",
@@ -235,10 +235,10 @@
       "task": "fix-strategy-key-bet-size-parsing",
       "sha": "9cd624b",
       "date": "2026-06-17",
-      "coach": "pending"
+      "coach": "approved"
     }
   ],
   "health": "598_pass_0_error_0_fail__106_e2e_pass",
-  "last_sha": "9cd624b",
+  "last_sha": "7b88d1b",
   "blocker": null
 }

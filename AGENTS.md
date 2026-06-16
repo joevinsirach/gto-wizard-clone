@@ -333,3 +333,32 @@ Ordered by priority. Each task is one unit of work for one player tick.
 |- **Description**: The `GET /api/v1/strategy/{key}` endpoint in `apps/api/routers/strategy.py` fails with `invalid literal for int() with base 10: '0.5'` when the bet_size component in the strategy key is a float (e.g., `nlh:2:preflop:utg:0.5:100`). The `parse_strategy_key()` function at line 117 naively calls `int(x)` on bet size components. Fix to handle float bet sizes by using `float()` instead of `int()` where appropriate, or by changing the key format to store bet_size as an integer (e.g., 50 for 0.5 = 50% pot).
 |- **Success criteria**: `curl http://localhost:8000/api/v1/strategy/nlh:2:preflop:utg:0.5:100` returns strategy data (or appropriate 404) instead of HTTP 500 or "invalid literal for int()". Both integer bet sizes (e.g., 100) and float sizes (0.5) work.
 |- **Coach checks**: Test with `/strategy/nlh:2:preflop:utg:0.5:100` and `/strategy/nlh:2:preflop:utg:100:` — both should parse without error. Verify `/api/v1/strategy/lookup` still works (no regression).
+
+### Task: seed-all-stack-depths
+- **Description**: The `_auto_seed_strategies()` background task in `apps/api/main.py` only seeds 100bb preflop data. The `seed_preflop_strategies.py` script supports a `stack_depth` argument but isn't called for 50bb, 150bb, or 200bb. Update the auto-seed logic (or add a separate startup task) to seed all common stack depths (50, 100, 150, 200) so the strategy lookup works at multiple stack depths without manual intervention.
+- **Success criteria**:
+  - After API restart, `curl 'http://localhost:8000/api/v1/strategy-lookup?board=preflop&stack_depth=50&position=UTG'` returns strategy data
+  - Same for stack_depth=150 and stack_depth=200
+- **Coach checks**:
+  - Verify curl returns data for each stack depth after restart
+  - Verify the seed is idempotent (safe to re-run on every startup)
+  - Check the API startup log for seed confirmation at each depth
+
+### Task: seed-flop-strategies
+- **Description**: The strategy lookup endpoint only returns preflop data. Seed GTO strategies for common flop boards (monotone, paired, rainbow, wet, dry) at 100bb. Use the solver engine or hardcoded GTO ranges stored in `apps/api/data/`. The seed script `apps/api/prisma/seed_preflop_strategies.py` should be extended or a new flop seed script created.
+- **Success criteria**:
+  - `curl 'http://localhost:8000/api/v1/strategy-lookup?board=Kd7h2c&stack_depth=100&position=BTN'` returns strategy data for at least 3 distinct flop boards
+- **Coach checks**:
+  - Verify the seed script exists and runs without error
+  - Verify curl returns actual range data (not 404) for each seeded board
+  - Verify the lookup endpoint handles postflop board hashing correctly
+
+### Task: add-missing-stack-depth-to-frontend-position-buttons
+- **Description**: The `/study` page position buttons currently show only the effective stack for 100bb (UTG shows "100", SB shows "99.5" for posted blind). The strategy lookup backend now supports 50bb and 150bb. Add a stack depth selector to the study page toolbar so users can switch between common stack depths (50, 100, 150, 200) without needing an API key or URL parameter. Use the existing `GET /api/v1/strategy-lookup/stack-depths` endpoint to list available depths.
+- **Success criteria**:
+  - The study page has a visible stack depth selector (dropdown or button group) in the toolbar area
+  - Selecting 50bb reloads the strategy heatmap with 50bb data
+- **Coach checks**:
+  - Load the study page and verify the stack depth selector is visible
+  - Switch to 50bb and verify the position buttons update their stack labels
+  - Check browser console for errors
