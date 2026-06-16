@@ -11,53 +11,55 @@
  ○ (pwa) Service worker: /home/sc/repos/gto-wizard-clone/apps/web/public/sw.js
  ○ (pwa)   URL: /sw.js
  ○ (pwa)   Scope: /
- ✓ Compiled successfully in 17.8s
+ ✓ Compiled successfully in 9.0s
    Linting and checking validity of types ...
    Collecting page data ...
-   Generating static pages (0/33) ...
-   Generating static pages (8/33) 
-   Generating static pages (16/33) 
-   Generating static pages (24/33) 
- ✓ Generating static pages (33/33)
+   Generating static pages (0/35) ...
+   Generating static pages (8/35) 
+   Generating static pages (17/35) 
+   Generating static pages (26/35) 
+ ✓ Generating static pages (35/35)
    Finalizing page optimization ...
    Collecting build traces ...
 
 Route (app)                                 Size  First Load JS
-┌ ○ /                                      164 B         109 kB
-├ ○ /_not-found                            994 B         106 kB
+┌ ○ /                                      166 B         109 kB
+├ ○ /_not-found                            997 B         106 kB
 ├ ○ /analyze                             2.11 kB         216 kB
-├ ○ /analyze/hands                       2.84 kB         220 kB
-├ ○ /analyze/leaks                       2.57 kB         220 kB
-├ ○ /analyze/viewer                        124 B         105 kB
-├ ○ /bomb-pot                            2.58 kB         108 kB
+├ ○ /analyze/hands                       2.87 kB         220 kB
+├ ○ /analyze/leaks                       2.58 kB         220 kB
+├ ○ /analyze/viewer                        127 B         105 kB
+├ ○ /bomb-pot                            2.59 kB         108 kB
 ├ ○ /courses                             3.81 kB         113 kB
 ├ ○ /double-board                        2.33 kB         108 kB
-├ ○ /equity                              6.37 kB         112 kB
-├ ○ /equity/2-7sd                          852 B         110 kB
-├ ○ /equity/2-7td                          852 B         110 kB
+├ ○ /equity                              6.38 kB         112 kB
+├ ○ /equity/2-7sd                          859 B         110 kB
+├ ○ /equity/2-7td                          859 B         110 kB
 ├ ○ /equity/badugi                       4.78 kB         110 kB
-├ ○ /equity/omaha                          852 B         110 kB
-├ ○ /equity/plo                          2.48 kB         108 kB
-├ ○ /equity/plo5                           852 B         110 kB
-├ ○ /equity/razz                         1.61 kB         111 kB
-├ ○ /equity/stud                         1.65 kB         111 kB
-├ ○ /equity/stud8                          852 B         110 kB
+├ ○ /equity/omaha                          859 B         110 kB
+├ ○ /equity/plo                          2.49 kB         108 kB
+├ ○ /equity/plo5                           859 B         110 kB
+├ ○ /equity/razz                         1.62 kB         111 kB
+├ ○ /equity/stud                         1.66 kB         111 kB
+├ ○ /equity/stud8                          859 B         110 kB
+├ ○ /hand-history                        7.63 kB         116 kB
 ├ ○ /icm                                 7.09 kB         112 kB
 ├ ○ /omaha                               2.84 kB         108 kB
 ├ ○ /play                                2.75 kB         108 kB
 ├ ○ /plo                                 1.97 kB         107 kB
 ├ ○ /practice                            3.11 kB         108 kB
+├ ○ /quiz                                4.91 kB         110 kB
 ├ ○ /spots                               4.39 kB         115 kB
 ├ ○ /strategies                          7.25 kB         113 kB
 ├ ○ /strategy                            3.98 kB         115 kB
-├ ○ /study                               3.51 kB         109 kB
+├ ○ /study                               3.73 kB         109 kB
 ├ ○ /train                               11.2 kB         220 kB
 ├ ○ /train/review                        2.76 kB         114 kB
 └ ○ /variants                            2.96 kB         112 kB
 + First Load JS shared by all             105 kB
-  ├ chunks/626-662c25dbdf4b7e62.js         49 kB
+  ├ chunks/8626-0ea4eb006a76f4ba.js        49 kB
   ├ chunks/87c73c54-09e1ba5c70e60a51.js  54.2 kB
-  └ other shared chunks (total)          2.08 kB
+  └ other shared chunks (total)          2.09 kB
 
 
 ○  (Static)  prerendered as static content
