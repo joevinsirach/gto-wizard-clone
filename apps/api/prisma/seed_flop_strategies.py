@@ -31,6 +31,7 @@ DATABASE_URL = os.environ.get(
 # ── Common flop boards matching the frontend board presets ──
 # Each entry: (board_string, label)
 COMMON_FLOP_BOARDS = [
+    # ── Original 7 boards ──
     # Rainbow boards
     "AhKd2c",   # AK2 Rainbow
     "KcQh8c",   # KQ8 Rainbow
@@ -41,6 +42,28 @@ COMMON_FLOP_BOARDS = [
     "QdQh2c",   # QQ2 Rainbow
     # Monotone
     "AhKh2h",   # AK2 Monotone
+
+    # ── 10 new boards for expanded coverage ──
+    # High-card disconnected
+    "AcQd3h",   # AQ3 Rainbow (high disconnected)
+    # Low connected (straight draw)
+    "6h5d4c",   # 654 Rainbow (low connected)
+    # Wet monotone
+    "JsTs3s",   # JT3 Monotone (wet flush draw)
+    # Dry paired (high pair)
+    "KcKd8h",   # KK8 Rainbow (dry paired)
+    # Flush draw two-tone
+    "Ah9h4c",   # A94 two-tone (ace-high flush draw)
+    # Connected straight-heavy
+    "JhTh9c",   # JT9 Rainbow (straight heavy)
+    # Paired + straight draw
+    "9c9h6d",   # 996 Rainbow (paired, straight draw)
+    # Ace-high monotone
+    "Ac7c3c",   # A73 Monotone (ace-high monotone)
+    # Low paired dry
+    "2c2d7h",   # 227 Rainbow (low paired)
+    # High cards + flush draw
+    "KdTd4c",   # KT4 two-tone (high flush draw)
 ]
 
 # Hand rankings for equity ordering on any board

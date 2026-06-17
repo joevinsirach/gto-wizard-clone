@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "tbd",
+  "current_task": "seed-flop-boards-expanded",
   "completed": [
     {
       "task": "vendor-pokerkit",
@@ -254,10 +254,15 @@
       "sha": "bc2eff7",
       "date": "2026-06-17",
       "coach": "approved"
+    },
+    {
+      "task": "seed-flop-strategies-all-depths",
+      "sha": "30b284c",
+      "date": "2026-06-17",
+      "coach": "pending"
     }
   ],
   "health": "368_pass_0_error_0_fail",
-  "last_sha": "bc2eff7",
-  "current_task": "seed-flop-strategies-all-depths",
+  "last_sha": "30b284c",
   "blocker": null
 }
