@@ -269,13 +269,20 @@
     },
     {
       "task": "study-page-postflop-e2e-test",
-      "sha": "STUB",
+      "sha": "9d56b9b",
       "date": "2026-06-17",
+      "coach": "pending"
+    },
+    {
+      "task": "study-page-console-error-audit",
+      "sha": "8f868a4",
+      "date": "2026-06-17",
+      "summary": "Audit /study page for console errors in preflop, postflop, and postflop+solver modes — 0 errors, 0 warnings, 0 rejections found; added permanent e2e audit spec as regression guard",
       "coach": "pending"
     }
   ],
-  "current_task": "study-page-console-error-audit",
-  "health": "372_pass_0_error_0_fail",
-  "last_sha": "9e505bd",
+  "current_task": "tbd",
+  "health": "380_pass_0_error_0_fail",
+  "last_sha": "8f868a4",
   "blocker": null
 }
