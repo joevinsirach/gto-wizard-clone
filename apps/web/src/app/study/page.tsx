@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import PostflopTraining from '@/components/study/PostflopTraining'
+import ActionSelector from '@/components/study/ActionSelector'
 
 const RED = '#D32F2F'
 const RED_BRIGHT = '#E53935'
@@ -46,6 +47,8 @@ export default function StudyPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSolverMode, setIsSolverMode] = useState(false)
+  const [userAction, setUserAction] = useState<string | null>(null)
+  const [actionFeedback, setActionFeedback] = useState<'correct' | 'incorrect' | null>(null)
   const [stackDepth, setStackDepth] = useState(100)
   const [availableDepths, setAvailableDepths] = useState<{value: number; label: string}[]>([
     { value: 50, label: '50bb' },
@@ -182,6 +185,18 @@ export default function StudyPage() {
     return combos.slice(0, 12)
   }, [selectedCell])
 
+  // Reset user selection when hand changes
+  useEffect(() => {
+    setUserAction(null)
+    setActionFeedback(null)
+  }, [selectedCell])
+
+  const handleCheckAction = useCallback(() => {
+    if (!userAction || !selectedHandData) return
+    const gtoBase = selectedHandData.action.startsWith('raise') ? 'raise' : selectedHandData.action
+    setActionFeedback(userAction === gtoBase ? 'correct' : 'incorrect')
+  }, [userAction, selectedHandData])
+
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0E' }}>
       {/* Mode Toggle */}
@@ -304,16 +319,72 @@ export default function StudyPage() {
             </div>
           </div>
 
-          {/* Selected hand action breakdown with interactive buttons */}
-          {selectedHandData ? (
-            <div style={{ padding: '0 14px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>
-                GTO Action for {selectedCell}
+          {/* Action selection — pick your action and compare vs GTO */}
+          <div style={{ padding: '0 14px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>
+              {selectedHandData ? (
+                <>Your Action for {selectedCell}</>
+              ) : (
+                <>Select a hand to choose your action</>
+              )}
+              {selectedHandData && (
                 <span style={{ fontSize: 10, color: '#888', fontWeight: 400, marginLeft: 'auto' }}>
                   Equity: {(selectedHandData.equity * 100).toFixed(1)}%
                 </span>
+              )}
+            </div>
+
+            <ActionSelector
+              selectedAction={userAction}
+              onSelect={(action) => {
+                setUserAction(action)
+                setActionFeedback(null)  // clear feedback on re-select
+              }}
+              gtoAction={selectedHandData ? (selectedHandData.action.startsWith('raise') ? 'raise' : selectedHandData.action) : undefined}
+              gtoFrequency={selectedHandData ? selectedHandData.frequency : undefined}
+              disabled={!selectedHandData}
+              locked={actionFeedback !== null}
+              feedback={actionFeedback}
+            />
+
+            {selectedHandData && !actionFeedback && (
+              <button
+                onClick={handleCheckAction}
+                disabled={!userAction}
+                style={{
+                  width: '100%', marginTop: 10,
+                  padding: '10px', borderRadius: 8,
+                  background: userAction ? '#16241a' : '#1a1a1a',
+                  border: userAction ? `1px solid ${GREEN}` : '1px solid #333',
+                  color: userAction ? '#fff' : '#666',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: userAction ? 'pointer' : 'default',
+                  transition: 'all .1s',
+                }}
+              >
+                {userAction ? 'Check vs GTO' : 'Select an action above'}
+              </button>
+            )}
+
+            {actionFeedback && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => { setUserAction(null); setActionFeedback(null) }}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 8,
+                    background: '#1a1a1a', border: '1px solid #333',
+                    color: '#aaa', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Try Again
+                </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            )}
+
+            {/* GTO reference — show frequency breakdown below the interactive selector */}
+            {selectedHandData && !actionFeedback && (
+              <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, opacity: 0.65 }}>
                 {[
                   { action: 'fold', label: 'Fold', bg: GRAY },
                   { action: 'call', label: 'Call', bg: BLUE },
@@ -324,46 +395,27 @@ export default function StudyPage() {
                   const combos = isGto ? Math.round(freq * 6) : 0
                   return (
                     <div key={a.action} style={{
-                      borderRadius: 8, padding: '12px 12px 10px', color: '#fff',
+                      borderRadius: 6, padding: '8px 10px', color: '#fff',
                       background: isGto ? a.bg : '#1a1a1a',
                       border: isGto ? 'none' : '1px solid #333',
-                      cursor: 'pointer', transition: 'all .1s',
-                      opacity: isGto ? 1 : 0.4,
+                      opacity: isGto ? 1 : 0.35,
                     }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>
                         {a.label}
-                        {isGto && <span style={{ fontSize: 9, marginLeft: 6, opacity: .7 }}>GTO ✓</span>}
+                        {isGto && <span style={{ fontSize: 9, marginLeft: 4, opacity: .7 }}>GTO</span>}
                       </div>
-                      <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>
+                      <div style={{ fontSize: 18, fontWeight: 750, lineHeight: 1.2, marginTop: 2 }}>
                         {isGto ? `${(freq * 100).toFixed(0)}%` : '—'}
                       </div>
-                      <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>
+                      <div style={{ fontSize: 10, opacity: .8, marginTop: 2 }}>
                         {isGto ? `${combos} combos` : ''}
                       </div>
                     </div>
                   )
                 })}
               </div>
-            </div>
-          ) : (
-            <div style={{ padding: '0 14px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8c8', margin: '10px 0', fontWeight: 500 }}>Actions ▾</div>
-              <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {[['raise', RED_BRIGHT], ['call', BLUE], ['fold', GRAY]].map(([action, bg]) => {
-                  const s = actionSummary[action] || { count: 0, totalFreq: 0 }
-                  const pct = totalCombos > 0 ? ((s.count / 169) * 100).toFixed(1) : '0.0'
-                  const combos = Math.round((s.count / 169) * totalCombos)
-                  return (
-                    <div key={action} style={{ borderRadius: 8, padding: '12px 12px 10px', color: '#fff', background: bg as string }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, opacity: .95 }}>{actionLabels[action] || action}</div>
-                      <div style={{ fontSize: 24, fontWeight: 750, lineHeight: 1.1, marginTop: 4 }}>{pct}%</div>
-                      <div style={{ fontSize: 11, opacity: .85, marginTop: 3 }}>{combos} combos</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Hand combos section */}
           <div style={{ borderTop: '1px solid #262626', marginTop: 6 }}>
