@@ -1,7 +1,7 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "seed-flop-boards-expanded",
+  "current_task": "tbd",
   "completed": [
     {
       "task": "vendor-pokerkit",
@@ -279,10 +279,24 @@
       "date": "2026-06-17",
       "summary": "Audit /study page for console errors in preflop, postflop, and postflop+solver modes — 0 errors, 0 warnings, 0 rejections found; added permanent e2e audit spec as regression guard",
       "coach": "pending"
+    },
+    {
+      "task": "fix-postflop-street-progression",
+      "sha": "fcc0a1c",
+      "date": "2026-06-17",
+      "summary": "Auto-generate board cards when advancing postflop streets (flop→turn→river) to prevent solver API errors",
+      "coach": "human"
+    },
+    {
+      "task": "interactive-action-selector",
+      "sha": "b972f0d",
+      "date": "2026-06-17",
+      "summary": "Add interactive action selector with Raise/Call/Fold/All-In buttons and GTO comparison workflow",
+      "coach": "human"
     }
   ],
   "current_task": "tbd",
-  "health": "380_pass_0_error_0_fail",
-  "last_sha": "8f868a4",
+  "health": "368_poker_pass_15_api_pass_3_api_fail",
+  "last_sha": "b972f0d",
   "blocker": null
 }
