@@ -69,6 +69,25 @@ function parseBoardCards(boardStr: string): { rank: string; suit: string }[] {
   return cards
 }
 
+/** Generate a random 2-char card (rank+suit) not in the exclude set. */
+function generateRandomCard(excludeCards: string[]): string {
+  const ranks = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
+  const suits = ['s', 'h', 'd', 'c']
+  const exclude = new Set(excludeCards.map(c => c.toLowerCase()))
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const rank = ranks[Math.floor(Math.random() * ranks.length)]
+    const suit = suits[Math.floor(Math.random() * suits.length)]
+    const card = rank + suit
+    if (!exclude.has(card.toLowerCase())) return card
+  }
+  return 'Xx' // unreachable given 52-card deck
+}
+
+/** Flatten parsed cards back to a raw board string like "KsKc3s". */
+function boardCardsToString(cards: { rank: string; suit: string }[]): string {
+  return cards.map(c => c.rank + c.suit).join('')
+}
+
 function formatActionButton(action: string, potSize: number, stackDepth: number): { label: string; amount?: number } {
   if (action === 'check') return { label: 'CHECK' }
   if (action === 'fold') return { label: 'FOLD' }
@@ -322,6 +341,25 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
 
     // Advance to next street
     const nextIndex = streetIndex + 1
+    const nextStreet = STREET_NAMES[nextIndex + 1]
+    const cardsNeeded = nextIndex === 1 ? 4 : 5 // 4 for turn, 5 for river
+
+    // Auto-generate random cards if the board is too short for the next street
+    const parsed = parseBoardCards(boardStr)
+    let updatedBoard = boardStr
+    if (parsed.length < cardsNeeded) {
+      const existing = parsed.map(c => c.rank + c.suit)
+      const hero = heroCards.trim()
+      const heroParsed = hero ? parseBoardCards(hero) : []
+      const used = [...existing, ...heroParsed.map(c => c.rank + c.suit)]
+      for (let i = parsed.length; i < cardsNeeded; i++) {
+        const card = generateRandomCard(used)
+        updatedBoard += card
+        used.push(card)
+      }
+      setBoardStr(updatedBoard)
+    }
+
     setStreetIndex(nextIndex)
     setUserChoice(null)
     setStrategy(null)
@@ -331,12 +369,11 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
     // Use setTimeout to let state settle
     setTimeout(() => {
       setLoading(true)
-      const nextStreet = STREET_NAMES[nextIndex + 1]
       fetch(`${API_BASE}/solver/postflop-strategy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          board: boardStr,
+          board: updatedBoard,
           position: activePosition,
           street: nextStreet,
           pot_size: nextPot,
