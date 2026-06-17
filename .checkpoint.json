@@ -260,9 +260,22 @@
       "sha": "30b284c",
       "date": "2026-06-17",
       "coach": "pending"
+    },
+    {
+      "task": "seed-flop-boards-expanded",
+      "sha": "9e505bd",
+      "date": "2026-06-17",
+      "coach": "pending"
+    },
+    {
+      "task": "study-page-postflop-e2e-test",
+      "sha": "STUB",
+      "date": "2026-06-17",
+      "coach": "pending"
     }
   ],
-  "health": "368_pass_0_error_0_fail",
-  "last_sha": "30b284c",
+  "current_task": "study-page-console-error-audit",
+  "health": "372_pass_0_error_0_fail",
+  "last_sha": "9e505bd",
   "blocker": null
 }
