@@ -8,6 +8,34 @@
 #   evidence: how to verify (auto-populated by coach on audit)
 version: 1
 last_audited: null
+reference_base: docs/
+references:
+  - page: /
+    file: reference-dashboard.png
+    source: live_gto_wizard
+    captured: 2026-06-17
+  - page: /study
+    file: reference-study-interface.png
+    source: live_gto_wizard
+    captured: 2026-06-16
+    note: "Primary reference — shows exact postflop action buttons, board display, street navigation"
+  - page: /study
+    file: reference-study.png
+    source: live_gto_wizard
+    captured: 2026-06-17
+  - page: /practice
+    file: reference-practice.png
+    source: live_gto_wizard
+    captured: 2026-06-17
+  - page: /practice
+    file: reference-trainer.png
+    source: live_gto_wizard
+    captured: 2026-06-17
+    note: "Training setup screen — preflop/flop/custom starting spot selector"
+  - page: /solutions
+    file: reference-solutions.png
+    source: live_gto_wizard
+    captured: 2026-06-17
 pages:
   - route: /
     title: Home
