@@ -682,24 +682,57 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
             { action: 'all_in', label: `ALL IN ${stackDepth.toFixed(1)}`, bg: RED_DARK, amount: stackDepth },
           ].map(btn => {
             const isSelected = userChoice === btn.action
+            // Find GTO frequency for this action
+            const gtoAction = strategy?.actions?.find(a => a.action === btn.action)
+            const gtoFreq = gtoAction?.frequency ?? null
+            const gtoEv = gtoAction?.ev ?? null
+            // Determine if this action matches the top GTO recommendation
+            const topGtoAction = bestActions[0]
+            const isGtoRecommended = topGtoAction && btn.action === topGtoAction.action
             return (
-              <button key={btn.action} onClick={() => handleAction(btn.action)}
-                style={{
-                  background: isSelected ? btn.bg : '#1a1a1a',
-                  border: isSelected ? 'none' : `1px solid #333`,
-                  color: isSelected ? '#fff' : btn.bg,
-                  borderRadius: 8, padding: '10px 14px', cursor: 'pointer',
-                  fontSize: 12, fontWeight: 600, transition: 'all .1s',
-                  textAlign: 'center', minWidth: 80,
-                  opacity: (loading || actionTaken) ? 0.5 : 1,
-                }}>
-                <div>{btn.label}</div>
-                {btn.amount != null && (
-                  <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>
-                    {btn.amount.toFixed(1)} ({potSize > 0 ? ((btn.amount / potSize) * 100).toFixed(0) : '0'}%)
-                  </div>
-                )}
-              </button>
+              <div key={btn.action} style={{ position: 'relative' }}>
+                <button onClick={() => handleAction(btn.action)}
+                  style={{
+                    background: isSelected ? btn.bg : '#1a1a1a',
+                    border: isSelected
+                      ? `2px solid ${isGtoRecommended ? GREEN : btn.bg}`
+                      : isGtoRecommended
+                        ? `2px solid ${GREEN}88`
+                        : `1px solid #333`,
+                    color: isSelected ? '#fff' : btn.bg,
+                    borderRadius: 8, padding: '10px 14px', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 600, transition: 'all .1s',
+                    textAlign: 'center', minWidth: 80,
+                    opacity: (loading || actionTaken) ? 0.5 : 1,
+                    position: 'relative',
+                  }}>
+                  {/* GTO frequency chip */}
+                  {gtoFreq !== null && (
+                    <div style={{
+                      position: 'absolute', top: -8, right: -6,
+                      background: isGtoRecommended ? GREEN : '#555',
+                      color: isGtoRecommended ? '#000' : '#fff',
+                      fontSize: 9, fontWeight: 700, padding: '1px 5px',
+                      borderRadius: 8, lineHeight: 1.3,
+                      boxShadow: '0 1px 3px rgba(0,0,0,.5)',
+                    }}>
+                      {(gtoFreq * 100).toFixed(0)}%
+                    </div>
+                  )}
+                  <div>{btn.label}</div>
+                  {btn.amount != null && (
+                    <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>
+                      {btn.amount.toFixed(1)} ({potSize > 0 ? ((btn.amount / potSize) * 100).toFixed(0) : '0'}%)
+                    </div>
+                  )}
+                  {/* EV label on hover / when selected */}
+                  {isSelected && gtoEv !== null && (
+                    <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.6, marginTop: 1 }}>
+                      EV: {gtoEv.toFixed(2)}
+                    </div>
+                  )}
+                </button>
+              </div>
             )
           })}
         </div>
@@ -730,7 +763,7 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
         )}
       </div>
 
-      {/* GTO Comparison */}
+      {/* GTO Comparison — always show when user has picked an action */}
       {(strategy || loading || error) && (
         <div style={{
           background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 10,
@@ -758,33 +791,136 @@ export default function PostflopTraining({ onToggle }: PostflopTrainingProps) {
           )}
 
           {strategy && !loading && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {bestActions.map((a) => {
-                const btnInfo = formatActionButton(a.action, potSize, stackDepth)
-                const isUserPick = userChoice && (
-                  userChoice === a.action ||
-                  (userChoice.startsWith(a.action.split(/[:\\d+]/)[0]))
-                )
+            <>
+              {/* User's pick vs GTO recommendation comparison */}
+              {userChoice && (() => {
+                const userActionData = strategy.actions.find(a => a.action === userChoice)
+                const topGto = bestActions[0]
+                const userEv = userActionData?.ev ?? null
+                const gtoEv = topGto?.ev ?? null
+                const evDiff = (userEv !== null && gtoEv !== null) ? (userEv - gtoEv) : null
+                const userMatchesGto = topGto && userChoice === topGto.action
+                const userActionLabel = formatActionButton(userChoice, potSize, stackDepth).label
+                const gtoActionLabel = topGto ? formatActionButton(topGto.action, potSize, stackDepth).label : 'N/A'
+
                 return (
-                  <div key={a.key} style={{
-                    borderRadius: 8, padding: '12px 14px', flex: '1 0 140px',
-                    background: isUserPick ? (actionColor(a.action) + '44') : '#151515',
-                    border: isUserPick ? `1px solid ${actionColor(a.action)}` : '1px solid #2a2a2a',
+                  <div style={{
+                    marginBottom: 14, padding: '12px 14px', borderRadius: 8,
+                    background: userMatchesGto ? '#0a2e1a' : '#2a0a0a',
+                    border: `1px solid ${userMatchesGto ? '#00C85344' : '#E5393544'}`,
                   }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: TEXT_BRIGHT }}>
-                      {btnInfo.label}
-                      {isUserPick && <span style={{ color: GREEN, fontSize: 10, marginLeft: 6 }}>✓ Your pick</span>}
+                    {/* Verdict row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <span style={{
+                        fontSize: 15, fontWeight: 700,
+                        color: userMatchesGto ? GREEN : RED_BRIGHT,
+                      }}>
+                        {userMatchesGto ? '✓ Correct' : '✗ Suboptimal'}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#888' }}>
+                        — Your pick: <strong style={{ color: '#ccc' }}>{userActionLabel}</strong>
+                        {' · '}GTO: <strong style={{ color: GREEN }}>{gtoActionLabel}</strong>
+                        {topGto && <span style={{ color: '#888' }}> ({(topGto.frequency * 100).toFixed(0)}%)</span>}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 750, color: '#fff', marginTop: 4 }}>
-                      {(a.frequency * 100).toFixed(0)}%
+
+                    {/* EV comparison row */}
+                    {evDiff !== null && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '6px 10px', borderRadius: 6,
+                        background: '#151515', marginBottom: 10,
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 9, color: '#888', textTransform: 'uppercase', marginBottom: 2 }}>Your EV</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: userEv !== null && userEv >= 0 ? GREEN : RED_BRIGHT }}>
+                            {userEv?.toFixed(2) ?? '—'}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontSize: 14, fontWeight: 700,
+                          color: evDiff >= 0 ? GREEN : RED_BRIGHT,
+                          padding: '2px 10px', borderRadius: 4,
+                          background: evDiff >= 0 ? '#0a2e1a' : '#2a0a0a',
+                        }}>
+                          {evDiff >= 0 ? '+' : ''}{evDiff.toFixed(2)}
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'right' }}>
+                          <div style={{ fontSize: 9, color: '#888', textTransform: 'uppercase', marginBottom: 2 }}>GTO EV</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: GREEN }}>
+                            {gtoEv?.toFixed(2) ?? '—'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Frequency breakdown bars */}
+                    <div style={{ fontSize: 10, color: '#888', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      GTO Frequency Distribution
                     </div>
-                    <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2 }}>
-                      EV: {a.ev.toFixed(2)}
-                    </div>
+                    {bestActions.map((a) => {
+                      const isUserPickAction = userChoice === a.action
+                      const isTopGto = a === bestActions[0]
+                      return (
+                        <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, width: 70,
+                            color: isUserPickAction ? (userMatchesGto ? GREEN : RED_BRIGHT) : (isTopGto ? GREEN : '#888'),
+                          }}>
+                            {formatActionButton(a.action, potSize, stackDepth).label}
+                            {isUserPickAction && <span style={{ marginLeft: 3, fontSize: 9 }}>◀ you</span>}
+                            {isTopGto && !isUserPickAction && <span style={{ marginLeft: 3, fontSize: 9, color: GREEN }}>★</span>}
+                          </span>
+                          <div style={{ flex: 1, height: 8, background: '#2a2a2a', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', width: `${a.frequency * 100}%`,
+                              background: isTopGto ? GREEN : isUserPickAction ? RED_BRIGHT : '#555',
+                              borderRadius: 4, transition: 'width 0.3s ease',
+                            }} />
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, width: 36, textAlign: 'right',
+                            color: isTopGto ? GREEN : '#aaa',
+                          }}>
+                            {(a.frequency * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 )
-              })}
-            </div>
+              })()}
+
+              {/* Compact action cards */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {bestActions.map((a) => {
+                  const btnInfo = formatActionButton(a.action, potSize, stackDepth)
+                  const isUserPick = userChoice && (
+                    userChoice === a.action ||
+                    (userChoice.startsWith(a.action.split(/[:\\d+]/)[0]))
+                  )
+                  return (
+                    <div key={a.key} style={{
+                      borderRadius: 8, padding: '10px 12px', flex: '1 0 120px',
+                      background: isUserPick ? (actionColor(a.action) + '33') : '#151515',
+                      border: isUserPick ? `1px solid ${actionColor(a.action)}` : '1px solid #2a2a2a',
+                      opacity: userChoice && !isUserPick ? 0.6 : 1,
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: TEXT_BRIGHT }}>
+                        {btnInfo.label}
+                        {isUserPick && <span style={{ color: GREEN, fontSize: 9, marginLeft: 4 }}>✓</span>}
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 750, color: '#fff', marginTop: 2 }}>
+                        {(a.frequency * 100).toFixed(0)}%
+                      </div>
+                      <div style={{ fontSize: 10, color: TEXT_DIM, marginTop: 1 }}>
+                        EV: {a.ev.toFixed(2)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
 
           {strategy && !loading && strategy.actions.length === 0 && (
