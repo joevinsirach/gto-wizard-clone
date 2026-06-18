@@ -5,7 +5,56 @@ Open-source GTO poker training platform. Equity calculator, CFR solver, training
 
 **Status:** Active development — core features exist, polish needed.
 
-**Reference target:** See `docs/reference-study-interface.png` for the exact interactive training interface the study page should replicate.
+## Visual Reference Screenshots
+
+The `docs/` directory contains screenshots of the real GTO Wizard that serve as the design target. When working on any page, the Player MUST:
+
+1. Load the reference screenshot with `vision_analyze` to understand the target design
+2. Load the live page with `browser_navigate` and take a screenshot with `browser_vision`
+3. Compare the two and identify specific visual gaps
+4. Fix gaps iteratively until the live page matches the reference
+
+### Reference Files
+
+| File | Target Page | What to Match |
+|------|-------------|---------------|
+| `docs/reference-dashboard.png` | `/` | Layout, navigation, cards, colors |
+| `docs/reference-study-interface.png` | `/study` (postflop mode) | Board cards, action buttons, GTO frequencies, position columns |
+| `docs/reference-study.png` | `/study` (preflop mode) | Hand matrix, position buttons, stack selector, action panel |
+| `docs/reference-trainer.png` | `/practice` | Training interface, controls, feedback |
+| `docs/reference-equity.png` | `/equity` | Equity calculator UI |
+| `docs/reference-icm.png` | `/icm` | ICM calculator UI |
+| `docs/reference-courses.png` | `/courses` | Course listing, progress |
+| `docs/reference-solutions.png` | `/solutions` | Solutions browser |
+
+### Key Design Patterns (from references)
+
+**Study Page — Preflop Mode:**
+- 13×13 hand matrix with color-coded cells (red=raise, blue=call, fold=gray)
+- Position buttons (UTG/HJ/CO/BTN/SB/BB) with active position highlighted green
+- Stack depth selector (50bb/75bb/100bb/125bb/150bb/200bb)
+- Right panel: selected hand info, action buttons (FOLD/CALL/RAISE/ALL IN), GTO frequency comparison
+- Action buttons are large, clearly labeled, with GTO frequency % shown as micro-chips
+- "Check vs GTO" button after selecting action, shows correct/incorrect feedback
+- Hand combo grid below action area showing individual combos with suit colors
+
+**Study Page — Postflop Mode:**
+- Board cards rendered as styled playing cards (rank + suit, red for hearts/diamonds)
+- Street breadcrumb (PREFLOP → FLOP → TURN → RIVER) with active street highlighted
+- Pot size display, active player highlight
+- Action buttons grouped by type: CHECK, BET (33%/50%/75%/125%), FOLD, CALL, RAISE, ALL IN
+- Each button shows chip amount + pot % + GTO frequency
+- GTO comparison overlay after user selects action
+- "Configure Spot" panel for setting up custom scenarios
+
+**General Design:**
+- Dark theme (#0E0E0E background, #1C1C1C cards, #262626 borders)
+- Green (#00C853) for active/selected states
+- Red (#E53935) for raise/bet actions
+- Blue (#3A6EA5) for call actions
+- Gray (#2a2a2a) for fold actions
+- Compact, information-dense layout — no wasted space
+- shadcn/ui component style with rounded corners and subtle borders
 
 ## Architecture
 
@@ -477,3 +526,46 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Answer 1 incorrectly → verify "6/6 correct (83%) • Streak: 0"
   - Reload page → verify stats persist
   - Click "New Session" → verify stats reset to 0
+
+---
+
+## Visual Comparison Tasks (do these FIRST — they unblock everything)
+
+### Task: visual-study-preflop-match-reference
+- **Description**: Load `docs/reference-study.png` via `vision_analyze` to understand the target preflop study interface. Then load `https://wiz.codeovertcp.com/study` via `browser_navigate` and take a screenshot with `browser_vision`. Compare the two and fix ALL visual gaps. Key elements the reference likely includes:
+  1. **Styled card suits** — hearts/diamonds in red, spades/clubs in white/black on dark background
+  2. **Proper hand matrix** — 13×13 grid with clear color coding, proper font sizes, hover states
+  3. **Position buttons — large, clear labels**, active position with green border/highlight
+  4. **Stack depth selector — pill buttons** with active state
+  5. **Right panel — "Your Action" section** with large FOLD/CALL/RAISE/ALL IN buttons
+  6. **Action buttons should show GTO frequency micro-chips** (small colored badges with %)
+  7. **Hand combo grid** showing individual card combos with styled suits
+  8. **Check vs GTO flow** working end-to-end
+  9. **Overall spacing and typography** matching the reference density
+  
+  Make as many commits as needed — each visual fix should be a separate commit.
+- **Success criteria**:
+  - Live `/study` page visually matches `docs/reference-study.png` for the preflop mode
+  - All interactive elements (buttons, matrix, action selector) work correctly
+  - No elements are cut off or below the fold
+- **Coach checks**:
+  - `vision_analyze` the reference screenshot and the live page side by side
+  - Verify color coding, spacing, button sizes, card rendering all match
+  - Test the full interaction flow: click hand → select action → check vs GTO → feedback
+
+### Task: visual-study-postflop-match-reference
+- **Description**: Load `docs/reference-study-interface.png` via `vision_analyze`. Switch `/study` to "Postflop Training" mode via browser. Compare and fix ALL visual gaps. Key elements:
+  1. **Board cards** — styled playing cards with rank + suit, proper colors
+  2. **Street breadcrumb** — PREFLOP → FLOP → TURN → RIVER with active street highlighted
+  3. **Action buttons** — CHECK, BET 33%/50%/75%/125%, FOLD, CALL, RAISE 50%/100%, ALL IN
+  4. **Each button shows** chip amount + pot % + GTO frequency
+  5. **Position column** with active player green highlight
+  6. **GTO comparison overlay** after selecting an action
+  7. **Configure Spot panel** for custom scenarios
+- **Success criteria**:
+  - Live `/study` postflop mode visually matches `docs/reference-study-interface.png`
+  - All action buttons render with correct labels and GTO frequencies
+  - Board cards render as styled playing cards
+- **Coach checks**:
+  - `vision_analyze` reference vs live page
+  - Test full postflop flow: configure spot → get GTO → select action → compare

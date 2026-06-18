@@ -1,13 +1,10 @@
 {
   "project": "gto-wizard-clone",
   "repo": "/home/sc/repos/gto-wizard-clone",
-  "current_task": "study-preflop-action-feedback-flow",
+  "current_task": "visual-study-preflop-match-reference",
   "spec_gaps": [
-    {"item": "preflop action feedback incomplete — missing GTO frequency breakdown", "type": "missing_component", "priority": 1, "status": "task-created"},
-    {"item": "postflop GTO comparison overlay — no side-by-side comparison", "type": "missing_component", "priority": 1, "status": "task-created"},
-    {"item": "study page keyboard shortcuts", "type": "missing_feature", "priority": 2, "status": "task-created"},
-    {"item": "random spot generator for endless training", "type": "missing_feature", "priority": 2, "status": "task-created"},
-    {"item": "study progress tracking — accuracy, streaks, stats", "type": "missing_feature", "priority": 2, "status": "task-created"}
+    {"item": "study page layout doesn't match reference — needs visual comparison pass", "type": "visual_mismatch", "priority": 1, "status": "task-created"},
+    {"item": "postflop study mode needs visual comparison against reference", "type": "visual_mismatch", "priority": 1, "status": "task-created"}
   ],
   "completed": [
     {"task": "vendor-pokerkit", "sha": "6879815", "date": "2026-06-14", "coach": "approved"},
@@ -57,9 +54,10 @@
     {"task": "study-page-postflop-e2e-test", "sha": "9d56b9b", "date": "2026-06-17", "coach": "approved"},
     {"task": "study-page-console-error-audit", "sha": "8f868a4", "date": "2026-06-17", "coach": "approved"},
     {"task": "fix-postflop-street-progression", "sha": "fcc0a1c", "date": "2026-06-17", "coach": "approved"},
-    {"task": "interactive-action-selector", "sha": "b972f0d", "date": "2026-06-17", "coach": "approved"}
+    {"task": "interactive-action-selector", "sha": "b972f0d", "date": "2026-06-17", "coach": "approved"},
+    {"task": "study-layout-compact", "sha": "f017898", "date": "2026-06-18", "coach": "approved"}
   ],
   "health": "368_poker_pass_15_api_pass_3_api_fail",
-  "last_sha": "f078c19",
+  "last_sha": "f017898",
   "blocker": null
 }
