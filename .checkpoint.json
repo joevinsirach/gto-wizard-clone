@@ -23,12 +23,13 @@
     "auto-seed-strategy-on-db-restart",
     "add-deploy-health-monitoring",
     "start-solver-docker-service",
-    "add-periodic-health-check-cron"
+    "add-periodic-health-check-cron",
+    "fix-strategy-lookup"
   ],
-  "current": "add-periodic-health-check-cron",
-  "next": "add-solver-e2e-test",
+  "current": "add-solver-e2e-test",
+  "next": "re-seed-strategy-data",
   "backlog": [],
-  "health": "build_pass_0_error_0_fail",
-  "last_sha": "e78b478",
+  "health": "368_pass_0_error_0_fail",
+  "last_sha": "1d8bef8",
   "blocker": null
 }
