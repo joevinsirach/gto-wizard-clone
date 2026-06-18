@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api/v1/strategy-lookup", tags=["strategy-lookup"])
 
 class StrategyLookupResponse(BaseModel):
     """Response model for strategy lookup."""
+
     key: str
     game_type: str = "nlh"
     players: int = 2
@@ -40,6 +41,7 @@ class StrategyLookupResponse(BaseModel):
 
 class StrategyLookupError(BaseModel):
     """Error response model."""
+
     error: str
     detail: str
     suggestion: Optional[str] = None
@@ -48,20 +50,20 @@ class StrategyLookupError(BaseModel):
 def parse_board_to_street(board: str) -> str:
     """
     Parse board string to determine street.
-    
+
     Args:
         board: Board cards like "Kd7h2c" or "preflop"
-        
+
     Returns:
         Street name: preflop, flop, turn, or river
     """
     if board.lower() == "preflop":
         return "preflop"
-    
+
     # Remove spaces and count cards
     cards = board.replace(" ", "")
     num_cards = len(cards) // 2  # Each card is 2 chars (rank + suit)
-    
+
     if num_cards == 0:
         return "preflop"
     elif num_cards == 3:
@@ -75,15 +77,13 @@ def parse_board_to_street(board: str) -> str:
         return "flop"
 
 
-def transform_strategy_for_heatmap(
-    strategy_data: Dict[str, Any]
-) -> Dict[str, Any]:
+def transform_strategy_for_heatmap(strategy_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Transform stored strategy data into format expected by StrategyHeatmap.
-    
+
     Args:
         strategy_data: Raw strategy data from storage
-        
+
     Returns:
         Transformed strategy keyed by hand string (e.g., "AKs", "TT", "72o")
     """
@@ -113,17 +113,19 @@ async def lookup_strategy(
     board: str = Query(..., description="Board cards (e.g., 'Kh8c3d' or 'preflop')"),
     stack_depth: int = Query(100, description="Stack depth in big blinds"),
     position: str = Query("BTN", description="Player position (BTN, SB, BB, CO, etc.)"),
-    street: Optional[str] = Query(None, description="Street (preflop, flop, turn, river) - auto-detected if not provided"),
+    street: Optional[str] = Query(
+        None, description="Street (preflop, flop, turn, river) - auto-detected if not provided"
+    ),
     bet_size: float = Query(0.5, description="Bet size as fraction of pot"),
     game_type: str = Query("nlh", description="Game type (nlh, plo)"),
     players: int = Query(2, description="Number of players"),
 ) -> StrategyLookupResponse:
     """
     Look up a GTO strategy by board/stack/position parameters.
-    
+
     The strategy is looked up from PostgreSQL via StrategyStorageService.
     Board cards are parsed to determine the street automatically.
-    
+
     Query parameters:
     - board: Board cards or 'preflop' (e.g., 'Kh8c3d')
     - stack_depth: Stack depth in big blinds (default: 100)
@@ -135,17 +137,18 @@ async def lookup_strategy(
     """
     # Auto-detect street from board if not provided
     detected_street = street or parse_board_to_street(board)
-    
-    # For preflop, use empty board_hash
+
+    # For preflop, encode position in board_hash to match seed data format
+    # Seed script stores preflop strategies with board_hash=position.lower()
     if detected_street == "preflop":
-        board_hash = ""
+        board_hash = position.lower() if position else ""
     else:
         # Hash the board for lookup
         board_hash = StrategyStorageService.hash_board(board) if board else ""
-    
+
     try:
         storage = await get_strategy_storage()
-        
+
         # Try to get strategy by exact parameters
         strategy = await storage.get_strategy_by_params(
             street=detected_street,
@@ -155,7 +158,7 @@ async def lookup_strategy(
             game_type=game_type,
             players=players,
         )
-        
+
         if strategy is None:
             # Try to find closest match
             candidates = await storage.list_strategies(
@@ -169,7 +172,7 @@ async def lookup_strategy(
                     offset=0,
                 )
             )
-            
+
             if candidates:
                 # Try first candidate that has strategy data
                 for candidate in candidates:
@@ -177,7 +180,7 @@ async def lookup_strategy(
                     strategy = await storage.get_strategy(key)
                     if strategy:
                         break
-            
+
             if strategy is None:
                 available_boards = await storage.list_flop_strategies(
                     game_type=game_type,
@@ -185,20 +188,20 @@ async def lookup_strategy(
                     stack_depth=stack_depth,
                     limit=5,
                 )
-                
+
                 suggestion = None
                 if available_boards:
                     boards_list = [b.get("board_hash", "") for b in available_boards[:5]]
                     suggestion = f"Available boards for {stack_depth}bb: {', '.join(boards_list)}"
-                
+
                 raise HTTPException(
                     status_code=404,
                     detail=f"Strategy not found for: board={board}, stack={stack_depth}bb, street={detected_street}, bet_size={bet_size}",
                 )
-        
+
         # Transform strategy data for heatmap
         heatmap_strategy = transform_strategy_for_heatmap(strategy.strategy_data)
-        
+
         return StrategyLookupResponse(
             key=strategy.key,
             game_type=strategy.game_type,
@@ -212,15 +215,12 @@ async def lookup_strategy(
             strategy=heatmap_strategy,
             status="found",
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Strategy lookup failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Strategy lookup failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Strategy lookup failed: {str(e)}")
 
 
 @router.get("/streets", response_model=Dict[str, Any])
