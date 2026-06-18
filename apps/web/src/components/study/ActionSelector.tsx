@@ -11,13 +11,26 @@ type ActionOption = {
 const ACTIONS: ActionOption[] = [
   { id: 'fold', label: 'Fold', shortLabel: 'FOLD', color: '#2a2a2a', description: '0 EV' },
   { id: 'call', label: 'Call', shortLabel: 'CALL', color: '#3A6EA5', description: 'Call bet' },
-  { id: 'raise', label: 'Raise', shortLabel: 'RAISE', color: '#E53935', description: 'Raise to 2.5bb' },
+  { id: 'raise', label: 'Raise', shortLabel: 'RAISE', color: '#E53935', description: 'Raise' },
   { id: 'all_in', label: 'All In', shortLabel: 'ALL IN', color: '#7B1E1E', description: 'All-in shove' },
+]
+
+// Preflop raise sizes (in big blinds)
+const RAISE_SIZES = [
+  { bb: 2.0, label: '2bb' },
+  { bb: 2.5, label: '2.5bb' },
+  { bb: 3.0, label: '3bb' },
+  { bb: 4.0, label: '4bb' },
+  { bb: 5.0, label: '5bb' },
+  { bb: 7.0, label: '7bb' },
+  { bb: 10.0, label: '10bb' },
 ]
 
 interface ActionSelectorProps {
   selectedAction: string | null
   onSelect: (action: string) => void
+  selectedSize?: number | null
+  onSelectSize?: (bb: number) => void
   gtoAction?: string                          // GTO-recommended action for comparison
   gtoFrequency?: number                       // GTO frequency of that action (0-1)
   disabled?: boolean
@@ -28,12 +41,16 @@ interface ActionSelectorProps {
 export default function ActionSelector({
   selectedAction,
   onSelect,
+  selectedSize,
+  onSelectSize,
   gtoAction,
   gtoFrequency,
   disabled = false,
   locked = false,
   feedback,
 }: ActionSelectorProps) {
+  const showSizeSelector = selectedAction === 'raise' && !locked && !feedback
+
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -47,7 +64,6 @@ export default function ActionSelector({
           if (isCorrect) bg = '#00C853'
           if (isWrong) bg = '#D32F2F'
 
-          // Show GTO indicator for non-selected GTO actions in locked mode
           const showGtoBadge = isGto && locked && !isSelected
 
           return (
@@ -71,7 +87,11 @@ export default function ActionSelector({
                 opacity: disabled ? 0.4 : 1,
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 650 }}>{a.shortLabel}</div>
+              <div style={{ fontSize: 13, fontWeight: 650 }}>
+                {isSelected && selectedAction === 'raise' && selectedSize
+                  ? `${a.shortLabel} ${selectedSize.toFixed(1)}bb`
+                  : a.shortLabel}
+              </div>
               {showGtoBadge && (
                 <div style={{
                   position: 'absolute', top: -6, right: -6,
@@ -83,10 +103,7 @@ export default function ActionSelector({
                 </div>
               )}
               {isSelected && feedback && (
-                <div style={{
-                  fontSize: 10, marginTop: 3, opacity: 0.9,
-                  color: isCorrect ? '#fff' : '#fff',
-                }}>
+                <div style={{ fontSize: 10, marginTop: 3, opacity: 0.9, color: '#fff' }}>
                   {isCorrect ? '✓ Correct' : '✗ Incorrect'}
                 </div>
               )}
@@ -99,6 +116,45 @@ export default function ActionSelector({
           )
         })}
       </div>
+
+      {/* Raise sizing selector — appears below action buttons when RAISE is selected */}
+      {showSizeSelector && onSelectSize && (
+        <div style={{
+          marginTop: 8,
+          display: 'flex', flexWrap: 'wrap', gap: 4,
+          padding: '6px 6px',
+          background: '#141414',
+          borderRadius: 8,
+          border: '1px solid #2a2a2a',
+        }}>
+          <div style={{
+            width: '100%', fontSize: 10, color: '#888',
+            fontWeight: 500, marginBottom: 2,
+          }}>
+            Raise to:
+          </div>
+          {RAISE_SIZES.map(s => (
+            <button
+              key={s.bb}
+              onClick={() => onSelectSize(s.bb)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: selectedSize === s.bb ? 700 : 500,
+                background: selectedSize === s.bb ? '#2a4a2a' : '#1e1e1e',
+                border: selectedSize === s.bb
+                  ? `1px solid ${'#7CFC7C'}`
+                  : '1px solid #333',
+                color: selectedSize === s.bb ? '#7CFC7C' : '#bbb',
+                cursor: 'pointer',
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
