@@ -722,18 +722,101 @@ export default function StudyPage() {
               </button>
             )}
 
-            {actionFeedback && (
-              <div style={{ marginTop: 8 }}>
+            {actionFeedback && selectedHandData && (
+              <div style={{
+                marginTop: 10, padding: '12px 14px', borderRadius: 8,
+                background: actionFeedback === 'correct' ? '#0a2e1a' : '#2a0a0a',
+                border: `1px solid ${actionFeedback === 'correct' ? '#00C85355' : '#E5393555'}`,
+              }}>
+                {/* Verdict */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{
+                    fontSize: 16, fontWeight: 700,
+                    color: actionFeedback === 'correct' ? GREEN : RED_BRIGHT,
+                  }}>
+                    {actionFeedback === 'correct' ? '✓ Correct' : '✗ Incorrect'}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#888' }}>
+                    {(() => {
+                      const displayAction = userAction === 'raise' ? `Raise ${betSize || 2.5}bb` : (actionLabelsShort[userAction!] || userAction)
+                      return <>— Your pick: <strong style={{ color: '#ccc' }}>{displayAction}</strong></>
+                    })()}
+                  </span>
+                </div>
+
+                {/* GTO Frequency Breakdown */}
+                <div style={{ fontSize: 11, color: '#999', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  GTO Frequency
+                </div>
+                {(() => {
+                  const gtoAction = selectedHandData.action.startsWith('raise') ? 'raise' : selectedHandData.action
+                  const gtoFreq = selectedHandData.frequency
+                  const otherFreq = 1 - gtoFreq
+                  const gtoIsMixed = gtoFreq < 0.99
+                  const actionColor = ACTION_COLORS[gtoAction] || '#888'
+                  return (
+                    <div>
+                      {/* Primary GTO action bar */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: actionColor, fontWeight: 600, width: 70 }}>
+                          {actionLabels[gtoAction] || gtoAction}
+                        </span>
+                        <div style={{ flex: 1, height: 10, background: '#2a2a2a', borderRadius: 5, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', width: `${gtoFreq * 100}%`,
+                            background: actionColor, borderRadius: 5,
+                            transition: 'width 0.3s ease',
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600, width: 40, textAlign: 'right' }}>
+                          {(gtoFreq * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      {/* Mixed strategy: show remaining frequency */}
+                      {gtoIsMixed && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: '#888', fontWeight: 600, width: 70 }}>
+                            Other
+                          </span>
+                          <div style={{ flex: 1, height: 10, background: '#2a2a2a', borderRadius: 5, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', width: `${otherFreq * 100}%`,
+                              background: '#555', borderRadius: 5,
+                              transition: 'width 0.3s ease',
+                            }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: '#888', fontWeight: 600, width: 40, textAlign: 'right' }}>
+                            {(otherFreq * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      )}
+                      {/* User's pick comparison */}
+                      <div style={{
+                        marginTop: 8, padding: '6px 8px', borderRadius: 4,
+                        background: '#151515', fontSize: 11, color: '#aaa',
+                      }}>
+                        <span style={{ color: '#888' }}>
+                          {actionFeedback === 'correct'
+                            ? 'Your pick matches the GTO action for this spot.'
+                            : `GTO plays ${actionLabels[gtoAction] || gtoAction} ${(gtoFreq * 100).toFixed(0)}% of the time here.`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Try Again */}
                 <button
-                  onClick={() => { setUserAction(null); setActionFeedback(null) }}
+                  onClick={() => { setUserAction(null); setActionFeedback(null); setBetSize(null) }}
                   style={{
-                    width: '100%', padding: '8px', borderRadius: 6,
+                    width: '100%', marginTop: 10, padding: '8px', borderRadius: 6,
                     background: '#1a1a1a', border: '1px solid #333',
                     color: '#aaa', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer',
                   }}
                 >
-                  Try Again
+                  ↻ Try Again
                 </button>
               </div>
             )}
