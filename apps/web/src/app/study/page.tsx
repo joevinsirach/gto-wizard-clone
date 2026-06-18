@@ -1,8 +1,89 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import PostflopTraining from '@/components/study/PostflopTraining'
 import ActionSelector from '@/components/study/ActionSelector'
+
+// --- Study Stats (localStorage-backed) ---
+
+interface StudyStats {
+  total: number
+  correct: number
+  streak: number
+  bestStreak: number
+  byPosition: Record<string, { total: number; correct: number }>
+  byAction: Record<string, { total: number; correct: number }>
+  lastActiveTs: number // for session timeout
+}
+
+const STATS_KEY = 'gto-study-stats'
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+
+function loadStats(): StudyStats {
+  if (typeof window === 'undefined') return emptyStats()
+  try {
+    const raw = localStorage.getItem(STATS_KEY)
+    if (!raw) return emptyStats()
+    const parsed = JSON.parse(raw) as StudyStats
+    // Session timeout check
+    if (parsed.lastActiveTs && Date.now() - parsed.lastActiveTs > SESSION_TIMEOUT_MS) {
+      return emptyStats()
+    }
+    return parsed
+  } catch {
+    return emptyStats()
+  }
+}
+
+function emptyStats(): StudyStats {
+  return {
+    total: 0,
+    correct: 0,
+    streak: 0,
+    bestStreak: 0,
+    byPosition: {},
+    byAction: {},
+    lastActiveTs: Date.now(),
+  }
+}
+
+function saveStats(stats: StudyStats) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify({ ...stats, lastActiveTs: Date.now() }))
+  } catch {
+    // localStorage full or unavailable — silently ignore
+  }
+}
+
+function incrementStats(
+  stats: StudyStats,
+  isCorrect: boolean,
+  position: string,
+  action: string,
+): StudyStats {
+  const next = { ...stats, total: stats.total + 1, lastActiveTs: Date.now() }
+  if (isCorrect) {
+    next.correct = stats.correct + 1
+    next.streak = stats.streak + 1
+    next.bestStreak = Math.max(next.streak, stats.bestStreak)
+  } else {
+    next.streak = 0
+  }
+  // By position
+  const prevPos = stats.byPosition[position] || { total: 0, correct: 0 }
+  next.byPosition = {
+    ...stats.byPosition,
+    [position]: { total: prevPos.total + 1, correct: prevPos.correct + (isCorrect ? 1 : 0) },
+  }
+  // By action
+  const prevAction = stats.byAction[action] || { total: 0, correct: 0 }
+  next.byAction = {
+    ...stats.byAction,
+    [action]: { total: prevAction.total + 1, correct: prevAction.correct + (isCorrect ? 1 : 0) },
+  }
+  return next
+}
 
 const RED = '#D32F2F'
 const RED_BRIGHT = '#E53935'
@@ -114,6 +195,13 @@ export default function StudyPage() {
   const [activeTab, setActiveTab] = useState<'strategy' | 'ranges' | 'breakdown'>('strategy')
   const [hotkeyToast, setHotkeyToast] = useState<string | null>(null)
   const [showHotkeys, setShowHotkeys] = useState(false)
+  const [studyStats, setStudyStats] = useState<StudyStats>(emptyStats)
+  const [showStatsPanel, setShowStatsPanel] = useState(false)
+
+  // Load stats from localStorage on mount
+  useEffect(() => {
+    setStudyStats(loadStats())
+  }, [])
 
   const positions = useMemo(() => [
     { id: 'UTG', label: 'UTG', stack: stackDepth },
@@ -260,6 +348,7 @@ export default function StudyPage() {
   const handleCheckAction = useCallback(() => {
     if (!userAction || !selectedHandData) return
     const gtoBase = selectedHandData.action.startsWith('raise') ? 'raise' : selectedHandData.action
+    let isCorrect: boolean
     // If both are raise, also compare size
     if (userAction === 'raise' && gtoBase === 'raise') {
       const gtoSizeStr = selectedHandData.action.replace('raise_', '').replace('bb', '')
@@ -267,11 +356,18 @@ export default function StudyPage() {
       const userSize = betSize || 2.5
       const sizeDiff = Math.abs(userSize - gtoSize)
       // Accept close sizes (within 1bb) as correct
-      setActionFeedback(sizeDiff <= 1.0 ? 'correct' : 'incorrect')
+      isCorrect = sizeDiff <= 1.0
     } else {
-      setActionFeedback(userAction === gtoBase ? 'correct' : 'incorrect')
+      isCorrect = userAction === gtoBase
     }
-  }, [userAction, selectedHandData, betSize])
+    setActionFeedback(isCorrect ? 'correct' : 'incorrect')
+    // Record stats
+    setStudyStats(prev => {
+      const updated = incrementStats(prev, isCorrect, activePosition, userAction)
+      saveStats(updated)
+      return updated
+    })
+  }, [userAction, selectedHandData, betSize, activePosition])
 
   const handleGenerateFlop = useCallback(() => {
     const flop = generateRandomCards(3, [])
@@ -488,6 +584,82 @@ export default function StudyPage() {
           Postflop Training
         </button>
       </div>
+
+      {/* Study Stats Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', background: '#111', borderBottom: '1px solid #1a1a1a', flexShrink: 0 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: studyStats.total > 0 ? '#7CFC7C' : '#666' }}>
+          {studyStats.correct}/{studyStats.total} ({studyStats.total > 0 ? Math.round((studyStats.correct / studyStats.total) * 100) : 0}%)
+        </span>
+        {studyStats.streak > 0 && (
+          <span style={{ fontSize: 11, color: '#FFD700', fontWeight: 600 }}>
+            Streak: {studyStats.streak}
+          </span>
+        )}
+        {studyStats.bestStreak > 0 && studyStats.bestStreak !== studyStats.streak && (
+          <span style={{ fontSize: 10, color: '#666' }}>Best: {studyStats.bestStreak}</span>
+        )}
+        <span style={{ flex: 1 }} />
+        <button onClick={() => setShowStatsPanel(p => !p)}
+          style={{
+            fontSize: 10, fontWeight: 600, color: showStatsPanel ? '#7CFC7C' : '#555',
+            background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px',
+          }}>
+          {showStatsPanel ? '▾ Stats' : '▸ Stats'}
+        </button>
+        {studyStats.total > 0 && (
+          <button onClick={() => { setStudyStats(emptyStats()); saveStats(emptyStats()) }}
+            style={{
+              fontSize: 10, fontWeight: 600, color: '#555',
+              background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px',
+            }}>
+            New Session
+          </button>
+        )}
+      </div>
+
+      {/* Stats Detail Panel */}
+      {showStatsPanel && (
+        <div style={{ background: '#141414', borderBottom: '1px solid #1a1a1a', padding: '8px 12px', flexShrink: 0, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          {/* By position */}
+          <div style={{ minWidth: 140, flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>By Position</div>
+            {Object.entries(studyStats.byPosition).length === 0 ? (
+              <div style={{ fontSize: 10, color: '#555' }}>No data yet</div>
+            ) : (
+              Object.entries(studyStats.byPosition)
+                .sort(([,a],[,b]) => b.total - a.total)
+                .map(([pos, d]) => (
+                  <div key={pos} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, width: 30, color: '#aaa', fontWeight: 600 }}>{pos}</span>
+                    <div style={{ flex: 1, height: 5, background: '#222', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${d.total > 0 ? (d.correct / d.total) * 100 : 0}%`, background: '#00C853', borderRadius: 3, opacity: 0.7 }} />
+                    </div>
+                    <span style={{ fontSize: 10, color: '#666', width: 38, textAlign: 'right' }}>{d.correct}/{d.total}</span>
+                  </div>
+                ))
+            )}
+          </div>
+          {/* By action */}
+          <div style={{ minWidth: 140, flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>By Action</div>
+            {Object.entries(studyStats.byAction).length === 0 ? (
+              <div style={{ fontSize: 10, color: '#555' }}>No data yet</div>
+            ) : (
+              Object.entries(studyStats.byAction)
+                .sort(([,a],[,b]) => b.total - a.total)
+                .map(([action, d]) => (
+                  <div key={action} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, width: 44, color: '#aaa', fontWeight: 600 }}>{actionLabelsShort[action] || action}</span>
+                    <div style={{ flex: 1, height: 5, background: '#222', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${d.total > 0 ? (d.correct / d.total) * 100 : 0}%`, background: ACTION_COLORS[action] || '#00C853', borderRadius: 3, opacity: 0.7 }} />
+                    </div>
+                    <span style={{ fontSize: 10, color: '#666', width: 38, textAlign: 'right' }}>{d.correct}/{d.total}</span>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
 
       {mode === 'preflop' ? (<div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Stack Depth Selector — compact */}
