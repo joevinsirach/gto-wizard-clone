@@ -28,9 +28,48 @@ const MATRIX_HANDS: string[][] = [
 ]
 
 const SUIT_SYM: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
+const SUIT_COLOR: Record<string, string> = { s: '#fff', h: '#E53935', d: '#FF6B35', c: '#fff' }
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
 type HandData = { hand: string; action: string; frequency: number; equity: number }
+type BoardCard = { rank: string; suit: string }
+
+const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
+const SUITS = ['s','h','d','c']
+
+function generateRandomCards(count: number, exclude: string[]): BoardCard[] {
+  const used = new Set(exclude.map(c => c.toLowerCase()))
+  const cards: BoardCard[] = []
+  const available: BoardCard[] = []
+  for (const r of RANKS) for (const s of SUITS) {
+    const key = (r + s).toLowerCase()
+    if (!used.has(key)) available.push({ rank: r, suit: s })
+  }
+  // Shuffle and pick
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]]
+  }
+  for (let i = 0; i < Math.min(count, available.length); i++) {
+    cards.push(available[i])
+  }
+  return cards
+}
+
+function parseBoardString(boardStr: string): BoardCard[] {
+  const cards: BoardCard[] = []
+  const cleaned = boardStr.replace(/[^2-9TJQKAtshdch]/gi, '')
+  for (let i = 0; i < cleaned.length; i += 2) {
+    if (i + 1 < cleaned.length) {
+      cards.push({ rank: cleaned[i].toUpperCase(), suit: cleaned[i + 1].toLowerCase() })
+    }
+  }
+  return cards
+}
+
+function boardCardsToString(cards: BoardCard[]): string {
+  return cards.map(c => c.rank + c.suit).join('')
+}
 
 const ACTION_COLORS: Record<string, string> = {
   'raise': RED_BRIGHT,
@@ -51,6 +90,8 @@ export default function StudyPage() {
   const [actionFeedback, setActionFeedback] = useState<'correct' | 'incorrect' | null>(null)
   const [betSize, setBetSize] = useState<number | null>(null)
   const [stackDepth, setStackDepth] = useState(100)
+  const [boardCards, setBoardCards] = useState<BoardCard[]>([])
+  const [boardStreet, setBoardStreet] = useState<'preflop' | 'flop' | 'turn' | 'river'>('preflop')
   const [availableDepths, setAvailableDepths] = useState<{value: number; label: string}[]>([
     { value: 50, label: '50bb' },
     { value: 100, label: '100bb' },
@@ -216,6 +257,28 @@ export default function StudyPage() {
     }
   }, [userAction, selectedHandData, betSize])
 
+  const handleGenerateFlop = useCallback(() => {
+    const flop = generateRandomCards(3, [])
+    setBoardCards(flop)
+    setBoardStreet('flop')
+  }, [])
+
+  const handleAdvanceStreet = useCallback(() => {
+    if (boardStreet === 'river') return
+    const currentLen = boardCards.length
+    const nextCard = generateRandomCards(1, boardCards.map(c => c.rank + c.suit))
+    if (nextCard.length === 0) return
+    const updated = [...boardCards, nextCard[0]]
+    setBoardCards(updated)
+    if (boardStreet === 'flop') setBoardStreet('turn')
+    else if (boardStreet === 'turn') setBoardStreet('river')
+  }, [boardCards, boardStreet])
+
+  const handleResetBoard = useCallback(() => {
+    setBoardCards([])
+    setBoardStreet('preflop')
+  }, [])
+
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0E0E0E', overflow: 'hidden' }}>
       {/* Mode Toggle — fixed height */}
@@ -328,7 +391,7 @@ export default function StudyPage() {
             ))}
           </div>
 
-          {/* Board Display */}
+          {/* Board Display with card entry */}
           <div style={{
             padding: '6px 10px',
             borderBottom: '1px solid #262626',
@@ -336,18 +399,72 @@ export default function StudyPage() {
             display: 'flex', alignItems: 'center', gap: 6,
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: 10, color: '#7CFC7C', fontWeight: 600, marginRight: 4 }}>PREFLOP</span>
-            {[0,1,2,3,4].map(i => (
+            <span style={{ fontSize: 10, color: '#7CFC7C', fontWeight: 600, marginRight: 4, textTransform: 'uppercase' }}>
+              {boardStreet === 'preflop' ? 'PREFLOP' : boardStreet.toUpperCase()}
+            </span>
+            {boardCards.map((card, i) => (
               <div key={i} style={{
                 width: 26, height: 38, borderRadius: 4,
-                border: '1px solid #2a2a2a',
-                background: '#141414',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 8, color: '#555',
+                background: '#0a0a0a', border: '1px solid #333',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700,
+                color: SUIT_COLOR[card.suit] || '#fff',
               }}>
-                {i < 3 ? '?' : ''}
+                <span>{card.rank}</span>
+                <span style={{ fontSize: 8, marginTop: -1 }}>{SUIT_SYM[card.suit] || card.suit}</span>
               </div>
             ))}
+            {boardStreet === 'preflop' && (
+              <>
+                {[0,1,2,3,4].map(i => (
+                  <div key={`empty-${i}`} style={{
+                    width: 26, height: 38, borderRadius: 4,
+                    border: '1px solid #2a2a2a',
+                    background: '#141414',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 8, color: '#555',
+                  }}>?</div>
+                ))}
+                <button onClick={handleGenerateFlop}
+                  style={{
+                    marginLeft: 6, padding: '4px 10px', borderRadius: 4,
+                    background: '#16241a', border: `1px solid ${GREEN}`,
+                    color: GREEN, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                  }}>
+                  Random Flop
+                </button>
+              </>
+            )}
+            {boardStreet === 'flop' && (
+              <button onClick={handleAdvanceStreet}
+                style={{
+                  marginLeft: 6, padding: '4px 10px', borderRadius: 4,
+                  background: '#16241a', border: `1px solid ${GREEN}`,
+                  color: GREEN, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                }}>
+                Turn ▶
+              </button>
+            )}
+            {boardStreet === 'turn' && (
+              <button onClick={handleAdvanceStreet}
+                style={{
+                  marginLeft: 6, padding: '4px 10px', borderRadius: 4,
+                  background: '#16241a', border: `1px solid ${GREEN}`,
+                  color: GREEN, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                }}>
+                River ▶
+              </button>
+            )}
+            {boardCards.length > 0 && (
+              <button onClick={handleResetBoard}
+                style={{
+                  marginLeft: 4, padding: '4px 8px', borderRadius: 4,
+                  background: '#1a1a1a', border: '1px solid #333',
+                  color: '#888', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                }}>
+                ✕
+              </button>
+            )}
           </div>
 
           {/* GTO Action Frequency Bars */}
