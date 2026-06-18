@@ -44,10 +44,10 @@
     "study-page-postflop-e2e-test",
     "study-page-console-error-audit"
   ],
-  "current": "start-solver-docker-service",
-  "next": "visual-study-preflop-match-reference",
+  "current": "visual-study-preflop-match-reference",
+  "next": "visual-study-postflop-match-reference",
   "backlog": [],
   "health": "solver_running_study_200",
-  "last_sha": "0c76074bace2b71b732bddc7e1088e81aeffa845",
+  "last_sha": "24eba13",
   "blocker": null
 }
