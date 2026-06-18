@@ -19,12 +19,16 @@
     "study-postflop-gto-comparison-overlay",
     "study-page-hotkeys",
     "study-session-spot-generator",
-    "study-progress-tracking"
+    "study-progress-tracking",
+    "auto-seed-strategy-on-db-restart",
+    "add-deploy-health-monitoring",
+    "start-solver-docker-service",
+    "add-periodic-health-check-cron"
   ],
-  "current": "tbd",
-  "next": "tbd",
+  "current": "add-periodic-health-check-cron",
+  "next": "add-solver-e2e-test",
   "backlog": [],
-  "health": "7_pass_0_error_0_fail",
-  "last_sha": "3937256",
+  "health": "build_pass_0_error_0_fail",
+  "last_sha": "e78b478",
   "blocker": null
 }
