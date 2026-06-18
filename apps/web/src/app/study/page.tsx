@@ -295,6 +295,33 @@ export default function StudyPage() {
     setBoardStreet('preflop')
   }, [])
 
+  const handleRandomSpot = useCallback(() => {
+    // Pick random position
+    const posIds = ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB']
+    const randPos = posIds[Math.floor(Math.random() * posIds.length)]
+    setActivePosition(randPos)
+
+    // Pick random stack depth from available
+    const depths = availableDepths.length > 0 ? availableDepths : [{ value: 100, label: '100bb' }, { value: 150, label: '150bb' }, { value: 200, label: '200bb' }]
+    const randDepth = depths[Math.floor(Math.random() * depths.length)]
+    setStackDepth(randDepth.value)
+
+    // Generate random board (flop)
+    const flop = generateRandomCards(3, [])
+    setBoardCards(flop)
+    setBoardStreet('flop')
+
+    // Pick a random hand from the matrix
+    const allHands = MATRIX_HANDS.flat()
+    const randHand = allHands[Math.floor(Math.random() * allHands.length)]
+    setSelectedCell(randHand)
+
+    // Reset user action state
+    setUserAction(null)
+    setActionFeedback(null)
+    setBetSize(null)
+  }, [availableDepths])
+
   // Hotkey handler
   useEffect(() => {
     function showToast(msg: string) {
@@ -356,6 +383,13 @@ export default function StudyPage() {
         return
       }
 
+      // Random spot: Space
+      if (key === ' ' && mode === 'preflop') {
+        e.preventDefault()
+        handleRandomSpot()
+        return
+      }
+
       // Check vs GTO: Enter
       if (key === 'enter' && selectedHandData && userAction && !actionFeedback) {
         e.preventDefault()
@@ -394,7 +428,7 @@ export default function StudyPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mode, boardStreet, boardCards.length, selectedCell, selectedHandData, userAction, actionFeedback, activeTab, activePosition, handleCheckAction, handleGenerateFlop, handleAdvanceStreet, handleResetBoard])
+  }, [mode, boardStreet, boardCards.length, selectedCell, selectedHandData, userAction, actionFeedback, activeTab, activePosition, handleCheckAction, handleGenerateFlop, handleAdvanceStreet, handleResetBoard, handleRandomSpot])
 
   // Close hotkey help popup on outside click
   useEffect(() => {
@@ -492,6 +526,15 @@ export default function StudyPage() {
             {activePosition === pos.id && <span style={{ display: 'block', fontSize: 9, color: '#7CFC7C', marginTop: 1, fontWeight: 600 }}>Acting</span>}
           </button>
         ))}
+        <button onClick={handleRandomSpot}
+          style={{
+            background: '#1a1a2e', border: '1px solid #3a3a5e',
+            color: '#b0b0ff', padding: '3px 10px', borderRadius: 6,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>
+          🎲 Random Spot
+        </button>
         <div style={{ marginLeft: 'auto', position: 'relative' }} data-hotkeys-popup>
           <button onClick={() => setShowHotkeys(!showHotkeys)}
             style={{
@@ -517,6 +560,7 @@ export default function StudyPage() {
                 ['Tab', 'Cycle tabs'],
                 ['F', 'Deal flop/next street'],
                 ['R', 'Reset board'],
+                ['Space', 'Random spot'],
                 ['A / S / D / F', 'All-in / Fold / Call / Raise'],
                 ['↑↓←→', 'Navigate matrix'],
                 ['Enter', 'Check vs GTO'],
