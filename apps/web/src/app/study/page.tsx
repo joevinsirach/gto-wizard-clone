@@ -198,16 +198,16 @@ export default function StudyPage() {
   }, [userAction, selectedHandData])
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0E' }}>
-      {/* Mode Toggle */}
-      <div style={{ display: 'flex', gap: 8, padding: '8px 16px', borderBottom: '1px solid #141414', background: '#0E0E0E' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0E0E0E', overflow: 'hidden' }}>
+      {/* Mode Toggle — fixed height */}
+      <div style={{ display: 'flex', gap: 8, padding: '6px 12px', borderBottom: '1px solid #141414', background: '#0E0E0E', flexShrink: 0 }}>
         <button onClick={() => setMode('preflop')}
           style={{
             background: mode === 'preflop' ? '#16241a' : '#161616',
             border: mode === 'preflop' ? `1px solid ${GREEN}` : '1px solid #262626',
             color: mode === 'preflop' ? '#fff' : '#888',
-            padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', transition: 'all .1s',
+            padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer',
           }}>
           Preflop Ranges
         </button>
@@ -216,33 +216,33 @@ export default function StudyPage() {
             background: mode === 'postflop' ? '#16241a' : '#161616',
             border: mode === 'postflop' ? `1px solid ${GREEN}` : '1px solid #262626',
             color: mode === 'postflop' ? '#fff' : '#888',
-            padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', transition: 'all .1s',
+            padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer',
           }}>
           Postflop Training
         </button>
       </div>
 
-      {mode === 'preflop' ? (<div>
-      {/* Stack Depth Selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#0E0E0E', borderBottom: '1px solid #141414' }}>
-        <span style={{ color: '#999', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>Stack:</span>
+      {mode === 'preflop' ? (<div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* Stack Depth Selector — compact */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#0E0E0E', borderBottom: '1px solid #141414', flexShrink: 0 }}>
+        <span style={{ color: '#999', fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>Stack:</span>
         {availableDepths.map(d => (
           <button key={d.value} onClick={() => setStackDepth(d.value)}
             style={{
               background: stackDepth === d.value ? '#16241a' : '#161616',
               border: stackDepth === d.value ? `1px solid ${GREEN}` : '1px solid #262626',
               color: stackDepth === d.value ? '#fff' : '#888',
-              padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', transition: 'all .1s',
+              padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+              cursor: 'pointer',
             }}>
             {d.label}
           </button>
         ))}
       </div>
-      {/* Position Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px', overflowX: 'auto', background: '#0E0E0E', borderBottom: '1px solid #141414' }}>
-        <div style={{ background: '#1A1A1A', border: '1px solid #2a2a2a', color: '#d0d0d0', padding: '8px 12px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+      {/* Position Bar — compact */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 4px', overflowX: 'auto', background: '#0E0E0E', borderBottom: '1px solid #141414', flexShrink: 0 }}>
+        <div style={{ background: '#1A1A1A', border: '1px solid #2a2a2a', color: '#d0d0d0', padding: '4px 8px', borderRadius: 6, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
           {loading ? <span style={{ color: GREEN }}>●</span> : error ? <span style={{ color: RED }}>●</span> : <span style={{ color: GREEN }}>●</span>}
           {loading ? 'Solving...' : error ? 'Offline' : 'GTO'}
         </div>
@@ -252,30 +252,28 @@ export default function StudyPage() {
               background: activePosition === pos.id ? '#16241a' : '#161616',
               border: activePosition === pos.id ? `2px solid #7CFC7C` : '1px solid #262626',
               color: activePosition === pos.id ? '#fff' : '#b5b5b5',
-              padding: '6px 14px 5px', borderRadius: 8, fontSize: 13, whiteSpace: 'nowrap', cursor: 'pointer',
-              textAlign: 'center', minWidth: 78, lineHeight: 1.2,
+              padding: '3px 10px 3px', borderRadius: 6, fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer',
+              textAlign: 'center', minWidth: 52, lineHeight: 1.2,
             }}>
-            {pos.label} {pos.stack.toFixed(1).replace(/\.0$/, '')}
-            {activePosition === pos.id && <span style={{ display: 'block', fontSize: 10, color: '#7CFC7C', marginTop: 2, fontWeight: 600 }}>Take action</span>}
+            {pos.label}{pos.stack !== stackDepth ? ` ${pos.stack.toFixed(0)}` : ''}
+            {activePosition === pos.id && <span style={{ display: 'block', fontSize: 9, color: '#7CFC7C', marginTop: 1, fontWeight: 600 }}>Acting</span>}
           </button>
         ))}
       </div>
 
-      {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(340px, 1fr)', gap: 12, padding: '0 16px', maxWidth: 1640, margin: '0 auto' }}>
+      {/* Main Grid — fills remaining space, grid scrolls internally */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 1fr)', gap: 8, padding: '0 12px', minHeight: 0 }}>
         {/* Matrix Panel */}
-        <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid #262626' }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              {['Strategy ▾', 'Ranges', 'Breakdown'].map((tab, i) => (
-                <span key={tab} style={{ fontSize: 13, color: i === 0 ? '#fff' : '#8e8e8e', cursor: 'pointer', padding: '4px 0', position: 'relative', fontWeight: 500 }}>
-                  {tab}{i === 0 && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -8, height: 2, background: GREEN }} />}
-                </span>
-              ))}
-            </div>
+        <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 8px', borderBottom: '1px solid #262626', flexShrink: 0 }}>
+            {['Strategy ▾', 'Ranges', 'Breakdown'].map((tab, i) => (
+              <span key={tab} style={{ fontSize: 11, color: i === 0 ? '#fff' : '#8e8e8e', cursor: 'pointer', padding: '2px 0', position: 'relative', fontWeight: 500 }}>
+                {tab}{i === 0 && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -4, height: 2, background: GREEN }} />}
+              </span>
+            ))}
           </div>
-          <div style={{ padding: 8 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#222', border: '1px solid #222', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
               {handCells.map(hand => {
                 const data = rangeData.get(hand)
                 const opacity = getCellOpacity(hand)
