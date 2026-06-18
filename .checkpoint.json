@@ -16,12 +16,15 @@
     "Phase 1c: Strategy/Ranges/Breakdown tab content",
     "Phase 1d: Postflop training mode",
     "study-preflop-action-feedback-flow",
-    "study-postflop-gto-comparison-overlay"
+    "study-postflop-gto-comparison-overlay",
+    "study-page-hotkeys",
+    "study-session-spot-generator",
+    "study-progress-tracking"
   ],
   "current": "tbd",
-  "next": "study-page-hotkeys",
+  "next": "tbd",
   "backlog": [],
-  "health": "6_pass_0_error_0_fail",
-  "last_sha": "98bff49",
+  "health": "7_pass_0_error_0_fail",
+  "last_sha": "3937256",
   "blocker": null
 }

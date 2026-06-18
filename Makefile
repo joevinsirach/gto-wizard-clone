@@ -1,7 +1,7 @@
 # GTO Wizard Clone — Developer Makefile
 # Targets for common development and ops tasks.
 
-.PHONY: help seed-preflop
+.PHONY: help seed-preflop seed-all health-check
 
 help:           ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -9,6 +9,9 @@ help:           ## Show this help
 
 seed-preflop:   ## Seed preflop GTO strategies into PostgreSQL (idempotent)
 	PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py
+
+seed-all:       ## Seed all strategies (preflop + flop, all depths) into PostgreSQL (idempotent)
+	PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_all_strategies.py
 
 health-check:   ## Run deploy health check against API and frontend endpoints
 	bash scripts/deploy-health-check.sh

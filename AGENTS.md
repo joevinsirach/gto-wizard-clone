@@ -299,8 +299,11 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - Street breadcrumb style (tabs with active street highlighted)
 
 ## Seed Data
-- **Run**: `cd /home/sc/repos/gto-wizard-clone && PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py`
-- **Note**: Idempotent — safe to run multiple times. Seeds 7 preflop GTO strategies (6 positions + default) at 100bb. Requires the venv (`.venv`) with asyncpg installed (run `uv sync --group runtime` first if needed).
+- **Run (preflop only)**: `cd /home/sc/repos/gto-wizard-clone && PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_preflop_strategies.py`
+- **Run (all: preflop + flop)**: `cd /home/sc/repos/gto-wizard-clone && PYTHONPATH=apps/api .venv/bin/python apps/api/prisma/seed_all_strategies.py`
+- **Make target**: `make seed-all` (seeds preflop + flop at 50, 100, 150, 200bb) or `make seed-preflop` (preflop only)
+- **Note**: Idempotent — safe to run multiple times. Seeds strategies at all common stack depths (50, 100, 150, 200bb). Requires the venv (`.venv`) with asyncpg installed (run `uv sync --group runtime` first if needed).
+- **Docker**: The `docker compose up -d` seed service runs the combined seed automatically via `seed_all_strategies.py`.
 - **Verify**: After seeding, test with `curl 'http://localhost:8000/api/v1/strategy-lookup?board=preflop&stack_depth=100&position=UTG'`
 
 ### Task: fix-omaha-api-url

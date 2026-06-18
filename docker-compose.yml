@@ -108,7 +108,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gto_wizard
-    command: python prisma/seed_preflop_strategies.py
+    command: python prisma/seed_all_strategies.py
     restart: "no"
     networks:
       - gto-network
