@@ -42,12 +42,26 @@
     "fix-postflop-street-progression",
     "seed-flop-boards-expanded",
     "study-page-postflop-e2e-test",
-    "study-page-console-error-audit"
+    "study-page-console-error-audit",
+    "visual-study-preflop-match-reference"
   ],
-  "current": "visual-study-preflop-match-reference",
-  "next": "visual-study-postflop-match-reference",
-  "backlog": [],
+  "current": "visual-study-postflop-match-reference",
+  "next": "solutions-frontend-page",
+  "backlog": [
+    "solutions-frontend-page",
+    "equity-variant-2-7td-page",
+    "equity-variant-2-7sd-page",
+    "equity-variant-plo5-page",
+    "analyze-viewer-functional-page"
+  ],
   "health": "solver_running_study_200",
-  "last_sha": "24eba13",
-  "blocker": null
+  "last_sha": "344e3db",
+  "blocker": null,
+  "spec_gaps": [
+    {"item": "GET /solutions returns 404 — no page exists", "type": "missing_page", "priority": 1, "evidence": "curl /solutions returns 404, reference image exists at docs/reference-solutions.png"},
+    {"item": "GET /equity/2-7td returns stub page", "type": "stub_page", "priority": 2, "evidence": "page.tsx imports VariantStubPage, shows 'under development'"},
+    {"item": "GET /equity/2-7sd returns stub page", "type": "stub_page", "priority": 2, "evidence": "page.tsx imports VariantStubPage, shows 'under development'"},
+    {"item": "GET /equity/plo5 returns stub page", "type": "stub_page", "priority": 2, "evidence": "page.tsx imports VariantStubPage, shows 'under development'"},
+    {"item": "GET /analyze/viewer returns 39-line stub", "type": "stub_page", "priority": 2, "evidence": "page.tsx is 39 lines with no real functionality"}
+  ]
 }
