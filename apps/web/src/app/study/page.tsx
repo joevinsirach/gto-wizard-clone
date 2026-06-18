@@ -78,6 +78,19 @@ const ACTION_COLORS: Record<string, string> = {
   'all_in': RED_DARK,
 }
 
+const POSITION_KEYS: Record<string, string> = {
+  '1': 'UTG', '2': 'HJ', '3': 'CO', '4': 'BTN', '5': 'SB', '6': 'BB',
+}
+
+const ACTION_HOTKEYS: Record<string, string> = {
+  'a': 'all_in',
+  's': 'fold',
+  'd': 'call',
+  'f': 'raise',
+}
+
+const TAB_ORDER: Array<'strategy' | 'ranges' | 'breakdown'> = ['strategy', 'ranges', 'breakdown']
+
 export default function StudyPage() {
   const [mode, setMode] = useState<'preflop' | 'postflop'>('preflop')
   const [activePosition, setActivePosition] = useState('UTG')
@@ -99,6 +112,8 @@ export default function StudyPage() {
     { value: 200, label: '200bb' },
   ])
   const [activeTab, setActiveTab] = useState<'strategy' | 'ranges' | 'breakdown'>('strategy')
+  const [hotkeyToast, setHotkeyToast] = useState<string | null>(null)
+  const [showHotkeys, setShowHotkeys] = useState(false)
 
   const positions = useMemo(() => [
     { id: 'UTG', label: 'UTG', stack: stackDepth },
@@ -280,8 +295,142 @@ export default function StudyPage() {
     setBoardStreet('preflop')
   }, [])
 
+  // Hotkey handler
+  useEffect(() => {
+    function showToast(msg: string) {
+      setHotkeyToast(msg)
+      setTimeout(() => setHotkeyToast(null), 1200)
+    }
+
+    function navigateMatrix(direction: string) {
+      if (!selectedCell) return
+      const row = MATRIX_HANDS.findIndex(r => r.includes(selectedCell))
+      if (row === -1) return
+      const col = MATRIX_HANDS[row].indexOf(selectedCell)
+      let newRow = row, newCol = col
+      if (direction === 'arrowup') newRow = Math.max(0, row - 1)
+      if (direction === 'arrowdown') newRow = Math.min(12, row + 1)
+      if (direction === 'arrowleft') newCol = Math.max(0, col - 1)
+      if (direction === 'arrowright') newCol = Math.min(12, col + 1)
+      const newHand = MATRIX_HANDS[newRow]?.[newCol]
+      if (newHand) setSelectedCell(newHand)
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      // Ignore if user is typing in an input
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      const key = e.key.toLowerCase()
+
+      // Position switching: 1-6
+      if (POSITION_KEYS[key] && mode === 'preflop') {
+        e.preventDefault()
+        setActivePosition(POSITION_KEYS[key])
+        showToast(`Position: ${POSITION_KEYS[key]}`)
+        return
+      }
+
+      // Tab cycling: Tab
+      if (key === 'tab' && mode === 'preflop') {
+        e.preventDefault()
+        setActiveTab(prev => {
+          const idx = TAB_ORDER.indexOf(prev)
+          return TAB_ORDER[(idx + 1) % TAB_ORDER.length]
+        })
+        return
+      }
+
+      // Deal flop / advance street: F
+      if (key === 'f' && mode === 'preflop') {
+        e.preventDefault()
+        if (boardStreet === 'preflop') handleGenerateFlop()
+        else if (boardStreet !== 'river') handleAdvanceStreet()
+        return
+      }
+
+      // Reset board: R
+      if (key === 'r' && mode === 'preflop' && boardCards.length > 0) {
+        e.preventDefault()
+        handleResetBoard()
+        return
+      }
+
+      // Check vs GTO: Enter
+      if (key === 'enter' && selectedHandData && userAction && !actionFeedback) {
+        e.preventDefault()
+        handleCheckAction()
+        return
+      }
+
+      // Escape: deselect / close feedback
+      if (key === 'escape') {
+        e.preventDefault()
+        if (actionFeedback) {
+          setUserAction(null)
+          setActionFeedback(null)
+          setBetSize(null)
+        } else if (selectedCell) {
+          setSelectedCell(null)
+        }
+        return
+      }
+
+      // Action hotkeys: a/s/d/f (only when hand selected and no feedback)
+      if (ACTION_HOTKEYS[key] && selectedHandData && !actionFeedback) {
+        e.preventDefault()
+        setUserAction(ACTION_HOTKEYS[key])
+        showToast(`${ACTION_HOTKEYS[key].replace('_', ' ').toUpperCase()}`)
+        return
+      }
+
+      // Arrow keys: navigate matrix
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key) && selectedCell) {
+        e.preventDefault()
+        navigateMatrix(key)
+        return
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mode, boardStreet, boardCards.length, selectedCell, selectedHandData, userAction, actionFeedback, activeTab, activePosition, handleCheckAction, handleGenerateFlop, handleAdvanceStreet, handleResetBoard])
+
+  // Close hotkey help popup on outside click
+  useEffect(() => {
+    if (!showHotkeys) return
+    function handleClick(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-hotkeys-popup]')) {
+        setShowHotkeys(false)
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [showHotkeys])
+
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0E0E0E', overflow: 'hidden' }}>
+      {/* Hotkey toast */}
+      {hotkeyToast && (
+        <div style={{
+          position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)',
+          background: '#1a3a2a', border: `1px solid ${GREEN}`,
+          color: '#fff', padding: '6px 16px', borderRadius: 6,
+          fontSize: 12, fontWeight: 600, zIndex: 1000,
+          animation: 'fadeInOut 1.2s ease',
+        }}>
+          {hotkeyToast}
+          <style>{`
+            @keyframes fadeInOut {
+              0% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+              15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+              85% { opacity: 1; }
+              100% { opacity: 0; }
+            }
+          `}</style>
+        </div>
+      )}
       {/* Mode Toggle — fixed height */}
       <div style={{ display: 'flex', gap: 8, padding: '6px 12px', borderBottom: '1px solid #141414', background: '#0E0E0E', flexShrink: 0 }}>
         <button onClick={() => setMode('preflop')}
@@ -329,7 +478,7 @@ export default function StudyPage() {
           {loading ? <span style={{ color: GREEN }}>●</span> : error ? <span style={{ color: RED }}>●</span> : <span style={{ color: GREEN }}>●</span>}
           {loading ? 'Solving...' : error ? 'Offline' : 'GTO'}
         </div>
-        {positions.map(pos => (
+        {positions.map((pos, idx) => (
           <button key={pos.id} onClick={() => setActivePosition(pos.id)}
             style={{
               background: activePosition === pos.id ? '#16241a' : '#161616',
@@ -338,10 +487,49 @@ export default function StudyPage() {
               padding: '3px 10px 3px', borderRadius: 6, fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer',
               textAlign: 'center', minWidth: 52, lineHeight: 1.2,
             }}>
+            <span style={{ fontSize: 9, color: '#555', marginRight: 3 }}>{idx + 1}</span>
             {pos.label}{pos.stack !== stackDepth ? ` ${pos.stack.toFixed(0)}` : ''}
             {activePosition === pos.id && <span style={{ display: 'block', fontSize: 9, color: '#7CFC7C', marginTop: 1, fontWeight: 600 }}>Acting</span>}
           </button>
         ))}
+        <div style={{ marginLeft: 'auto', position: 'relative' }} data-hotkeys-popup>
+          <button onClick={() => setShowHotkeys(!showHotkeys)}
+            style={{
+              background: showHotkeys ? '#1a3a2b' : '#161616',
+              border: '1px solid #262626',
+              color: showHotkeys ? GREEN : '#666',
+              width: 22, height: 22, borderRadius: 4,
+              fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>?</button>
+          {showHotkeys && (
+            <div style={{
+              position: 'absolute', right: 0, top: 28,
+              background: '#1C1C1C', border: '1px solid #262626',
+              borderRadius: 8, padding: '10px 12px',
+              fontSize: 10, color: '#aaa',
+              zIndex: 100, minWidth: 180,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{ fontWeight: 600, color: '#ccc', marginBottom: 6, fontSize: 11 }}>Keyboard Shortcuts</div>
+              {[
+                ['1-6', 'Position'],
+                ['Tab', 'Cycle tabs'],
+                ['F', 'Deal flop/next street'],
+                ['R', 'Reset board'],
+                ['A / S / D / F', 'All-in / Fold / Call / Raise'],
+                ['↑↓←→', 'Navigate matrix'],
+                ['Enter', 'Check vs GTO'],
+                ['Esc', 'Deselect / close'],
+              ].map(([key, desc]) => (
+                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ color: '#7CFC7C', fontFamily: 'monospace', fontSize: 10 }}>{key}</span>
+                  <span style={{ color: '#888' }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Grid — fills remaining space, grid scrolls internally */}

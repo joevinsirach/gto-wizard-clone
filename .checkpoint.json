@@ -11,53 +11,17 @@
     "Board display area with PREFLOP placeholder",
     "GTO Range Breakdown text frequencies",
     "Check vs GTO with sizing comparison",
-    "Phase 1a: Action frequency progress bars"
+    "Phase 1a: Action frequency progress bars",
+    "Phase 1b: Board card entry / hand simulator",
+    "Phase 1c: Strategy/Ranges/Breakdown tab content",
+    "Phase 1d: Postflop training mode",
+    "study-preflop-action-feedback-flow",
+    "study-postflop-gto-comparison-overlay"
   ],
-  "current": "Phase 1b: Board card entry / hand simulator",
-  "next": "Phase 1b: Board card entry / hand simulator — add random flop generator with Turn/River street progression",
-  "backlog": [
-    {
-      "id": "1a",
-      "title": "Action frequency progress bars",
-      "description": "Convert 'Fold 10.8%' text to horizontal bars proportional to %. Use dark-green filled bars on subtle background. Show action label + % text + bar width = frequency %.",
-      "files": ["apps/web/src/app/study/page.tsx"],
-      "test_cmd": "cd apps/web && npx next build 2>&1 | tail -5",
-      "server_cmd": "systemctl --user restart gto-wizard-web.service",
-      "verify_url": "https://wiz.codeovertcp.com/study",
-      "verify_text": "GTO Range Breakdown"
-    },
-    {
-      "id": "1b",
-      "title": "Board card entry / hand simulator",
-      "description": "Add a simple random flop generator. When user selects a preflop position + range, show 3 random flop cards from the remaining deck. Add Turn and River buttons to progress streets. Store board in state, pass to solver API for postflop range generation.",
-      "files": ["apps/web/src/app/study/page.tsx", "apps/web/src/components/study/"],
-      "test_cmd": "cd apps/web && npx next build 2>&1 | tail -5",
-      "server_cmd": "systemctl --user restart gto-wizard-web.service",
-      "verify_url": "https://wiz.codeovertcp.com/study",
-      "verify_text": "Flop"
-    },
-    {
-      "id": "1c",
-      "title": "Strategy/Ranges/Breakdown tab content",
-      "description": "Right-side tabs already exist as buttons (Strategy, Ranges, Breakdown). Populate each tab: Strategy shows hand EV/equity/EQR/actions; Ranges shows top/bottom hands by EV; Breakdown shows suit combos and hand category distribution. Use solver API data.",
-      "files": ["apps/web/src/app/study/page.tsx"],
-      "test_cmd": "cd apps/web && npx next build 2>&1 | tail -5",
-      "server_cmd": "systemctl --user restart gto-wizard-web.service",
-      "verify_url": "https://wiz.codeovertcp.com/study",
-      "verify_text": "Strategy"
-    },
-    {
-      "id": "1d",
-      "title": "Postflop training mode",
-      "description": "Add postflop training flow: select board → solver computes flop range → user navigates streets → action buttons for each street. Requires board simulator from 1b first. New mode toggle (Preflop/Postflop).",
-      "files": ["apps/web/src/app/study/page.tsx", "apps/web/src/components/study/PostflopTraining.tsx"],
-      "test_cmd": "cd apps/web && npx next build 2>&1 | tail -5",
-      "server_cmd": "systemctl --user restart gto-wizard-web.service",
-      "verify_url": "https://wiz.codeovertcp.com/study",
-      "verify_text": "Postflop"
-    }
-  ],
+  "current": "tbd",
+  "next": "study-page-hotkeys",
+  "backlog": [],
   "health": "6_pass_0_error_0_fail",
-  "last_sha": "f4d5e08",
+  "last_sha": "98bff49",
   "blocker": null
 }
