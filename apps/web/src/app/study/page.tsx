@@ -100,7 +100,7 @@ const MATRIX_HANDS: string[][] = [
   ['ATo','KTo','QTo','JTo','TT','T9s','T8s','T7s','T6s','T5s','T4s','T3s','T2s'],
   ['A9o','K9o','Q9o','J9o','T9o','99','98s','97s','96s','95s','94s','93s','92s'],
   ['A8o','K8o','Q8o','J8o','T8o','98o','88','87s','86s','85s','84s','83s','82s'],
-  ['A7o','K7o','Q7o','J8o','T7o','97o','87o','77','76s','75s','74s','73s','72s'],
+  ['A7o','K7o','Q7o','J7o','T7o','97o','87o','77','76s','75s','74s','73s','72s'],
   ['A6o','K6o','Q6o','J6o','T6o','96o','86o','76o','66','65s','64s','63s','62s'],
   ['A5o','K5o','Q5o','J5o','T5o','95o','85o','75o','65o','55','54s','53s','52s'],
   ['A4o','K4o','Q4o','J4o','T4o','94o','84o','74o','64o','54o','44','43s','42s'],
@@ -690,12 +690,14 @@ export default function StudyPage() {
               background: activePosition === pos.id ? '#16241a' : '#161616',
               border: activePosition === pos.id ? `2px solid #7CFC7C` : '1px solid #262626',
               color: activePosition === pos.id ? '#fff' : '#b5b5b5',
-              padding: '3px 10px 3px', borderRadius: 6, fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer',
-              textAlign: 'center', minWidth: 52, lineHeight: 1.2,
+              padding: '4px 12px', borderRadius: 8, fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer',
+              textAlign: 'center', minWidth: 56, lineHeight: 1.3,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
             }}>
-            <span style={{ fontSize: 9, color: '#555', marginRight: 3 }}>{idx + 1}</span>
-            {pos.label}{pos.stack !== stackDepth ? ` ${pos.stack.toFixed(0)}` : ''}
-            {activePosition === pos.id && <span style={{ display: 'block', fontSize: 9, color: '#7CFC7C', marginTop: 1, fontWeight: 600 }}>Acting</span>}
+            <span style={{ fontSize: 9, color: activePosition === pos.id ? '#7CFC7C' : '#555', fontWeight: 500 }}>{idx + 1}</span>
+            <span style={{ fontWeight: 600 }}>{pos.label}</span>
+            {pos.stack !== stackDepth && <span style={{ fontSize: 9, color: '#888' }}>{pos.stack.toFixed(0)}bb</span>}
+            {activePosition === pos.id && <span style={{ fontSize: 8, color: '#7CFC7C', fontWeight: 600, marginTop: -1 }}>Acting</span>}
           </button>
         ))}
         <button onClick={handleRandomSpot}
@@ -766,21 +768,35 @@ export default function StudyPage() {
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 4 }}>
             {activeTab === 'strategy' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#1a1a1a', borderRadius: 6, overflow: 'hidden', padding: 2 }}>
               {handCells.map(hand => {
                 const data = rangeData.get(hand)
                 const opacity = getCellOpacity(hand)
+                const isSelected = selectedCell === hand
+                const color = getCellColor(hand)
                 return (
-                  <div key={hand} onClick={() => setSelectedCell(selectedCell === hand ? null : hand)}
-                    title={hand}
+                  <div key={hand} onClick={() => setSelectedCell(isSelected ? null : hand)}
+                    title={hand + (data ? ` — ${data.action} ${(data.frequency * 100).toFixed(0)}%` : '')}
                     style={{
-                      height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, fontWeight: 650, color: '#fff', letterSpacing: 0,
-                      textShadow: '0 1px 1px rgba(0,0,0,.6)', cursor: 'pointer', userSelect: 'none',
-                      background: getCellColor(hand), opacity,
-                      border: selectedCell === hand ? '1px solid #fff' : 'none',
+                      aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 8, fontWeight: 700, color: '#fff', letterSpacing: -0.3,
+                      textShadow: '0 1px 2px rgba(0,0,0,.8)', cursor: 'pointer', userSelect: 'none',
+                      background: color, opacity,
+                      border: isSelected ? '2px solid #fff' : '1px solid rgba(255,255,255,0.06)',
+                      borderRadius: 3,
+                      transition: 'opacity .15s, border .15s',
+                      position: 'relative',
                     }}>
-                    {hand}
+                    <span style={{ zIndex: 1 }}>{hand}</span>
+                    {data && data.action !== 'fold' && (
+                      <span style={{
+                        position: 'absolute', bottom: 1, right: 2,
+                        fontSize: 6, fontWeight: 600, opacity: 0.7,
+                        color: '#fff',
+                      }}>
+                        {(data.frequency * 100).toFixed(0)}%
+                      </span>
+                    )}
                   </div>
                 )
               })}
@@ -948,7 +964,13 @@ export default function StudyPage() {
         <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 10, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px 4px', flexWrap: 'wrap', flexShrink: 0 }}>
             {positions.map(pos => (
-              <span key={pos.id} style={{ background: activePosition === pos.id ? '#1a3a2b' : '#262626', color: activePosition === pos.id ? '#7CFC7C' : '#b9b9b9', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500, border: activePosition === pos.id ? '1px solid #2a6b4a' : '1px solid #2e2e2e' }}>{pos.label}</span>
+              <span key={pos.id} style={{
+                background: activePosition === pos.id ? '#1a3a2b' : '#262626',
+                color: activePosition === pos.id ? '#7CFC7C' : '#b9b9b9',
+                padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                border: activePosition === pos.id ? '1px solid #2a6b4a' : '1px solid #2e2e2e',
+                letterSpacing: 0.3,
+              }}>{pos.label}</span>
             ))}
           </div>
 
@@ -965,14 +987,16 @@ export default function StudyPage() {
             </span>
             {boardCards.map((card, i) => (
               <div key={i} style={{
-                width: 26, height: 38, borderRadius: 4,
-                background: '#0a0a0a', border: '1px solid #333',
+                width: 32, height: 46, borderRadius: 6,
+                background: '#0a0a0a', border: `1px solid ${SUIT_COLOR[card.suit] || '#333'}44`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700,
+                fontSize: 13, fontWeight: 700,
                 color: SUIT_COLOR[card.suit] || '#fff',
+                boxShadow: `0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 ${SUIT_COLOR[card.suit] || '#fff'}11`,
+                flexShrink: 0,
               }}>
-                <span>{card.rank}</span>
-                <span style={{ fontSize: 8, marginTop: -1 }}>{SUIT_SYM[card.suit] || card.suit}</span>
+                <span style={{ lineHeight: 1 }}>{card.rank}</span>
+                <span style={{ fontSize: 11, marginTop: -2, lineHeight: 1 }}>{SUIT_SYM[card.suit] || card.suit}</span>
               </div>
             ))}
             {boardStreet === 'preflop' && (
@@ -1031,11 +1055,11 @@ export default function StudyPage() {
           {/* GTO Action Frequency Bars */}
           {isSolverMode && (
             <div style={{
-              padding: '6px 10px',
+              padding: '8px 10px',
               borderBottom: '1px solid #262626',
               flexShrink: 0,
             }}>
-              <div style={{ fontSize: 10, color: '#999', fontWeight: 500, marginBottom: 6 }}>
+              <div style={{ fontSize: 10, color: '#999', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 GTO Range Breakdown
               </div>
               {Object.entries(actionSummary)
@@ -1044,27 +1068,28 @@ export default function StudyPage() {
                   const pct = ((data.totalFreq / totalCombos) * 100)
                   if (pct < 0.5) return null
                   const barPct = Math.min(pct, 100)
+                  const actionColor = ACTION_COLORS[action] || '#888'
                   return (
-                    <div key={action} style={{ marginBottom: 4 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <span style={{ fontSize: 10, color: '#ccc', fontWeight: 500 }}>
+                    <div key={action} style={{ marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>
                           {actionLabels[action] || action}
                         </span>
-                        <span style={{ fontSize: 10, color: '#888' }}>
+                        <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>
                           {pct.toFixed(1)}%
                         </span>
                       </div>
                       <div style={{
-                        height: 8,
+                        height: 10,
                         background: '#2a2a2a',
-                        borderRadius: 4,
+                        borderRadius: 5,
                         overflow: 'hidden',
                       }}>
                         <div style={{
                           height: '100%',
                           width: `${Math.max(barPct, 2)}%`,
-                          background: '#00C853',
-                          borderRadius: 4,
+                          background: actionColor,
+                          borderRadius: 5,
                           opacity: 0.85,
                           transition: 'width 0.3s ease',
                         }} />

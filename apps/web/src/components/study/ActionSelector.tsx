@@ -53,6 +53,30 @@ export default function ActionSelector({
 
   return (
     <div>
+      {/* GTO frequency micro-chips — shown above buttons when locked */}
+      {locked && gtoAction && gtoFrequency !== undefined && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+          {ACTIONS.map(a => {
+            const isGto = gtoAction === a.id
+            return (
+              <div key={a.id} style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 8px', borderRadius: 10,
+                background: isGto ? `${a.color}44` : '#1a1a1a',
+                border: isGto ? `1px solid ${a.color}88` : '1px solid #2a2a2a',
+                fontSize: 10, fontWeight: isGto ? 700 : 500,
+                color: isGto ? '#fff' : '#888',
+              }}>
+                <span>{a.shortLabel}</span>
+                <span style={{ fontWeight: 700, color: isGto ? '#fff' : '#666' }}>
+                  {isGto ? `${(gtoFrequency * 100).toFixed(0)}%` : ''}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
         {ACTIONS.map(a => {
           const isGto = gtoAction === a.id
@@ -72,8 +96,8 @@ export default function ActionSelector({
               onClick={() => !disabled && !locked && onSelect(a.id)}
               title={a.description}
               style={{
-                borderRadius: 8,
-                padding: '10px 8px',
+                borderRadius: 10,
+                padding: '12px 8px',
                 background: bg,
                 border: isSelected
                   ? `2px solid ${isCorrect ? '#00C853' : isWrong ? '#D32F2F' : '#fff'}`
@@ -85,9 +109,10 @@ export default function ActionSelector({
                 transition: 'all .12s',
                 position: 'relative',
                 opacity: disabled ? 0.4 : 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 650 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>
                 {isSelected && selectedAction === 'raise' && selectedSize
                   ? `${a.shortLabel} ${selectedSize.toFixed(1)}bb`
                   : a.shortLabel}
@@ -103,12 +128,12 @@ export default function ActionSelector({
                 </div>
               )}
               {isSelected && feedback && (
-                <div style={{ fontSize: 10, marginTop: 3, opacity: 0.9, color: '#fff' }}>
+                <div style={{ fontSize: 10, marginTop: 2, opacity: 0.9, color: '#fff', fontWeight: 600 }}>
                   {isCorrect ? '✓ Correct' : '✗ Incorrect'}
                 </div>
               )}
               {isGto && gtoFrequency !== undefined && locked && (
-                <div style={{ fontSize: 10, marginTop: 2, opacity: 0.7 }}>
+                <div style={{ fontSize: 10, opacity: 0.8, fontWeight: 600, color: '#FFD700' }}>
                   {(gtoFrequency * 100).toFixed(0)}%
                 </div>
               )}
@@ -120,9 +145,9 @@ export default function ActionSelector({
       {/* Raise sizing selector — appears below action buttons when RAISE is selected */}
       {showSizeSelector && onSelectSize && (
         <div style={{
-          marginTop: 8,
+          marginTop: 10,
           display: 'flex', flexWrap: 'wrap', gap: 4,
-          padding: '6px 6px',
+          padding: '8px 8px',
           background: '#141414',
           borderRadius: 8,
           border: '1px solid #2a2a2a',
@@ -138,8 +163,8 @@ export default function ActionSelector({
               key={s.bb}
               onClick={() => onSelectSize(s.bb)}
               style={{
-                padding: '4px 8px',
-                borderRadius: 4,
+                padding: '5px 10px',
+                borderRadius: 6,
                 fontSize: 11,
                 fontWeight: selectedSize === s.bb ? 700 : 500,
                 background: selectedSize === s.bb ? '#2a4a2a' : '#1e1e1e',
