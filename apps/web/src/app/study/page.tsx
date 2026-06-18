@@ -357,30 +357,40 @@ export default function StudyPage() {
               borderBottom: '1px solid #262626',
               flexShrink: 0,
             }}>
-              <div style={{ fontSize: 10, color: '#999', fontWeight: 500, marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: '#999', fontWeight: 500, marginBottom: 6 }}>
                 GTO Range Breakdown
               </div>
               {Object.entries(actionSummary)
                 .sort(([,a], [,b]) => b.totalFreq - a.totalFreq)
                 .map(([action, data]) => {
                   const pct = ((data.totalFreq / totalCombos) * 100)
-                  if (pct < 1) return null
-                  const color = ACTION_COLORS[action] || '#666'
+                  if (pct < 0.5) return null
+                  const barPct = Math.min(pct, 100)
                   return (
-                    <div key={action} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <div key={action} style={{ marginBottom: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontSize: 10, color: '#ccc', fontWeight: 500 }}>
+                          {actionLabels[action] || action}
+                        </span>
+                        <span style={{ fontSize: 10, color: '#888' }}>
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
                       <div style={{
-                        height: 14, borderRadius: 3,
-                        width: `${Math.max(pct * 1.2, 8)}px`,
-                        background: color,
-                        opacity: 0.8,
-                        flexShrink: 0,
-                      }} />
-                      <span style={{ fontSize: 10, color: '#ccc', fontWeight: 500 }}>
-                        {actionLabels[action] || action}
-                      </span>
-                      <span style={{ fontSize: 10, color: '#888', marginLeft: 'auto' }}>
-                        {pct.toFixed(1)}%
-                      </span>
+                        height: 8,
+                        background: '#2a2a2a',
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${Math.max(barPct, 2)}%`,
+                          background: '#00C853',
+                          borderRadius: 4,
+                          opacity: 0.85,
+                          transition: 'width 0.3s ease',
+                        }} />
+                      </div>
                     </div>
                   )
                 })}
