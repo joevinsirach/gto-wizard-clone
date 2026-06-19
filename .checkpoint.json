@@ -165,9 +165,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "c3fc6d2",
-    "last_reviewed_at": "2026-06-20T16:00:00Z",
+    "last_reviewed_sha": "13b4ece",
+    "last_reviewed_at": "2026-06-20T16:30:00Z",
     "verdict": "approved",
-    "notes": "fix-icm-api-route-prefix: Changed prefix from /icm to /api/v1/icm. Verified POST /api/v1/icm/calculate returns valid ICM results. 368 tests pass."
+    "notes": "Reviewed 2 player commits since last coach review. (1) c3fc6d2: fix ICM router prefix from /icm to /api/v1/icm — single line change, aligns with other routers. Verified POST /api/v1/icm/calculate returns 200 with valid ICM results. APPROVE. (2) 13b4ece: chore: mark fix-icm-api-route-prefix complete, advance to tbd. 21 unstarted tasks remain — backlog healthy. API healthy, site returns 200 on all key pages."
   }
 }
