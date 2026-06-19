@@ -77,7 +77,7 @@ export default function ActionSelector({
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+      <div className="study-action-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
         {ACTIONS.map(a => {
           const isGto = gtoAction === a.id
           const isSelected = selectedAction === a.id
@@ -93,6 +93,7 @@ export default function ActionSelector({
           return (
             <button
               key={a.id}
+              className="study-action-btn"
               onClick={() => !disabled && !locked && onSelect(a.id)}
               title={a.description}
               style={{

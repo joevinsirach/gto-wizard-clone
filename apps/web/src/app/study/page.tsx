@@ -541,6 +541,62 @@ export default function StudyPage() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0E0E0E', overflow: 'hidden' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .study-main-grid {
+            grid-template-columns: 1fr !important;
+            gap: 4px !important;
+            padding: 0 4px !important;
+          }
+          .study-matrix-grid {
+            grid-template-columns: repeat(13, 1fr) !important;
+          }
+          .study-matrix-cell {
+            font-size: 6px !important;
+            letter-spacing: -0.5px !important;
+          }
+          .study-position-bar {
+            gap: 4px !important;
+            padding: 4px 4px 2px !important;
+          }
+          .study-position-btn {
+            min-width: 40px !important;
+            padding: 3px 6px !important;
+            font-size: 10px !important;
+          }
+          .study-action-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 6px !important;
+          }
+          .study-action-btn {
+            padding: 14px 6px !important;
+            min-height: 48px !important;
+          }
+          .study-stack-selector {
+            gap: 3px !important;
+            padding: 3px 4px !important;
+            flex-wrap: wrap !important;
+          }
+          .study-details-panel {
+            min-height: 300px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .study-matrix-cell {
+            font-size: 5px !important;
+            letter-spacing: -0.8px !important;
+          }
+          .study-matrix-cell-freq {
+            display: none !important;
+          }
+          .study-position-btn-num {
+            display: none !important;
+          }
+          .study-position-btn-stack {
+            display: none !important;
+          }
+        }
+      `}</style>
       {/* Hotkey toast */}
       {hotkeyToast && (
         <div style={{
@@ -663,7 +719,7 @@ export default function StudyPage() {
 
       {mode === 'preflop' ? (<div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Stack Depth Selector — compact */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#0E0E0E', borderBottom: '1px solid #141414', flexShrink: 0 }}>
+      <div className="study-stack-selector" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#0E0E0E', borderBottom: '1px solid #141414', flexShrink: 0 }}>
         <span style={{ color: '#999', fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>Stack:</span>
         {availableDepths.map(d => (
           <button key={d.value} onClick={() => setStackDepth(d.value)}
@@ -679,13 +735,13 @@ export default function StudyPage() {
         ))}
       </div>
       {/* Position Bar — compact */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 4px', overflowX: 'auto', background: '#0E0E0E', borderBottom: '1px solid #141414', flexShrink: 0 }}>
+      <div className="study-position-bar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 4px', overflowX: 'auto', background: '#0E0E0E', borderBottom: '1px solid #141414', flexShrink: 0 }}>
         <div style={{ background: '#1A1A1A', border: '1px solid #2a2a2a', color: '#d0d0d0', padding: '4px 8px', borderRadius: 6, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
           {loading ? <span style={{ color: GREEN }}>●</span> : error ? <span style={{ color: RED }}>●</span> : <span style={{ color: GREEN }}>●</span>}
           {loading ? 'Solving...' : error ? 'Offline' : 'GTO'}
         </div>
         {positions.map((pos, idx) => (
-          <button key={pos.id} onClick={() => setActivePosition(pos.id)}
+          <button className="study-position-btn" key={pos.id} onClick={() => setActivePosition(pos.id)}
             style={{
               background: activePosition === pos.id ? '#16241a' : '#161616',
               border: activePosition === pos.id ? `2px solid #7CFC7C` : '1px solid #262626',
@@ -694,9 +750,9 @@ export default function StudyPage() {
               textAlign: 'center', minWidth: 56, lineHeight: 1.3,
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
             }}>
-            <span style={{ fontSize: 9, color: activePosition === pos.id ? '#7CFC7C' : '#555', fontWeight: 500 }}>{idx + 1}</span>
+            <span className="study-position-btn-num" style={{ fontSize: 9, color: activePosition === pos.id ? '#7CFC7C' : '#555', fontWeight: 500 }}>{idx + 1}</span>
             <span style={{ fontWeight: 600 }}>{pos.label}</span>
-            {pos.stack !== stackDepth && <span style={{ fontSize: 9, color: '#888' }}>{pos.stack.toFixed(0)}bb</span>}
+            {pos.stack !== stackDepth && <span className="study-position-btn-stack" style={{ fontSize: 9, color: '#888' }}>{pos.stack.toFixed(0)}bb</span>}
             {activePosition === pos.id && <span style={{ fontSize: 8, color: '#7CFC7C', fontWeight: 600, marginTop: -1 }}>Acting</span>}
           </button>
         ))}
@@ -751,7 +807,7 @@ export default function StudyPage() {
       </div>
 
       {/* Main Grid — fills remaining space, grid scrolls internally */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 1fr)', gap: 8, padding: '0 12px', minHeight: 0 }}>
+      <div className="study-main-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 1fr)', gap: 8, padding: '0 12px', minHeight: 0 }}>
         {/* Matrix Panel */}
         <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 8px', borderBottom: '1px solid #262626', flexShrink: 0 }}>
@@ -768,14 +824,14 @@ export default function StudyPage() {
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 4 }}>
             {activeTab === 'strategy' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#1a1a1a', borderRadius: 6, overflow: 'hidden', padding: 2 }}>
+            <div className="study-matrix-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#1a1a1a', borderRadius: 6, overflow: 'hidden', padding: 2 }}>
               {handCells.map(hand => {
                 const data = rangeData.get(hand)
                 const opacity = getCellOpacity(hand)
                 const isSelected = selectedCell === hand
                 const color = getCellColor(hand)
                 return (
-                  <div key={hand} onClick={() => setSelectedCell(isSelected ? null : hand)}
+                  <div key={hand} className="study-matrix-cell" onClick={() => setSelectedCell(isSelected ? null : hand)}
                     title={hand + (data ? ` — ${data.action} ${(data.frequency * 100).toFixed(0)}%` : '')}
                     style={{
                       aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -789,7 +845,7 @@ export default function StudyPage() {
                     }}>
                     <span style={{ zIndex: 1 }}>{hand}</span>
                     {data && data.action !== 'fold' && (
-                      <span style={{
+                      <span className="study-matrix-cell-freq" style={{
                         position: 'absolute', bottom: 1, right: 2,
                         fontSize: 6, fontWeight: 600, opacity: 0.7,
                         color: '#fff',
@@ -961,7 +1017,7 @@ export default function StudyPage() {
         </div>
 
         {/* Details Panel */}
-        <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 10, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div className="study-details-panel" style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 10, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px 4px', flexWrap: 'wrap', flexShrink: 0 }}>
             {positions.map(pos => (
               <span key={pos.id} style={{
