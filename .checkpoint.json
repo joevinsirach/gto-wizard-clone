@@ -203,9 +203,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "1cc1cfb41114ec9107ed6a0c3baf08b3a6cf524b",
-    "last_reviewed_at": "2026-06-20T19:00:00Z",
+    "last_reviewed_sha": "4d3e72d",
+    "last_reviewed_at": "2026-06-20T20:00:00Z",
     "verdict": "approved",
-    "notes": "Approved solutions-page-visual-match-reference (1cc1cfb). Fixed critical strategy_json format mismatch — API returns {actions: [...]} but frontend expected Record<string,Action>. Fixed getTopActions, detail panel rendering, and board card styling. Build passes, /solutions returns 200."
+    "notes": "No new player commits since last review. All AGENTS.md tasks completed. Generated 7 new tasks to unstall dev loop: start-solver-container, fix-e2e-test-runner-execution, seed-quiz-spots-with-board-data, dashboard-page-visual-match-reference, equity-page-visual-match-reference, practice-page-visual-match-reference, update-features-yaml-courses-detail. Site healthy: all pages 200, API 200."
   }
 }
