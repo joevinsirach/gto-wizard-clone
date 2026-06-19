@@ -53,10 +53,9 @@
     "equity-variant-stud8-page",
     "analyze-leaks-functional-page"
   ],
-  "current": "analyze-leaks-functional-page",
-  "next": "trainer-functional-page",
+  "current": "trainer-functional-page",
+  "next": "equity-razz-functional-page",
   "backlog": [
-    "trainer-functional-page",
     "equity-razz-functional-page",
     "practice-page-enhancement"
   ],
