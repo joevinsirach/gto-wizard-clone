@@ -740,3 +740,57 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - **Coach checks**:
   - Load `/study` in postflop mode, verify visual quality
   - Compare against reference screenshot
+
+### Task: update-features-yaml-hand-history
+- **Description**: FEATURES.yaml marks `/hand-history` and all its components as `status: missing`, but the page exists (1044 lines at `apps/web/src/app/hand-history/page.tsx`), returns HTTP 200, and has working API endpoints (`POST /api/v1/hh/import` present). Update FEATURES.yaml to mark `/hand-history` and its components (hand-table, batch-import, hand-viewer, search-filter) as `present`. Also update `POST /api/v1/solver/postflop-strategy` from `missing` to `present` (the dedup fix is complete). Verify each with curl before marking.
+- **Success criteria**:
+  - `/hand-history` route in FEATURES.yaml changed from `missing` to `present`
+  - All 4 hand-history components marked `present`
+  - `POST /api/v1/solver/postflop-strategy` marked `present`
+  - `last_audited` field updated to today's date
+- **Coach checks**:
+  - Verify FEATURES.yaml changes are correct
+  - Spot-check hand-history page returns 200
+
+### Task: e2e-test-coverage-expansion
+- **Description**: The project has Playwright configured but E2E test coverage is sparse. Add E2E tests for key user flows that have none: (1) `/study` preflop flow — click a position, select a stack depth, verify hand matrix renders; (2) `/hand-history` page — verify page renders with hand table; (3) `/quiz` page — verify quiz interface loads. Each test should navigate to the page, verify key elements exist via snapshot, and check for console errors.
+- **Success criteria**:
+  - At least 3 new E2E test files added (or existing ones extended)
+  - Tests pass with `npx playwright test --reporter=list`
+  - Each test verifies page renders (no blank/error state) and checks console for errors
+- **Coach checks**:
+  - Verify tests actually run (not skipped due to config issues)
+  - Check tests use relative selectors, not hardcoded pixel coordinates
+  - Verify no vitest/Playwright runner conflict in test files
+
+### Task: study-page-mobile-responsive
+- **Description**: The study page (`/study`) works on desktop but needs mobile responsive verification and fixes. The nav bar uses `gap-4px` with many items causing horizontal overflow on small screens. The 13×13 hand matrix and action buttons may not fit on mobile viewports. Test at 375px and 768px breakpoints, fix overflow issues, ensure touch targets are ≥44px.
+- **Success criteria**:
+  - `/study` renders without horizontal overflow at 375px width
+  - Hand matrix scales or scrolls gracefully on mobile
+  - Action buttons are tappable (≥44px touch targets)
+  - No console errors at mobile viewport
+- **Coach checks**:
+  - Verify responsive fixes don't break desktop layout
+  - Check that the nav bar doesn't overflow on mobile
+
+### Task: push-fold-page-functional
+- **Description**: The `/push-fold` page returns 200 but needs verification that the push/fold Nash equilibrium table actually renders data. Check if the page displays the interactive push/fold chart with position buttons and stack depth selector, or if it's a data-empty shell. If data is missing, wire up the solver endpoint or seed data to populate the table.
+- **Success criteria**:
+  - Push/fold table renders with actual Nash equilibrium data (not empty)
+  - Position buttons (all 9 positions) and stack depth selector work
+  - No console errors
+- **Coach checks**:
+  - Verify the page shows real data, not an empty table
+  - Test interaction: click a position, verify the table updates
+
+### Task: range-explorer.page-functional
+- **Description**: The `/range-explorer` page returns 200 but needs verification that the interactive range builder works. Check if the 13×13 grid responds to clicks (toggle hands in/out of range), if the range string input works, and if the equity calculation triggers. Fix any broken interactions.
+- **Success criteria**:
+  - Hand grid cells toggle between in-range/out-of-range on click
+  - Range string input updates the grid display
+  - Equity calculation triggers when board cards are provided
+  - No console errors
+- **Coach checks**:
+  - Verify grid interaction works
+  - Check that range string parsing handles standard notation (AA, AKs, etc.)

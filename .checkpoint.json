@@ -60,17 +60,23 @@
     "update-features-yaml-to-match-reality",
     "study-page-postflop-visual-polish"
   ],
-  "current": "study-page-postflop-visual-polish",
+  "current_task": "update-features-yaml-hand-history",
   "next": null,
-  "backlog": [],
+  "backlog": [
+    "update-features-yaml-hand-history",
+    "e2e-test-coverage-expansion",
+    "study-page-mobile-responsive",
+    "push-fold-page-functional",
+    "range-explorer.page-functional"
+  ],
   "health": "build_pass_200_ok",
-  "last_sha": "ccc1145",
+  "last_sha": "f5fe04b",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "ccc1145",
-    "last_reviewed_at": "2026-06-19T21:43:00Z",
+    "last_reviewed_sha": "f5fe04b",
+    "last_reviewed_at": "2026-06-19T22:00:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 3 unreviewed commits (541d76b..444933c): 8a1a24f razz-slotselector APPROVED — switched CardSelectorGrid to SlotSelector with downCount={3}. /equity/razz returns 200. 08f8020 coach-checkpoint-update — meta-commit. 444933c add-tasks — added 3 well-formed tasks. Fixed systemd gto-api.service crash loop (port 8000 conflict with stale background process PID 125909). Killed stale process, service now active (running). All 368 poker-core tests pass. Solver returns 6 unique actions. Player has uncommitted work: ActionsTable.tsx (113 lines) + SpotSelector.tsx (210 lines) for study-page-postflop-visual-polish."
+    "notes": "Reviewed f5fe04b (checkpoint sync meta-commit, no code changes). API healthy. All pages 200. 368 tests pass. Player has uncommitted work on study-page-postflop-visual-polish (ActionsTable.tsx 113 lines + SpotSelector.tsx 210 lines). Generated 5 new tasks to prevent loop stall."
   }
 }
