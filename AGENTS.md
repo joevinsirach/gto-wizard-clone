@@ -794,3 +794,65 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - **Coach checks**:
   - Verify grid interaction works
   - Check that range string parsing handles standard notation (AA, AKs, etc.)
+
+### Task: study-postflop-board-display
+- **Description**: The `/study` page postflop mode is missing the board card display component. Add a board card renderer that shows styled playing cards (rank + suit, red for hearts/diamonds, black for spades/clubs) for the flop (3 cards), turn (4 cards), and river (5 cards). The board should render below the street breadcrumb and above the action buttons. Use the existing card rendering utilities in `packages/poker-core/` for suit/rank display.
+- **Success criteria**:
+  - Board cards render as styled playing cards on the `/study` postflop view
+  - Cards display correct rank and suit with appropriate colors (red for ♥♦, black for ♠♣)
+  - Board updates when street advances (flop→turn→river)
+  - No console errors
+- **Coach checks**:
+  - Verify board cards render with correct suit colors
+  - Check that the board updates correctly on street progression
+  - Verify the component doesn't break preflop mode
+
+### Task: study-postflop-action-buttons
+- **Description**: The `/study` page postflop mode needs action buttons: CHECK, BET (33%/50%/75%/125% pot), FOLD, CALL, RAISE (50%/100%), ALL IN. Each button should display the action label, chip amount, pot %, and GTO frequency micro-chip. Buttons should be grouped by type (check/fold/call vs bet vs raise vs all-in) with appropriate colors (green=check, red=bet, blue=call, orange=raise, purple=all-in). Wire up click handlers that record the user's action and trigger the GTO comparison overlay.
+- **Success criteria**:
+  - All action buttons render on the `/study` postflop view
+  - Each button shows label + chip amount + pot % + GTO frequency
+  - Clicking a button records the action and shows the GTO comparison overlay
+  - Buttons are color-coded per the design spec
+  - No console errors
+- **Coach checks**:
+  - Verify all 11 action buttons render (CHECK, BET×4, FOLD, CALL, RAISE×2, ALL IN)
+  - Test that clicking an action triggers the comparison overlay
+  - Check button layout matches the reference screenshot spacing
+
+### Task: study-postflop-street-navigation
+- **Description**: The `/study` page postflop mode needs a street breadcrumb navigation bar showing PREFLOP → FLOP → TURN → RIVER with the active street highlighted in green (#00C853). Clicking a completed street should navigate back to that street's state. The breadcrumb should sit above the board display and below the pot size indicator.
+- **Success criteria**:
+  - Street breadcrumb renders with all 4 streets on the `/study` postflop view
+  - Active street is highlighted in green
+  - Clicking a completed street navigates back to that state
+  - Breadcrumb is hidden in preflop mode (or shows only PREFLOP as active)
+  - No console errors
+- **Coach checks**:
+  - Verify breadcrumb renders correctly in postflop mode
+  - Test street navigation (click FLOP after reaching TURN, verify state)
+  - Check that preflop mode doesn't show the breadcrumb (or shows minimal version)
+
+### Task: study-postflop-gto-comparison-overlay
+- **Description**: After the user selects an action on the postflop study page, show a GTO comparison overlay that displays: (1) the user's chosen action, (2) the GTO optimal action with frequency %, (3) whether the user's action matches GTO (green checkmark) or not (red X), (4) the EV difference. The overlay should appear as a modal or slide-up panel. This is the core feedback mechanism for the training mode.
+- **Success criteria**:
+  - GTO comparison overlay appears after user selects any action
+  - Overlay shows user action, GTO optimal action, correct/incorrect indicator, and EV diff
+  - Overlay can be dismissed (click outside or X button) to continue to next street/hand
+  - No console errors
+- **Coach checks**:
+  - Verify overlay appears after clicking an action button
+  - Check that correct/incorrect indicator matches the GTO data
+  - Test overlay dismissal and continuation flow
+
+### Task: study-postflop-pot-and-history
+- **Description**: Add two supporting UI elements to the postflop study page: (1) a pot size tracker that displays the current pot size and effective stack depth, positioned above the street breadcrumb; (2) an action history timeline showing the sequence of actions taken in the current hand (e.g., "PREFLOP: UTG raises 2.5bb → BTN calls" → "FLOP: UTG bets 33% → BTN calls"). These elements complete the postflop study interface.
+- **Success criteria**:
+  - Pot size display shows current pot and effective stack depth
+  - Action history timeline updates after each action with street + player + action + sizing
+  - Both elements are positioned correctly per the reference design
+  - No console errors
+- **Coach checks**:
+  - Verify pot size updates correctly after each action
+  - Check action history shows correct sequence with proper formatting
+  - Verify layout doesn't overflow on standard desktop viewport (1280px+)
