@@ -55,7 +55,10 @@
   "next": "analyze-leaks-functional-page",
   "backlog": [
     "equity-variant-stud8-page",
-    "analyze-leaks-functional-page"
+    "analyze-leaks-functional-page",
+    "trainer-functional-page",
+    "equity-razz-functional-page",
+    "practice-page-enhancement"
   ],
   "health": "build_pass_200_ok",
   "last_sha": "843e0da",
