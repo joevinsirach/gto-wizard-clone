@@ -54,35 +54,35 @@ pages:
       - name: preflop-range-matrix
         status: present
       - name: postflop-board-display
-        status: missing
+        status: present
       - name: action-button-check
-        status: missing
+        status: present
       - name: action-button-bet-33
-        status: missing
+        status: present
       - name: action-button-bet-50
-        status: missing
+        status: present
       - name: action-button-bet-75
-        status: missing
+        status: present
       - name: action-button-bet-125
-        status: missing
+        status: present
       - name: action-button-fold
-        status: missing
+        status: present
       - name: action-button-call
-        status: missing
+        status: present
       - name: action-button-raise-50
-        status: missing
+        status: present
       - name: action-button-raise-100
-        status: missing
+        status: present
       - name: action-button-allin
-        status: missing
+        status: present
       - name: street-navigation
-        status: missing
+        status: present
       - name: pot-size-tracker
-        status: missing
+        status: present
       - name: action-history-timeline
-        status: missing
+        status: present
       - name: gto-comparison-overlay
-        status: missing
+        status: present
     apis:
       - endpoint: POST /api/v1/solver/preflop-range
         status: present
@@ -201,10 +201,10 @@ pages:
         status: present
   - route: /plo4
     title: PLO4 Calculator
-    status: missing
+    status: present
     components:
       - name: equity-calculator
-        status: missing
+        status: present
     apis:
       - endpoint: POST /api/v1/plo4/equity
         status: present
