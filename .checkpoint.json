@@ -51,10 +51,11 @@
     "analyze-viewer-functional-page",
     "equity-variant-omaha8-page",
     "equity-variant-stud8-page",
-    "analyze-leaks-functional-page"
+    "analyze-leaks-functional-page",
+    "trainer-functional-page"
   ],
-  "current": "trainer-functional-page",
-  "next": "equity-razz-functional-page",
+  "current": "equity-razz-functional-page",
+  "next": "practice-page-enhancement",
   "backlog": [
     "equity-razz-functional-page",
     "practice-page-enhancement"
@@ -64,9 +65,9 @@
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "843e0da",
-    "last_reviewed_at": "2026-06-19T14:30:00Z",
+    "last_reviewed_sha": "702d588",
+    "last_reviewed_at": "2026-06-19T15:38:00Z",
     "verdict": "approved",
-    "notes": "Multi-task commit: equity-variant-omaha8-page (624-line Omaha Hi-Lo calculator, replaces 11-line stub, API returns hi/lo/scoop equity) + analyze-viewer-functional-page (406-line hand history viewer with PokerStars parser, HandViewer component integration). All success criteria met for both tasks. 368 tests pass. Both pages return 200."
+    "notes": "trainer-functional-page: 528-line /trainer page with Timed Drill (60s), Practice (no clock), Assessment (10 questions) modes. Reuses QuizCard component and useQuizApi hook. Demo question fallback when API unavailable. Session summary with accuracy, streaks, EV loss, avg time. Page returns 200. 368 tests pass."
   }
 }
