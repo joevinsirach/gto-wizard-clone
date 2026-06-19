@@ -166,7 +166,8 @@ pages:
       - endpoint: GET /api/v1/courses
         status: present
       - endpoint: GET /api/v1/courses/{id}
-        status: present
+        status: broken
+        evidence: "Returns 500 — sqlite3.OperationalError: no such column: lessons.video_url"
       - endpoint: POST /api/v1/courses/{id}/progress
         status: present
   - route: /icm

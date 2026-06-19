@@ -915,3 +915,52 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Check lesson list shows correct count matching API data
   - Verify progress tracking works (complete a lesson, check progress updates)
   - Verify layout doesn't overflow on standard desktop viewport (1280px+)
+
+### Task: fix-course-detail-api-500
+- **Description**: The `GET /api/v1/courses/{id}` endpoint returns HTTP 500 with error `sqlite3.OperationalError: no such column: lessons.video_url`. The `Lesson` model in `apps/api/models/course_models.py` has a `video_url` column, but the SQLite database schema is missing it. Fix by either: (a) adding the missing column via ALTER TABLE, or (b) rebuilding the database with the correct schema, or (c) making the column nullable with a default. The fix should make `curl http://localhost:8000/api/v1/courses/{id}` return a valid JSON response with course details and lessons array.
+- **Success criteria**:
+  - `curl http://localhost:8000/api/v1/courses/{id}` returns 200 with valid JSON
+  - Response includes `lessons` array with lesson data
+  - The `/courses/{id}` frontend page loads and displays course content (not the error state)
+- **Coach checks**:
+  - Verify the API returns 200 with course data for a known course ID
+  - Check the lessons array is populated
+  - Verify the frontend page renders course content without error
+
+### Task: fix-lessons-table-schema
+- **Description**: The `lessons` table in the SQLite database is out of sync with the SQLAlchemy model. The model defines columns (`video_url`, `quiz_data`, etc.) that don't exist in the actual database. Write and run a schema migration script that adds all missing columns to the `lessons` table. Check all other tables (`courses`, `user_progress`, etc.) for similar mismatches. The script should be idempotent (safe to run multiple times).
+- **Success criteria**:
+  - All model columns exist in the database schema
+  - `GET /api/v1/courses/{id}` returns 200 with lessons
+  - `GET /api/v1/courses/lessons/{lesson_id}` returns 200
+  - No data loss — existing data is preserved
+- **Coach checks**:
+  - Run the migration script and verify it completes without errors
+  - Check all course-related endpoints return 200
+  - Verify existing course/lesson data is intact
+
+### Task: study-postflop-visual-match-reference
+- **Description**: Compare the live `/study` page (postflop mode) against `docs/reference-study-interface.png`. The reference shows: board cards as styled playing cards (rank + suit, red for hearts/diamonds), street breadcrumb (PREFLOP → FLOP → TURN → RIVER), pot size display, action buttons with chip amount + pot % + GTO frequency, and GTO comparison overlay. Identify specific visual gaps and fix them iteratively.
+- **Success criteria**:
+  - Board cards render as styled playing cards with correct colors (red for hearts/diamonds)
+  - Street breadcrumb shows all 4 streets with active street highlighted
+  - Action buttons show chip amount + pot % + GTO frequency
+  - GTO comparison overlay appears after user selects an action
+  - Layout matches reference spacing and sizing
+- **Coach checks**:
+  - Navigate to `/study`, switch to postflop mode, deal a flop
+  - Verify board cards look like playing cards (not plain text)
+  - Click an action button and verify GTO comparison overlay appears
+  - Check street breadcrumb highlights active street
+
+### Task: courses-page-visual-match-reference
+- **Description**: Compare the live `/courses` page against `docs/reference-courses.png`. The reference shows course cards with specific layout: thumbnail area, title, description, progress bar, difficulty badge, and metadata. Identify gaps and fix them. Also verify the course detail page (`/courses/{id]}`) layout matches the reference once the API is fixed.
+- **Success criteria**:
+  - Course cards match reference layout (thumbnail, title, description, progress, metadata)
+  - Difficulty badges show correct colors (green=beginner, yellow=intermediate, red=advanced)
+  - Progress bars render correctly
+  - Course detail page has proper header, lesson sidebar, and content area
+- **Coach checks**:
+  - Navigate to `/courses` and compare card layout against reference
+  - Click a course and verify detail page layout
+  - Check difficulty badge colors match spec
