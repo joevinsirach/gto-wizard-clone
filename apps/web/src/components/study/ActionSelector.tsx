@@ -95,6 +95,8 @@ export default function ActionSelector({
               key={a.id}
               className="study-action-btn"
               onClick={() => !disabled && !locked && onSelect(a.id)}
+              aria-label={`${a.label}${isSelected ? ', selected' : ''}${isGto && locked ? ', GTO recommended' : ''}`}
+              aria-pressed={isSelected}
               title={a.description}
               style={{
                 borderRadius: 10,
@@ -163,6 +165,8 @@ export default function ActionSelector({
             <button
               key={s.bb}
               onClick={() => onSelectSize(s.bb)}
+              aria-label={`Raise to ${s.label}`}
+              aria-pressed={selectedSize === s.bb}
               style={{
                 padding: '5px 10px',
                 borderRadius: 6,

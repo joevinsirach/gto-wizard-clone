@@ -596,6 +596,16 @@ export default function StudyPage() {
             display: none !important;
           }
         }
+        /* Accessibility: visible focus indicators */
+        *:focus-visible {
+          outline: 2px solid #7CFC7C !important;
+          outline-offset: 1px !important;
+        }
+        [role="gridcell"]:focus-visible {
+          outline: 2px solid #fff !important;
+          outline-offset: 1px !important;
+          z-index: 10 !important;
+        }
       `}</style>
       {/* Hotkey toast */}
       {hotkeyToast && (
@@ -767,6 +777,8 @@ export default function StudyPage() {
         </button>
         <div style={{ marginLeft: 'auto', position: 'relative' }} data-hotkeys-popup>
           <button onClick={() => setShowHotkeys(!showHotkeys)}
+            aria-label={showHotkeys ? 'Hide keyboard shortcuts' : 'Show keyboard shortcuts'}
+            aria-expanded={showHotkeys}
             style={{
               background: showHotkeys ? '#1a3a2b' : '#161616',
               border: '1px solid #262626',
@@ -810,52 +822,67 @@ export default function StudyPage() {
       <div className="study-main-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 1fr)', gap: 8, padding: '0 12px', minHeight: 0 }}>
         {/* Matrix Panel */}
         <div style={{ background: '#1C1C1C', border: '1px solid #262626', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 8px', borderBottom: '1px solid #262626', flexShrink: 0 }}>
+          <div role="tablist" aria-label="Strategy view tabs" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 8px', borderBottom: '1px solid #262626', flexShrink: 0 }}>
             {([
               { id: 'strategy' as const, label: 'Strategy ▾' },
               { id: 'ranges' as const, label: 'Ranges' },
               { id: 'breakdown' as const, label: 'Breakdown' },
             ]).map(tab => (
-              <span key={tab.id} onClick={() => setActiveTab(tab.id)}
-                style={{ fontSize: 11, color: activeTab === tab.id ? '#fff' : '#8e8e8e', cursor: 'pointer', padding: '2px 0', position: 'relative', fontWeight: 500 }}>
+              <span key={tab.id} role="tab" aria-selected={activeTab === tab.id} tabIndex={0}
+                onClick={() => setActiveTab(tab.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab(tab.id) } }}
+                style={{ fontSize: 11, color: activeTab === tab.id ? '#fff' : '#8e8e8e', cursor: 'pointer', padding: '2px 0', position: 'relative', fontWeight: 500, outline: activeTab === tab.id ? `2px solid ${GREEN}` : 'none', outlineOffset: 2, borderRadius: 2 }}>
                 {tab.label}{activeTab === tab.id && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -4, height: 2, background: GREEN }} />}
               </span>
             ))}
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 4 }}>
             {activeTab === 'strategy' && (
-            <div className="study-matrix-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#1a1a1a', borderRadius: 6, overflow: 'hidden', padding: 2 }}>
-              {handCells.map(hand => {
-                const data = rangeData.get(hand)
-                const opacity = getCellOpacity(hand)
-                const isSelected = selectedCell === hand
-                const color = getCellColor(hand)
-                return (
-                  <div key={hand} className="study-matrix-cell" onClick={() => setSelectedCell(isSelected ? null : hand)}
-                    title={hand + (data ? ` — ${data.action} ${(data.frequency * 100).toFixed(0)}%` : '')}
-                    style={{
-                      aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 8, fontWeight: 700, color: '#fff', letterSpacing: -0.3,
-                      textShadow: '0 1px 2px rgba(0,0,0,.8)', cursor: 'pointer', userSelect: 'none',
-                      background: color, opacity,
-                      border: isSelected ? '2px solid #fff' : '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: 3,
-                      transition: 'opacity .15s, border .15s',
-                      position: 'relative',
-                    }}>
-                    <span style={{ zIndex: 1 }}>{hand}</span>
-                    {data && data.action !== 'fold' && (
-                      <span className="study-matrix-cell-freq" style={{
-                        position: 'absolute', bottom: 1, right: 2,
-                        fontSize: 6, fontWeight: 600, opacity: 0.7,
-                        color: '#fff',
-                      }}>
-                        {(data.frequency * 100).toFixed(0)}%
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
+            <div role="grid" aria-label="Hand matrix" className="study-matrix-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: 1, background: '#1a1a1a', borderRadius: 6, overflow: 'hidden', padding: 2 }}>
+              {MATRIX_HANDS.map((row, rowIdx) => (
+                <div key={rowIdx} role="row" style={{ display: 'contents' }}>
+                  {row.map(hand => {
+                    const data = rangeData.get(hand)
+                    const opacity = getCellOpacity(hand)
+                    const isSelected = selectedCell === hand
+                    const color = getCellColor(hand)
+                    return (
+                      <div key={hand} role="gridcell" tabIndex={isSelected ? 0 : -1}
+                        aria-label={`${hand}${data ? `, ${data.action} ${(data.frequency * 100).toFixed(0)} percent` : ''}`}
+                        aria-selected={isSelected}
+                        onClick={() => setSelectedCell(isSelected ? null : hand)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setSelectedCell(isSelected ? null : hand)
+                          }
+                        }}
+                        style={{
+                          aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 8, fontWeight: 700, color: '#fff', letterSpacing: -0.3,
+                          textShadow: '0 1px 2px rgba(0,0,0,.8)', cursor: 'pointer', userSelect: 'none',
+                          background: color, opacity,
+                          border: isSelected ? '2px solid #fff' : '1px solid rgba(255,255,255,0.06)',
+                          borderRadius: 3,
+                          transition: 'opacity .15s, border .15s',
+                          position: 'relative',
+                          outline: 'none',
+                        }}>
+                        <span style={{ zIndex: 1 }}>{hand}</span>
+                        {data && data.action !== 'fold' && (
+                          <span className="study-matrix-cell-freq" style={{
+                            position: 'absolute', bottom: 1, right: 2,
+                            fontSize: 6, fontWeight: 600, opacity: 0.7,
+                            color: '#fff',
+                          }}>
+                            {(data.frequency * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
             )}
             {activeTab === 'ranges' && (
@@ -1031,7 +1058,7 @@ export default function StudyPage() {
           </div>
 
           {/* Board Display with card entry */}
-          <div style={{
+          <nav aria-label="Street navigation" style={{
             padding: '6px 10px',
             borderBottom: '1px solid #262626',
             borderTop: '1px solid #262626',
@@ -1067,6 +1094,7 @@ export default function StudyPage() {
                   }}>?</div>
                 ))}
                 <button onClick={handleGenerateFlop}
+                  aria-label="Deal random flop"
                   style={{
                     marginLeft: 6, padding: '4px 10px', borderRadius: 4,
                     background: '#16241a', border: `1px solid ${GREEN}`,
@@ -1078,6 +1106,7 @@ export default function StudyPage() {
             )}
             {boardStreet === 'flop' && (
               <button onClick={handleAdvanceStreet}
+                aria-label="Deal turn card"
                 style={{
                   marginLeft: 6, padding: '4px 10px', borderRadius: 4,
                   background: '#16241a', border: `1px solid ${GREEN}`,
@@ -1088,6 +1117,7 @@ export default function StudyPage() {
             )}
             {boardStreet === 'turn' && (
               <button onClick={handleAdvanceStreet}
+                aria-label="Deal river card"
                 style={{
                   marginLeft: 6, padding: '4px 10px', borderRadius: 4,
                   background: '#16241a', border: `1px solid ${GREEN}`,
@@ -1098,6 +1128,7 @@ export default function StudyPage() {
             )}
             {boardCards.length > 0 && (
               <button onClick={handleResetBoard}
+                aria-label="Reset board"
                 style={{
                   marginLeft: 4, padding: '4px 8px', borderRadius: 4,
                   background: '#1a1a1a', border: '1px solid #333',
@@ -1106,7 +1137,7 @@ export default function StudyPage() {
                 ✕
               </button>
             )}
-          </div>
+          </nav>
 
           {/* GTO Action Frequency Bars */}
           {isSolverMode && (
@@ -1193,6 +1224,7 @@ export default function StudyPage() {
               <button
                 onClick={handleCheckAction}
                 disabled={!userAction}
+                aria-label={userAction ? `Check ${userAction} against GTO` : 'Select an action first'}
                 style={{
                   width: '100%', marginTop: 8,
                   padding: '8px', borderRadius: 6,
@@ -1294,6 +1326,7 @@ export default function StudyPage() {
                 {/* Try Again */}
                 <button
                   onClick={() => { setUserAction(null); setActionFeedback(null); setBetSize(null) }}
+                  aria-label="Try again with a new action"
                   style={{
                     width: '100%', marginTop: 10, padding: '8px', borderRadius: 6,
                     background: '#1a1a1a', border: '1px solid #333',
