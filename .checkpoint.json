@@ -60,23 +60,24 @@
     "update-features-yaml-to-match-reality",
     "study-page-postflop-visual-polish",
     "update-features-yaml-hand-history",
-    "e2e-test-coverage-expansion"
+    "e2e-test-coverage-expansion",
+    "study-page-mobile-responsive"
   ],
-  "current_task": "study-page-mobile-responsive",
-  "next": "study-page-mobile-responsive",
+  "current_task": "push-fold-page-functional",
+  "next": "push-fold-page-functional",
   "backlog": [
     "study-page-mobile-responsive",
     "push-fold-page-functional",
     "range-explorer-page-functional"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "bb1a3f1",
+  "last_sha": "50bc1d2",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "bb1a3f1",
-    "last_reviewed_at": "2026-06-20T01:00:00Z",
-    "verdict": "approved",
-    "notes": "Added 3 new E2E test files (hand-history, quiz, study-preflop-flow) with 7 tests total. All pass. No regressions in existing 111 tests."
+    "last_reviewed_sha": "50bc1d2",
+    "last_reviewed_at": "2026-06-20T01:12:00Z",
+    "verdict": "pending",
+    "notes": "Added mobile responsive CSS with 768px and 480px breakpoints. All 368 unit tests pass. Live returns 200."
   }
 }
