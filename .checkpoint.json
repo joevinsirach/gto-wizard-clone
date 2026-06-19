@@ -92,7 +92,7 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "ea30fbfa9f291e0366d25ea83596203e2c064730",
+    "last_reviewed_sha": "cc66399e12e23bbe81579ee8ca6504e166119a67",
     "last_reviewed_at": "2026-06-20T06:45:00Z",
     "verdict": "approved",
     "notes": "Reviewed 2 unreviewed commits: 802e1b9 (fix(equity): prevent Monte Carlo from blocking API event loop — wrapped equity_vs_range and equity_vs_range_multiway in asyncio.to_thread(), fixed GET /calculate to use proper Query params instead of Pydantic body model) and ea30fbf (checkpoint update). POST /calculate returns in 10ms (was 15s+ timeout). GET /calculate returns in 7ms. Response structure correct: equity/wins/ties/total/ev_per_hand. All 368 tests pass. All commits pushed. current_task advanced to fix-e2e-test-runner."
