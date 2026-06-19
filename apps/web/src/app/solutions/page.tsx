@@ -8,6 +8,17 @@ type Position = "BTN" | "SB" | "BB" | "CO" | "MP" | "UTG";
 type BoardType = "dry" | "wet" | "paired" | "rainbow" | "monochrome";
 type Street = "preflop" | "flop" | "turn" | "river";
 
+interface StrategyAction {
+  action: string;
+  frequency: number;
+  ev: number;
+}
+
+interface StrategyData {
+  actions: StrategyAction[];
+  hands?: Record<string, StrategyAction>;
+}
+
 interface SolutionSpot {
   id: string;
   board: string;
@@ -21,10 +32,7 @@ interface SolutionSpot {
   created_at: string;
   likes: number;
   tags: string[];
-  strategy_json: Record<
-    string,
-    { action: "raise" | "call" | "fold" | "check" | "bet"; frequency: number; ev: number }
-  >;
+  strategy_json: StrategyData;
   comments_count?: number;
   fork_count?: number;
 }
@@ -97,7 +105,8 @@ function renderBoardCards(board: string) {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-8 h-11 rounded bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 text-xs"
+            className="w-9 h-12 rounded border border-gray-600 flex items-center justify-center text-gray-500 text-xs"
+            style={{ backgroundColor: "#1a1a2e" }}
           >
             ?
           </div>
@@ -106,27 +115,44 @@ function renderBoardCards(board: string) {
     );
   }
 
-  const cleaned = board.replace(/-/g, "");
+  const cleaned = board.replace(/-/g, "").replace(/[♠♥♦♣]/g, (m) => {
+    const map: Record<string, string> = { "♠": "s", "♥": "h", "♦": "d", "♣": "c" };
+    return map[m] || m;
+  });
+
+  // Parse cards - each card is rank+suit (2 chars), but 10 is '10' so 3 chars
   const cards: string[] = [];
-  for (let i = 0; i < cleaned.length - 1; i += 2) {
-    cards.push(cleaned.slice(i, i + 2));
+  let i = 0;
+  while (i < cleaned.length) {
+    // Check for 10 (rank '10' + suit = 3 chars)
+    if (cleaned[i] === "1" && i + 1 < cleaned.length && cleaned[i + 1] === "0") {
+      cards.push(cleaned.slice(i, i + 3));
+      i += 3;
+    } else {
+      cards.push(cleaned.slice(i, i + 2));
+      i += 2;
+    }
   }
 
   return (
     <div className="flex gap-1">
-      {cards.map((card, i) => {
+      {cards.map((card, idx) => {
         const rank = card.slice(0, -1);
         const suit = getSuitSymbol(card);
         const color = getSuitColor(card);
         return (
           <div
-            key={i}
+            key={idx}
             className={cn(
-              "w-8 h-11 rounded bg-gray-800 border border-gray-600 flex flex-col items-center justify-center text-xs font-mono",
+              "w-9 h-12 rounded border flex flex-col items-center justify-center text-xs font-mono shadow-sm",
               color
             )}
+            style={{
+              backgroundColor: "#f0f0f0",
+              borderColor: "#ccc",
+            }}
           >
-            <span className="leading-none font-bold">{rank}</span>
+            <span className="leading-none font-bold text-[11px]">{rank}</span>
             <span className="leading-none text-[10px]">{suit}</span>
           </div>
         );
@@ -144,10 +170,11 @@ function getStreetFromBoardType(boardType: string): Street {
 }
 
 function getTopActions(
-  strategy: Record<string, { action: string; frequency: number; ev: number }>,
+  strategy: StrategyData,
   count: number = 3
-): { action: string; frequency: number; ev: number }[] {
-  return Object.values(strategy)
+): StrategyAction[] {
+  if (!strategy?.actions) return [];
+  return [...strategy.actions]
     .sort((a, b) => b.frequency - a.frequency)
     .slice(0, count);
 }
@@ -631,46 +658,86 @@ export default function SolutionsPage() {
                       GTO Strategy
                     </h4>
                     <div className="space-y-2">
-                      {Object.entries(selectedSolution.strategy_json)
-                        .sort(
-                          (a, b) => b[1].frequency - a[1].frequency
-                        )
-                        .slice(0, 8)
-                        .map(([hand, data]) => (
-                          <div key={hand} className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-gray-300 w-10">
-                              {hand}
-                            </span>
-                            <span
-                              className={cn(
-                                "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase text-white w-14 text-center",
-                                getActionColor(data.action)
-                              )}
-                            >
-                              {data.action}
-                            </span>
-                            <div
-                              className="flex-1 h-2 rounded-full overflow-hidden"
-                              style={{ backgroundColor: "#262626" }}
-                            >
-                              <div
-                                className={cn(
-                                  "h-full rounded-full",
-                                  getActionBarColor(data.action)
-                                )}
-                                style={{
-                                  width: `${Math.min(data.frequency * 100, 100)}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-[10px] text-gray-400 w-10 text-right">
-                              {(data.frequency * 100).toFixed(0)}%
-                            </span>
-                            <span className="text-[10px] text-gray-500 w-12 text-right">
-                              {data.ev.toFixed(2)} EV
-                            </span>
-                          </div>
-                        ))}
+                      {/* Show hands breakdown if available, otherwise show actions */}
+                      {selectedSolution.strategy_json.hands
+                        ? Object.entries(selectedSolution.strategy_json.hands)
+                            .sort(
+                              (a, b) => b[1].frequency - a[1].frequency
+                            )
+                            .slice(0, 8)
+                            .map(([hand, data]) => (
+                              <div key={hand} className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-gray-300 w-10">
+                                  {hand}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase text-white w-14 text-center",
+                                    getActionColor(data.action)
+                                  )}
+                                >
+                                  {data.action}
+                                </span>
+                                <div
+                                  className="flex-1 h-2 rounded-full overflow-hidden"
+                                  style={{ backgroundColor: "#262626" }}
+                                >
+                                  <div
+                                    className={cn(
+                                      "h-full rounded-full",
+                                      getActionBarColor(data.action)
+                                    )}
+                                    style={{
+                                      width: `${Math.min(data.frequency * 100, 100)}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-gray-400 w-10 text-right">
+                                  {(data.frequency * 100).toFixed(0)}%
+                                </span>
+                                <span className="text-[10px] text-gray-500 w-12 text-right">
+                                  {data.ev.toFixed(2)} EV
+                                </span>
+                              </div>
+                            ))
+                        : selectedSolution.strategy_json.actions
+                            .sort((a, b) => b.frequency - a.frequency)
+                            .slice(0, 8)
+                            .map((action, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-gray-300 w-10">
+                                  Action {idx + 1}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase text-white w-14 text-center",
+                                    getActionColor(action.action)
+                                  )}
+                                >
+                                  {action.action}
+                                </span>
+                                <div
+                                  className="flex-1 h-2 rounded-full overflow-hidden"
+                                  style={{ backgroundColor: "#262626" }}
+                                >
+                                  <div
+                                    className={cn(
+                                      "h-full rounded-full",
+                                      getActionBarColor(action.action)
+                                    )}
+                                    style={{
+                                      width: `${Math.min(action.frequency * 100, 100)}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-gray-400 w-10 text-right">
+                                  {(action.frequency * 100).toFixed(0)}%
+                                </span>
+                                <span className="text-[10px] text-gray-500 w-12 text-right">
+                                  {action.ev.toFixed(2)} EV
+                                </span>
+                              </div>
+                            ))}
                     </div>
                   </div>
 

@@ -11,7 +11,7 @@
  ○ (pwa) Service worker: /home/sc/repos/gto-wizard-clone/apps/web/public/sw.js
  ○ (pwa)   URL: /sw.js
  ○ (pwa)   Scope: /
- ✓ Compiled successfully in 8.3s
+ ✓ Compiled successfully in 6.7s
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/40) ...
@@ -25,12 +25,13 @@
 Route (app)                                 Size  First Load JS
 ┌ ○ /                                      166 B         109 kB
 ├ ○ /_not-found                            997 B         106 kB
-├ ○ /analyze                             3.59 kB         219 kB
+├ ○ /analyze                              3.6 kB         219 kB
 ├ ○ /analyze/hands                       4.29 kB         223 kB
 ├ ○ /analyze/leaks                       6.73 kB         225 kB
 ├ ○ /analyze/viewer                      4.74 kB         220 kB
 ├ ○ /bomb-pot                            2.58 kB         108 kB
-├ ○ /courses                             3.81 kB         113 kB
+├ ○ /courses                             3.99 kB         113 kB
+├ ƒ /courses/[id]                        3.55 kB         112 kB
 ├ ○ /double-board                        2.33 kB         108 kB
 ├ ○ /equity                              6.35 kB         112 kB
 ├ ○ /equity/2-7sd                        3.53 kB         109 kB
@@ -56,7 +57,7 @@ Route (app)                                 Size  First Load JS
 ├ ○ /spots                               4.39 kB         115 kB
 ├ ○ /strategies                          7.13 kB         112 kB
 ├ ○ /strategy                            4.09 kB         115 kB
-├ ○ /study                               13.8 kB         119 kB
+├ ○ /study                               13.7 kB         119 kB
 ├ ○ /train                               11.2 kB         220 kB
 ├ ○ /train/review                        2.76 kB         114 kB
 ├ ○ /trainer                             4.25 kB         112 kB
@@ -67,5 +68,6 @@ Route (app)                                 Size  First Load JS
   └ other shared chunks (total)          2.09 kB
 
 
-○  (Static)  prerendered as static content
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
 
