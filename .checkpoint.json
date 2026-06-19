@@ -51,20 +51,13 @@
   "current": "equity-variant-2-7sd-page",
   "next": "equity-variant-plo5-page",
   "backlog": [
-    "equity-variant-2-7sd-page",
     "equity-variant-plo5-page",
     "analyze-viewer-functional-page"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "28ffe4b",
+  "last_sha": "702d481",
   "blocker": null,
   "spec_gaps": [
-    {
-      "item": "GET /equity/2-7sd returns stub page",
-      "type": "stub_page",
-      "priority": 2,
-      "evidence": "page.tsx imports VariantStubPage, shows 'under development'"
-    },
     {
       "item": "GET /equity/plo5 returns stub page",
       "type": "stub_page",
