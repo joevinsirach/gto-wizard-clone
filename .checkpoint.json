@@ -74,7 +74,7 @@
     "course-lesson-content-management"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "3516d5b1bf959fee417c098facecbad662328284",
+  "last_sha": "0918cf1fd592d10e47501024eaa3e1f72b341191",
   "blocker": null,
   "spec_gaps": [
     {
@@ -103,9 +103,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "3516d5b1bf959fee417c098facecbad662328284",
-    "last_reviewed_at": "2026-06-20T04:00:00Z",
+    "last_reviewed_sha": "0918cf1fd592d10e47501024eaa3e1f72b341191",
+    "last_reviewed_at": "2026-06-20T06:00:00Z",
     "verdict": "approved",
-    "notes": "No new commits since last review. Loop was stalled — current_task pointed to completed 'range-explorer-page-functional'. Found that PostflopTraining.tsx (935 lines) implements ALL postflop study components that were still listed as missing in spec_gaps/backlog. Cleared stale entries. Updated FEATURES.yaml (plo4 was marked missing but is present). Generated 4 new tasks based on actual gaps: equity timeout, E2E test runner, accessibility, API performance."
+    "notes": "Reviewed 2 unreviewed commits: 7a6fd99 (checkpoint update — marked range-explorer complete, cleared stale backlog, updated FEATURES.yaml postflop components to present) and 0918cf1 (coach recovery — added 5 new tasks to AGENTS.md). Both are maintenance/bookkeeping commits with no code changes. All 368 tests pass. API health 200. Live site 200. All commits pushed. FEATURES.yaml: 79 present, 0 missing/stub/broken. 5 tasks in pipeline — healthy backlog."
   }
 }
