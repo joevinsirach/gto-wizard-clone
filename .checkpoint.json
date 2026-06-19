@@ -105,7 +105,7 @@
       "task": "study-postflop-visual-match-reference",
       "sha": "4cf93aa",
       "date": "2026-06-20",
-      "summary": "Style board cards as white playing cards with red diamonds \u2014 fix card background from dark to cream, diamond color from orange to red",
+      "summary": "Style board cards as white playing cards with red diamonds — fix card background from dark to cream, diamond color from orange to red",
       "coach": "approved"
     },
     {
@@ -119,14 +119,14 @@
       "task": "fix-icm-api-route-prefix",
       "sha": "c3fc6d2",
       "date": "2026-06-20",
-      "summary": "Change ICM router prefix from /icm to /api/v1/icm \u2014 frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404'd. Now returns valid ICM calculation response.",
+      "summary": "Change ICM router prefix from /icm to /api/v1/icm — frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404'd. Now returns valid ICM calculation response.",
       "coach": "approved"
     },
     {
       "task": "icm-page-visual-match-reference",
       "sha": "65d4c7b",
       "date": "2026-06-20",
-      "summary": "Add dollar-EV and Chip EV columns to ICM results table \u2014 API already returned ev/chip_equity, now displayed in frontend with gold/blue styling",
+      "summary": "Add dollar-EV and Chip EV columns to ICM results table — API already returned ev/chip_equity, now displayed in frontend with gold/blue styling",
       "coach": "approved"
     },
     {
@@ -142,50 +142,60 @@
       "date": "2026-06-20",
       "summary": "Created seed_community_spots.py with 3 sample spots. Fixed seed.py empty CREATE TABLE bug. /api/v1/spots returns 200 with 3 community spots. Spot detail endpoint works.",
       "coach": "approved"
+    },
+    {
+      "task": "solutions-page-visual-match-reference",
+      "sha": "1cc1cfb",
+      "date": "2026-06-20",
+      "summary": "Fix strategy_json format mismatch (API returns {actions: [...]} not Record<string,Action>), fix getTopActions and GTO Strategy detail panel, update board cards to white style with proper suit parsing",
+      "coach": "approved"
     }
   ],
-  "current_task": "solutions-page-visual-match-reference",
-  "next": null,
+  "current_task": "start-solver-container",
+  "next": "fix-e2e-test-runner",
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "71ff5ac",
+  "last_sha": "1cc1cfb",
   "blocker": null,
   "remaining_agents_md_tasks": [
-    "solutions-page-visual-match-reference",
-    "fix-e2e-test-runner",
-    "fix-solver-docker-build",
-    "fix-solver-protobuf-version"
+    "start-solver-container",
+    "fix-e2e-test-runner-execution",
+    "seed-quiz-spots-with-board-data",
+    "dashboard-page-visual-match-reference",
+    "equity-page-visual-match-reference",
+    "practice-page-visual-match-reference",
+    "update-features-yaml-courses-detail"
   ],
-  "note": "Remaining AGENTS.md tasks verified: most are implemented under different names (e.g., Phase-1d covers interactive-postflop-study-buttons+board-display+action-buttons+street-navigation+pot-and-history; Makefile covers automate-seed-on-deploy; Seed Data section covers document-seed-script; postflop-strategy endpoint exists). Visual polish tasks (icm/solutions) require vision analysis. Infrastructure tasks (solver docker build/protobuf) are environment-specific.",
+  "note": "Coach review 2026-06-20: All existing tasks completed. Generated 7 new tasks: solver container startup, E2E test execution fix, quiz seed data with boards, visual match for dashboard/equity/practice pages, FEATURES.yaml courses detail fix.",
   "spec_gaps": [
     {
       "item": "POST /api/v1/equity/calculate timeout",
       "type": "broken_endpoint",
       "priority": 1,
-      "evidence": "FIXED \u2014 asyncio.wait_for + reduced default iterations"
+      "evidence": "FIXED — asyncio.wait_for + reduced default iterations"
     },
     {
-      "item": "E2E test runner broken \u2014 vitest/Playwright globals conflict",
+      "item": "E2E test runner broken — vitest/Playwright globals conflict",
       "type": "broken_tests",
       "priority": 1,
-      "evidence": "16 E2E test files still failing with Playwright/vitest globals conflict \u2014 pre-existing, not caused by recent commits",
+      "evidence": "16 E2E test files still failing with Playwright/vitest globals conflict — pre-existing, not caused by recent commits",
       "status": "known"
     },
     {
       "item": "study-page accessibility audit (keyboard nav, ARIA labels, screen reader)",
       "type": "missing_feature",
       "priority": 2,
-      "evidence": "FIXED \u2014 ARIA labels, keyboard nav, focus indicators added",
+      "evidence": "FIXED — ARIA labels, keyboard nav, focus indicators added",
       "status": "fixed"
     },
     {
-      "item": "API response time \u2014 equity calc times out at 15s+",
+      "item": "API response time — equity calc times out at 15s+",
       "type": "performance",
       "priority": 2,
-      "evidence": "FIXED \u2014 reduced to 10k iterations + 5s timeout guard"
+      "evidence": "FIXED — reduced to 10k iterations + 5s timeout guard"
     },
     {
-      "item": "ICM API route prefix mismatch \u2014 router at /icm but frontend calls /api/v1/icm",
+      "item": "ICM API route prefix mismatch — router at /icm but frontend calls /api/v1/icm",
       "type": "broken_endpoint",
       "priority": 1,
       "evidence": "apps/api/routers/icm.py has prefix='/icm' but all other routers include /api/v1. Frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404s. Fix: change prefix to '/api/v1/icm'",
@@ -193,9 +203,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "71ff5acb7deebe31f5241b43dada5f6f0d19a95f",
-    "last_reviewed_at": "2026-06-20T18:35:00Z",
+    "last_reviewed_sha": "1cc1cfb41114ec9107ed6a0c3baf08b3a6cf524b",
+    "last_reviewed_at": "2026-06-20T19:00:00Z",
     "verdict": "approved",
-    "notes": "Approved fix-quiz-spots-table-missing + fix-community-spots-table-missing (71ff5ac). seed.py CREATE TABLE bug fixed, 3 community spots seeded, /api/v1/spots returns 200, spot detail endpoint works. 368 tests pass. Live site healthy (HTTP 200)."
+    "notes": "Approved solutions-page-visual-match-reference (1cc1cfb). Fixed critical strategy_json format mismatch — API returns {actions: [...]} but frontend expected Record<string,Action>. Fixed getTopActions, detail panel rendering, and board card styling. Build passes, /solutions returns 200."
   }
 }
