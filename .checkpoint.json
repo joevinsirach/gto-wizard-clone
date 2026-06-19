@@ -105,48 +105,55 @@
       "task": "study-postflop-visual-match-reference",
       "sha": "4cf93aa",
       "date": "2026-06-20",
-      "summary": "Style board cards as white playing cards with red diamonds — fix card background from dark to cream, diamond color from orange to red",
+      "summary": "Style board cards as white playing cards with red diamonds \u2014 fix card background from dark to cream, diamond color from orange to red",
       "coach": "approved"
+    },
+    {
+      "task": "courses-page-visual-match-reference",
+      "sha": "c98b6f7",
+      "date": "2026-06-20",
+      "summary": "Visual match to reference: white card backgrounds, mint-green #aafbb2 accents, thumbnail icons, progress bars, light-theme filters and stats",
+      "coach": "pending"
     }
   ],
-  "current_task": "courses-page-visual-match-reference",
+  "current_task": "tbd",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "4cf93aa",
+  "last_sha": "c98b6f7",
   "blocker": null,
   "spec_gaps": [
     {
       "item": "POST /api/v1/equity/calculate timeout",
       "type": "broken_endpoint",
       "priority": 1,
-      "evidence": "FIXED — asyncio.wait_for + reduced default iterations"
+      "evidence": "FIXED \u2014 asyncio.wait_for + reduced default iterations"
     },
     {
-      "item": "E2E test runner broken — vitest/Playwright globals conflict",
+      "item": "E2E test runner broken \u2014 vitest/Playwright globals conflict",
       "type": "broken_tests",
       "priority": 1,
-      "evidence": "16 E2E test files still failing with Playwright/vitest globals conflict — pre-existing, not caused by recent commits",
+      "evidence": "16 E2E test files still failing with Playwright/vitest globals conflict \u2014 pre-existing, not caused by recent commits",
       "status": "known"
     },
     {
       "item": "study-page accessibility audit (keyboard nav, ARIA labels, screen reader)",
       "type": "missing_feature",
       "priority": 2,
-      "evidence": "FIXED — ARIA labels, keyboard nav, focus indicators added",
+      "evidence": "FIXED \u2014 ARIA labels, keyboard nav, focus indicators added",
       "status": "fixed"
     },
     {
-      "item": "API response time — equity calc times out at 15s+",
+      "item": "API response time \u2014 equity calc times out at 15s+",
       "type": "performance",
       "priority": 2,
-      "evidence": "FIXED — reduced to 10k iterations + 5s timeout guard"
+      "evidence": "FIXED \u2014 reduced to 10k iterations + 5s timeout guard"
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "6a3ed933f823c15a002b60dc13e18454524f38c4",
-    "last_reviewed_at": "2026-06-20T14:00:00Z",
-    "verdict": "approved",
-    "notes": "Reviewed 1 player commit (4cf93aa) since last review. 6a3ed93 is checkpoint-only — skipped. 4cf93aa changes board card styling: diamond color from orange #FF6B35 to red #E53935 (matching hearts), card background from dark #0a0a0a to cream #f5f5f0, text color uses isRed check. Both study/page.tsx and PostflopTraining.tsx updated consistently. Live site 200, API healthy, 368 unit tests pass. E2E tests still broken (pre-existing). APPROVE."
+    "last_reviewed_sha": "c98b6f7",
+    "last_reviewed_at": "2026-06-20T15:00:00Z",
+    "verdict": "pending",
+    "notes": "Player commit pending coach review"
   }
 }
