@@ -144,10 +144,17 @@
       "status": "fixed"
     },
     {
-      "item": "API response time \u2014 equity calc times out at 15s+",
+      "item": "API response time \\u2014 equity calc times out at 15s+",
       "type": "performance",
       "priority": 2,
-      "evidence": "FIXED \u2014 reduced to 10k iterations + 5s timeout guard"
+      "evidence": "FIXED \\u2014 reduced to 10k iterations + 5s timeout guard"
+    },
+    {
+      "item": "ICM API route prefix mismatch \\u2014 router at /icm but frontend calls /api/v1/icm",
+      "type": "broken_endpoint",
+      "priority": 1,
+      "evidence": "apps/api/routers/icm.py has prefix='/icm' but all other routers include /api/v1. Frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404s. Fix: change prefix to '/api/v1/icm'",
+      "status": "open"
     }
   ],
   "coach_review": {
