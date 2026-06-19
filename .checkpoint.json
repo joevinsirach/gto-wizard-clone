@@ -49,19 +49,19 @@
     "equity-variant-2-7sd-page",
     "equity-variant-plo5-page",
     "analyze-viewer-functional-page",
-    "equity-variant-omaha8-page"
+    "equity-variant-omaha8-page",
+    "equity-variant-stud8-page"
   ],
-  "current": "equity-variant-stud8-page",
-  "next": "analyze-leaks-functional-page",
+  "current": "analyze-leaks-functional-page",
+  "next": "trainer-functional-page",
   "backlog": [
-    "equity-variant-stud8-page",
     "analyze-leaks-functional-page",
     "trainer-functional-page",
     "equity-razz-functional-page",
     "practice-page-enhancement"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "843e0da",
+  "last_sha": "c6d8a74",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
