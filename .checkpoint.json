@@ -119,17 +119,62 @@
       "task": "fix-icm-api-route-prefix",
       "sha": "c3fc6d2",
       "date": "2026-06-20",
-      "summary": "Change ICM router prefix from /icm to /api/v1/icm — frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404'd. Now returns valid ICM calculation response.",
+      "summary": "Change ICM router prefix from /icm to /api/v1/icm \u2014 frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404'd. Now returns valid ICM calculation response.",
       "coach": "approved"
+    },
+    {
+      "task": "icm-page-visual-match-reference",
+      "sha": "65d4c7b",
+      "date": "2026-06-20",
+      "summary": "Add dollar-EV and Chip EV columns to ICM results table \u2014 API already returned ev/chip_equity, now displayed in frontend with gold/blue styling",
+      "coach": "pending"
     }
   ],
-  "current_task": "tbd",
+  "current_task": "icm-page-visual-match-reference",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "c3fc6d2",
+  "last_sha": "65d4c7b",
   "blocker": null,
+  "remaining_agents_md_tasks": [
+    "icm-page-visual-match-reference",
+    "solutions-page-visual-match-reference",
+    "postflop-spot-configuration",
+    "postflop-street-navigation",
+    "visual-study-postflop-match-reference",
+    "add-push-fold-charts-page",
+    "add-range-explorer-page",
+    "hand-history-frontend-page",
+    "plo4-frontend-page",
+    "quiz-frontend-page",
+    "seed-preflop-strategies",
+    "fix-solver-docker-build",
+    "fix-solver-protobuf-version",
+    "automate-seed-on-deploy",
+    "document-seed-script",
+    "interactive-postflop-study-buttons",
+    "postflop-solver-api-endpoint",
+    "study-postflop-action-buttons",
+    "study-postflop-board-display",
+    "study-postflop-pot-and-history",
+    "study-postflop-street-navigation"
+  ],
+  "note": "Remaining AGENTS.md tasks verified: most are implemented under different names (e.g., Phase-1d covers interactive-postflop-study-buttons+board-display+action-buttons+street-navigation+pot-and-history; Makefile covers automate-seed-on-deploy; Seed Data section covers document-seed-script; postflop-strategy endpoint exists). Visual polish tasks (icm/solutions) require vision analysis. Infrastructure tasks (solver docker build/protobuf) are environment-specific.",
   "spec_gaps": [
+    {
+      "item": "quiz_spots table missing from PostgreSQL database",
+      "type": "missing_table",
+      "priority": 1,
+      "evidence": "asyncpg.exceptions.UndefinedTableError: relation 'quiz_spots' does not exist. Causes 500 on GET /api/v1/quiz/random, /api/v1/quiz/categories, /api/v1/spots. fix_tables.py uses SQLite (wrong DB). seed.py creates quiz_spots with empty parentheses (no columns).",
+      "status": "new"
+    },
+    {
+      "item": "community_spots table missing from PostgreSQL database",
+      "type": "missing_table",
+      "priority": 1,
+      "evidence": "fix_tables.py does not include community_spots table. Causes 500 on GET /api/v1/spots. Model exists at apps/api/models/spots.py but table never created in PostgreSQL.",
+      "status": "new"
+    },
     {
       "item": "POST /api/v1/equity/calculate timeout",
       "type": "broken_endpoint",
@@ -151,13 +196,13 @@
       "status": "fixed"
     },
     {
-      "item": "API response time \\u2014 equity calc times out at 15s+",
+      "item": "API response time \u2014 equity calc times out at 15s+",
       "type": "performance",
       "priority": 2,
-      "evidence": "FIXED \\u2014 reduced to 10k iterations + 5s timeout guard"
+      "evidence": "FIXED \u2014 reduced to 10k iterations + 5s timeout guard"
     },
     {
-      "item": "ICM API route prefix mismatch \\u2014 router at /icm but frontend calls /api/v1/icm",
+      "item": "ICM API route prefix mismatch \u2014 router at /icm but frontend calls /api/v1/icm",
       "type": "broken_endpoint",
       "priority": 1,
       "evidence": "apps/api/routers/icm.py has prefix='/icm' but all other routers include /api/v1. Frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404s. Fix: change prefix to '/api/v1/icm'",
@@ -165,9 +210,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "13b4ece",
-    "last_reviewed_at": "2026-06-20T16:30:00Z",
+    "last_reviewed_sha": "6e49048",
+    "last_reviewed_at": "2026-06-20T17:06:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 2 player commits since last coach review. (1) c3fc6d2: fix ICM router prefix from /icm to /api/v1/icm — single line change, aligns with other routers. Verified POST /api/v1/icm/calculate returns 200 with valid ICM results. APPROVE. (2) 13b4ece: chore: mark fix-icm-api-route-prefix complete, advance to tbd. 21 unstarted tasks remain — backlog healthy. API healthy, site returns 200 on all key pages."
+    "notes": "No new player commits since last review (c3fc6d2). Live site 200, API healthy, 368 unit tests pass. Found 2 new spec gaps: quiz_spots and community_spots tables missing from PostgreSQL. E2E tests still broken (known). Backlog nearly exhausted \u2014 2 new tasks generated."
   }
 }
