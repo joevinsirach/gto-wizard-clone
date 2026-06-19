@@ -1,11 +1,180 @@
-import VariantStubPage from "@/components/variant-stub";
+"use client";
 
-export default function Stud8Page() {
+import { useState, useEffect, useCallback } from "react";
+import { variantApi } from "@/lib/api";
+import type { VariantInfo, EquityResult } from "@/lib/api";
+import { StudHandDisplay, makeDefaultStudHand } from "@/components/stud";
+import type { StudPlayerData } from "@/components/stud";
+import { SlotSelector, selectedCardsToRange, cardsToHandDisplay } from "@/components/CardSelector";
+import type { CardSelection } from "@/components/CardSelector";
+
+const MAX_STUD_CARDS = 7; // 3 down + 4 up
+
+export default function Stud8EquityPage() {
+  const [variant, setVariant] = useState<VariantInfo | null>(null);
+  const [heroCards, setHeroCards] = useState<CardSelection[]>([]);
+  const [villainCards, setVillainCards] = useState<CardSelection[]>([]);
+  const [heroRangeText, setHeroRangeText] = useState("");
+  const [villainRangeText, setVillainRangeText] = useState("");
+  const [result, setResult] = useState<EquityResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [useRangeInput, setUseRangeInput] = useState(false);
+
+  useEffect(() => { variantApi.get("stud8").then(setVariant); }, []);
+
+  // Build range string from selected cards, or use text input
+  const getHeroRange = useCallback(() => {
+    if (useRangeInput) return heroRangeText;
+    return selectedCardsToRange(heroCards) || "AA,KK";
+  }, [useRangeInput, heroRangeText, heroCards]);
+
+  const getVillainRange = useCallback(() => {
+    if (useRangeInput) return villainRangeText;
+    return selectedCardsToRange(villainCards) || "AKs,QQ";
+  }, [useRangeInput, villainRangeText, villainCards]);
+
+  const calculate = useCallback(async () => {
+    const hero = getHeroRange();
+    const villain = getVillainRange();
+    if (!hero || !villain) return;
+    setLoading(true); setError(null);
+    try {
+      const r = await variantApi.equity("stud8", hero, villain);
+      if (r) setResult(r); else setError("API returned no data");
+    } catch (e: unknown) { setError(String(e)); }
+    finally { setLoading(false); }
+  }, [getHeroRange, getVillainRange]);
+
+  // Build stud hand from selected cards
+  const handDisplayCards = cardsToHandDisplay(heroCards);
+  const heroHand: StudPlayerData | null = handDisplayCards.length >= 3 && result
+    ? makeDefaultStudHand(handDisplayCards, result.hero_equity, "Hero", true)
+    : null;
+
+  const villHandDisplayCards = cardsToHandDisplay(villainCards);
+  const villainHand: StudPlayerData | null = villHandDisplayCards.length >= 3 && result
+    ? makeDefaultStudHand(villHandDisplayCards, result.villain_equity ?? (100 - result.hero_equity), "Villain", false)
+    : null;
+
   return (
-    <VariantStubPage
-      variantKey="stud8"
-      variantName="Seven Card Stud Hi-Lo"
-      variantCategory="stud"
-    />
+    <div className="min-h-screen bg-[#1a1a2e] text-white">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">stud</span>
+            <span className="text-gray-600">·</span>
+            <span className="text-[11px] text-green-500 font-semibold">7 cards · no board · hi-lo 8-or-better</span>
+          </div>
+          <h1 className="text-2xl font-bold">Seven Card Stud Hi-Lo</h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Stud hi-lo split with 8-or-better low qualifier. 3 down, 4 up. Select cards for each player.
+          </p>
+        </div>
+
+        {/* Visual Hand Display */}
+        {heroHand && villainHand && (
+          <div className="flex justify-center">
+            <StudHandDisplay hero={heroHand} villain={villainHand} />
+          </div>
+        )}
+
+        {/* Hero / Villain card selectors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SlotSelector
+            maxCards={MAX_STUD_CARDS}
+            selected={heroCards}
+            onChange={setHeroCards}
+            label="Hero Cards (3 down + up to 4 up)"
+            downCount={3}
+            variantName="Stud8"
+          />
+          <SlotSelector
+            maxCards={MAX_STUD_CARDS}
+            selected={villainCards}
+            onChange={setVillainCards}
+            label="Villain Cards (3 down + up to 4 up)"
+            downCount={3}
+            variantName="Stud8"
+          />
+        </div>
+
+        {/* Toggle: range text input */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setUseRangeInput(!useRangeInput)}
+            className="text-[11px] text-gray-400 hover:text-gray-200 underline underline-offset-2"
+          >
+            {useRangeInput ? "Use card selector" : "Or enter ranges manually"}
+          </button>
+        </div>
+
+        {/* Manual range input (shown when toggled) */}
+        {useRangeInput && (
+          <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-5">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1.5">Hero Range</label>
+                <input
+                  className="w-full px-3 py-2.5 rounded-md border border-gray-700 bg-[#16213e] text-white text-sm font-mono outline-none focus:border-green-500 transition-colors"
+                  placeholder="AA,KK,AKs"
+                  value={heroRangeText}
+                  onChange={e => setHeroRangeText(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1.5">Villain Range</label>
+                <input
+                  className="w-full px-3 py-2.5 rounded-md border border-gray-700 bg-[#16213e] text-white text-sm font-mono outline-none focus:border-green-500 transition-colors"
+                  placeholder="QQ,JJ,TT"
+                  value={villainRangeText}
+                  onChange={e => setVillainRangeText(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Calculate button */}
+        <button
+          className="px-6 py-2.5 rounded-md border-none font-bold text-sm cursor-pointer bg-green-500 text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-400 transition-colors"
+          onClick={calculate}
+          disabled={loading || (!useRangeInput && heroCards.length < 2 && villainCards.length < 2)}
+        >
+          {loading ? "Calculating..." : "Calculate Equity"}
+        </button>
+
+        {/* Results */}
+        {result && (
+          <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-5">
+            <h3 className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-4">
+              Results · {result.iterations.toLocaleString()} iterations
+            </h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-[#1a1a2e] rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold font-mono text-green-500">{result.hero_equity.toFixed(1)}%</div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wider mt-1 font-semibold">Hero Equity</div>
+              </div>
+              {result.villain_equity !== null && (
+                <div className="bg-[#1a1a2e] rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold font-mono text-white">{result.villain_equity.toFixed(1)}%</div>
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider mt-1 font-semibold">Villain Equity</div>
+                </div>
+              )}
+            </div>
+            {/* Hi-Lo split info */}
+            <div className="border-t border-gray-800 pt-4">
+              <p className="text-xs text-gray-400 text-center">
+                Hi-Lo split: pot is divided between the best high hand and the best low hand (8-or-better qualifier).
+                A player with both the best high and low hand <em>scoops</em> the entire pot.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+      </div>
+    </div>
   );
 }
