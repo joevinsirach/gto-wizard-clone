@@ -320,9 +320,9 @@ export default function CoursesPage() {
                 </div>
               ) : (
                 filteredCourses.map((course) => (
-                  <button
+                  <Link
                     key={course.id}
-                    onClick={() => handleSelectCourse(course)}
+                    href={`/courses/${course.id}`}
                     className={cn(
                       "p-5 rounded-lg border bg-gray-900/50 text-left transition-all hover:scale-[1.02]",
                       selectedCourse?.id === course.id
@@ -356,7 +356,7 @@ export default function CoursesPage() {
                       </span>
                       <span className="text-poker-gold font-medium">{course.progress}%</span>
                     </div>
-                  </button>
+                  </Link>
                 ))
               )}
             </div>

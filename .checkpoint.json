@@ -11,7 +11,7 @@
     "board-display-area-with-PREFLOP-placeholder",
     "GTO-Range-Breakdown-text-frequencies",
     "Check-vs-GTO-with-sizing-comparison",
-    "Phase-1a-ACTION-frequency-progress-bars",
+    "Phase-1a-Action-frequency-progress-bars",
     "Phase-1b-Board-card-entry-hand-simulator",
     "Phase-1c-Strategy-Ranges-Breakdown-tabs-content",
     "Phase-1d-Postflop-training-mode",
@@ -72,13 +72,18 @@
       "date": "2026-06-20",
       "summary": "Accessibility audit: ARIA labels, keyboard nav, focus indicators on study page",
       "coach": "pending"
+    },
+    {
+      "task": "api-response-time-optimization",
+      "sha": "af80ae7",
+      "date": "2026-06-20",
+      "summary": "API response time optimization: Redis caching on equity calc, 5s timeout guard, all endpoints <200ms",
+      "coach": "pending"
     }
   ],
-  "current_task": "api-response-time-optimization",
-  "next": "api-response-time-optimization",
+  "current_task": "course-lesson-content-management",
+  "next": "course-lesson-content-management",
   "backlog": [
-    "study-page-accessibility-audit",
-    "api-response-time-optimization",
     "course-lesson-content-management"
   ],
   "health": "build_pass_200_ok",
@@ -89,33 +94,33 @@
       "item": "POST /api/v1/equity/calculate timeout",
       "type": "broken_endpoint",
       "priority": 1,
-      "evidence": "FIXED \u2014 asyncio.wait_for + reduced default iterations"
+      "evidence": "FIXED — asyncio.wait_for + reduced default iterations"
     },
     {
-      "item": "E2E test runner broken \u2014 vitest/Playwright globals conflict",
+      "item": "E2E test runner broken — vitest/Playwright globals conflict",
       "type": "broken_tests",
       "priority": 1,
-      "evidence": "FIXED \u2014 all 118 E2E tests pass (separate e2e/ config)",
+      "evidence": "FIXED — all 118 E2E tests pass (separate e2e/ config)",
       "status": "fixed"
     },
     {
       "item": "study-page accessibility audit (keyboard nav, ARIA labels, screen reader)",
       "type": "missing_feature",
       "priority": 2,
-      "evidence": "No ARIA labels or keyboard navigation on study page \u2014 violates WCAG",
+      "evidence": "No ARIA labels or keyboard navigation on study page — violates WCAG",
       "status": "fixed"
     },
     {
-      "item": "API response time \u2014 equity calc times out at 15s+",
+      "item": "API response time — equity calc times out at 15s+",
       "type": "performance",
       "priority": 2,
-      "evidence": "FIXED \u2014 reduced to 10k iterations + 5s timeout guard"
+      "evidence": "FIXED — reduced to 10k iterations + 5s timeout guard"
     }
   ],
   "coach_review": {
     "last_reviewed_sha": "2093c804414034908a2e5596db35999a18af75a2",
     "last_reviewed_at": "2026-06-20T10:05:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 3 unreviewed commits (58e6a5e, a898001, 2093c80). Only 58e6a5e has code: fix(e2e) changed 'Board Textures' to 'Range Builder' in range-explorer test \u2014 correct fix, page has 'Range Builder' heading. All 118 Playwright E2E tests pass. Live site 200. API healthy. current_task: study-page-accessibility-audit. Backlog: 3 tasks remaining \u2014 healthy."
+    "notes": "Reviewed 3 unreviewed commits (58e6a5e, a898001, 2093c80). Only 58e6a5e has code: fix(e2e) changed 'Board Textures' to 'Range Builder' in range-explorer test — correct fix, page has 'Range Builder' heading. All 118 Playwright E2E tests pass. Live site 200. API healthy. current_task: study-page-accessibility-audit. Backlog: 3 tasks remaining — healthy."
   }
 }
