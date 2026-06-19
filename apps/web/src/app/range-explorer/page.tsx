@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { RangeGrid, type CellData } from "@/components/equity/RangeGrid";
-import { RANKS, getHand } from "@/lib/utils";
+import { RANKS, getHand, getHandIndex } from "@/lib/utils";
 import {
   useStrategyLookup,
   parseBoardToStreet,
@@ -11,6 +11,144 @@ import {
   getCommonBoards,
 } from "@/hooks/useStrategyLookup";
 import { cn } from "@/lib/utils";
+
+// ============================================================================
+// Range String Parser
+// ============================================================================
+
+/**
+ * Parse a range string like "AA, AKs, KQs-TQs, 77+" into a Set of hand strings.
+ * Supports:
+ * - Individual hands: AA, AKs, KQo
+ * - Plus ranges: 77+, AQs+, KJs+
+ * - Dash ranges: AQs-AKs, T9s-T7s
+ * - Comma-separated lists
+ */
+function parseRangeString(rangeStr: string): Set<string> {
+  const selected = new Set<string>();
+  const tokens = rangeStr.split(",").map((t) => t.trim()).filter(Boolean);
+
+  for (const token of tokens) {
+    // Handle "+" ranges: e.g. "77+" means 77 through AA
+    if (token.endsWith("+")) {
+      const base = token.slice(0, -1);
+      const baseIdx = RANKS.indexOf(base[0] as typeof RANKS[number]);
+      if (base.length === 2 && base[0] === base[1] && baseIdx >= 0) {
+        // Pocket pair range: 77+
+        for (let i = baseIdx; i < RANKS.length; i++) {
+          selected.add(`${RANKS[i]}${RANKS[i]}`);
+        }
+      } else if (base.length === 3 && base[2] === "s" && baseIdx >= 0) {
+        // Suited range: AQs+
+        const secondRank = base[1];
+        const secondIdx = RANKS.indexOf(secondRank as typeof RANKS[number]);
+        for (let i = baseIdx; i < RANKS.length; i++) {
+          for (let j = secondIdx; j < RANKS.length; j++) {
+            if (i !== j) {
+              selected.add(`${RANKS[i]}${RANKS[j]}s`);
+            }
+          }
+        }
+      } else if (base.length === 3 && base[2] === "o" && baseIdx >= 0) {
+        // Offsuit range: AQo+
+        const secondRank = base[1];
+        const secondIdx = RANKS.indexOf(secondRank as typeof RANKS[number]);
+        for (let i = baseIdx; i < RANKS.length; i++) {
+          for (let j = secondIdx; j < RANKS.length; j++) {
+            if (i !== j) {
+              selected.add(`${RANKS[i]}${RANKS[j]}o`);
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    // Handle dash ranges: e.g. "T9s-T7s"
+    if (token.includes("-")) {
+      const [start, end] = token.split("-").map((t) => t.trim());
+      const startIdx = RANKS.indexOf(start[0] as typeof RANKS[number]);
+      const endIdx = RANKS.indexOf(end[0] as typeof RANKS[number]);
+      if (startIdx >= 0 && endIdx >= 0 && start.length >= 2 && end.length >= 2) {
+        const isSuited = start.endsWith("s");
+        const isOffsuit = start.endsWith("o");
+        const step = startIdx <= endIdx ? 1 : -1;
+        for (let i = startIdx; step > 0 ? i <= endIdx : i >= endIdx; i += step) {
+          const secondRank = start[1];
+          const secondIdx = RANKS.indexOf(secondRank as typeof RANKS[number]);
+          if (secondIdx >= 0 && i !== secondIdx) {
+            if (isSuited) selected.add(`${RANKS[i]}${RANKS[secondIdx]}s`);
+            else if (isOffsuit) selected.add(`${RANKS[i]}${RANKS[secondIdx]}o`);
+          }
+        }
+      }
+      continue;
+    }
+
+    // Individual hand
+    const hand = token.toUpperCase();
+    if (hand.length === 2 || hand.length === 3) {
+      selected.add(hand);
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * Convert a Set of selected hands to a compact range string.
+ * E.g. {AA, KK, QQ, AKs, AQs} -> "QQ+, AKs+"
+ */
+function handsToRangeString(hands: Set<string>): string {
+  if (hands.size === 0) return "";
+
+  const pairs: number[] = [];
+  const suited: [number, number][] = [];
+  const offsuit: [number, number][] = [];
+
+  for (const hand of hands) {
+    const idx = getHandIndex(hand);
+    if (!idx) continue;
+    if (hand.length === 2) {
+      pairs.push(idx.row);
+    } else if (hand.endsWith("s")) {
+      suited.push([idx.row, idx.col]);
+    } else if (hand.endsWith("o")) {
+      offsuit.push([idx.row, idx.col]);
+    }
+  }
+
+  const parts: string[] = [];
+
+  // Pairs: find consecutive ranges
+  if (pairs.length > 0) {
+    const sorted = [...new Set(pairs)].sort((a, b) => a - b);
+    let start = 0;
+    for (let i = 1; i <= sorted.length; i++) {
+      if (i === sorted.length || sorted[i] !== sorted[i - 1] + 1) {
+        const range = sorted.slice(start, i);
+        if (range.length >= 3) {
+          parts.push(`${RANKS[range[range.length - 1]]}${RANKS[range[range.length - 1]]}+`);
+        } else {
+          for (const r of range) {
+            parts.push(`${RANKS[r]}${RANKS[r]}`);
+          }
+        }
+        start = i;
+      }
+    }
+  }
+
+  // Suited and offsuit: just list them
+  for (const [r, c] of suited.sort((a, b) => a[0] - b[0] || a[1] - b[1])) {
+    parts.push(`${RANKS[r]}${RANKS[c]}s`);
+  }
+  for (const [r, c] of offsuit.sort((a, b) => a[0] - b[0] || a[1] - b[1])) {
+    parts.push(`${RANKS[r]}${RANKS[c]}o`);
+  }
+
+  return parts.join(", ");
+}
 
 // ============================================================================
 // Types
@@ -300,6 +438,17 @@ export default function RangeExplorerPage() {
   // Data source mode
   const [dataSource, setDataSource] = useState<"demo" | "api">("demo");
 
+  // Interactive range builder state
+  const [selectedHands, setSelectedHands] = useState<Set<string>>(new Set());
+  const [rangeInput, setRangeInput] = useState("");
+  const [rangeInputError, setRangeInputError] = useState<string | null>(null);
+  const [equityResult, setEquityResult] = useState<{
+    hands: string[];
+    equities: number[];
+    board: string;
+  } | null>(null);
+  const [equityLoading, setEquityLoading] = useState(false);
+
   // API hook
   const { lookupStrategy, loading, error, lastResult } = useStrategyLookup();
 
@@ -342,12 +491,145 @@ export default function RangeExplorerPage() {
     return generateDemoData(selectedPosition, selectedStack, board);
   }, [dataSource, apiData, selectedPosition, selectedStack, board]);
 
+  // Compute range stats from selected hands
+  const rangeStats = useMemo(() => {
+    let pairs = 0, suited = 0, offsuit = 0;
+    for (const hand of selectedHands) {
+      if (hand.length === 2) pairs++;
+      else if (hand.endsWith("s")) suited++;
+      else if (hand.endsWith("o")) offsuit++;
+    }
+    const totalHands = pairs + suited + offsuit;
+    const totalCombos = pairs * 6 + suited * 4 + offsuit * 12;
+    const percentage = totalCombos > 0 ? ((totalCombos / 1326) * 100).toFixed(1) : "0.0";
+    return { totalHands, totalCombos, percentage, pairs, suited, offsuit };
+  }, [selectedHands]);
+
   const stats = useMemo(() => computeRangeStats(gridData), [gridData]);
 
   const streetLabel = useMemo(() => {
     const s = parseBoardToStreet(board);
     return s.charAt(0).toUpperCase() + s.slice(1);
   }, [board]);
+
+  // Handle grid cell click for range building
+  const handleCellClick = useCallback((hand: string) => {
+    setSelectedHands((prev) => {
+      const next = new Set(prev);
+      if (next.has(hand)) {
+        next.delete(hand);
+      } else {
+        next.add(hand);
+      }
+      return next;
+    });
+    // Update range input to match selection
+    setRangeInput((prev) => {
+      const current = handsToRangeString(selectedHands);
+      return current;
+    });
+  }, [selectedHands]);
+
+  // Handle range input change
+  const handleRangeInputChange = useCallback(
+    (value: string) => {
+      setRangeInput(value);
+      setRangeInputError(null);
+
+      if (!value.trim()) {
+        setSelectedHands(new Set());
+        return;
+      }
+
+      try {
+        const parsed = parseRangeString(value);
+        if (parsed.size === 0 && value.trim().length > 0) {
+          setRangeInputError("No valid hands found. Use format: AA, AKs, KQs-TQs, 77+");
+        }
+        setSelectedHands(parsed);
+      } catch {
+        setRangeInputError("Invalid range format. Use: AA, AKs, KQs-TQs, 77+");
+      }
+    },
+    []
+  );
+
+  // Handle range input blur - sync from selection
+  const handleRangeInputBlur = useCallback(() => {
+    const current = handsToRangeString(selectedHands);
+    setRangeInput(current);
+  }, [selectedHands]);
+
+  // Clear selection
+  const handleClearSelection = useCallback(() => {
+    setSelectedHands(new Set());
+    setRangeInput("");
+    setRangeInputError(null);
+  }, []);
+
+  // Select all hands
+  const handleSelectAll = useCallback(() => {
+    const all = new Set<string>();
+    for (let r = 0; r < 13; r++) {
+      for (let c = 0; c < 13; c++) {
+        all.add(getHand(r, c));
+      }
+    }
+    setSelectedHands(all);
+    setRangeInput(handsToRangeString(all));
+  }, []);
+
+  // Equity calculation
+  const handleEquityCalc = useCallback(async () => {
+    if (selectedHands.size === 0) {
+      setRangeInputError("Select at least one hand first");
+      return;
+    }
+    if (board === "preflop") {
+      setRangeInputError("Select a board to calculate equity");
+      return;
+    }
+
+    setEquityLoading(true);
+    setEquityResult(null);
+
+    try {
+      const hands = Array.from(selectedHands).slice(0, 6); // Max 6 hands
+      const response = await fetch("/api/v1/equity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hands: hands.map((h) => {
+            // Convert hand notation to card notation
+            if (h.length === 2) return `${h[0]}s${h[1]}s`; // Pair -> suited (doesn't matter for pairs)
+            if (h.endsWith("s")) return `${h[0]}s${h[1]}s`;
+            return `${h[0]}s${h[1]}h`; // offsuit
+          }),
+          board: board,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEquityResult({
+          hands,
+          equities: data.equities || hands.map(() => 0),
+          board,
+        });
+      } else {
+        // Fallback: show demo equity from grid data
+        const equities = hands.map((h) => gridData[h]?.equity ?? 50);
+        setEquityResult({ hands, equities, board });
+      }
+    } catch {
+      // Fallback: use demo data
+      const hands = Array.from(selectedHands).slice(0, 6);
+      const equities = hands.map((h) => gridData[h]?.equity ?? 50);
+      setEquityResult({ hands, equities, board });
+    } finally {
+      setEquityLoading(false);
+    }
+  }, [selectedHands, board, gridData]);
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8">
@@ -438,6 +720,44 @@ export default function RangeExplorerPage() {
             {loading ? "Loading..." : "Fetch from API"}
           </button>
         </div>
+
+        {/* Range string input */}
+        <div className="flex flex-wrap gap-2 items-start">
+          <span className="text-xs sm:text-sm text-gray-400 mr-1 mt-2">Range:</span>
+          <div className="flex-1 min-w-[200px]">
+            <input
+              type="text"
+              value={rangeInput}
+              onChange={(e) => handleRangeInputChange(e.target.value)}
+              onBlur={handleRangeInputBlur}
+              placeholder="e.g. AA, AKs, KQs-TQs, 77+"
+              className={cn(
+                "w-full bg-gray-800 border rounded px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none",
+                rangeInputError
+                  ? "border-red-600 focus:border-red-500"
+                  : "border-gray-700 focus:border-poker-gold"
+              )}
+            />
+            {rangeInputError && (
+              <p className="text-[10px] text-red-400 mt-1">{rangeInputError}</p>
+            )}
+            <p className="text-[10px] text-gray-500 mt-1">
+              Click grid cells to toggle • Type range notation • Supports: AA, AKs, 77+, T9s-T7s
+            </p>
+          </div>
+          <button
+            onClick={handleClearSelection}
+            className="px-2.5 py-1.5 rounded text-[11px] font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700 transition-colors"
+          >
+            Clear
+          </button>
+          <button
+            onClick={handleSelectAll}
+            className="px-2.5 py-1.5 rounded text-[11px] font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700 transition-colors"
+          >
+            Select All
+          </button>
+        </div>
       </div>
 
       {/* Error toast */}
@@ -473,8 +793,46 @@ export default function RangeExplorerPage() {
               mode={displayMode}
               title={`${selectedPosition} Range @ ${selectedStack}bb`}
               subtitle={`${streetLabel} · ${stats.totalHands} hand types · ${stats.percentage}% of combos`}
+              selectable
+              selected={selectedHands}
+              onCellClick={handleCellClick}
             />
           </div>
+
+          {/* Selected hands display */}
+          {selectedHands.size > 0 && (
+            <div className="mt-3 p-3 rounded-lg border border-gray-800 bg-gray-900/60">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wide">
+                  Selected Range ({rangeStats.totalCombos} combos, {rangeStats.percentage}%)
+                </h4>
+                <div className="flex gap-2 text-[10px]">
+                  <span className="text-amber-400">{rangeStats.pairs} pairs</span>
+                  <span className="text-green-400">{rangeStats.suited} suited</span>
+                  <span className="text-blue-400">{rangeStats.offsuit} offsuit</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {Array.from(selectedHands).sort().map((hand) => (
+                  <span
+                    key={hand}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer transition-colors",
+                      hand.length === 2
+                        ? "bg-amber-900/40 text-amber-300 border border-amber-800"
+                        : hand.endsWith("s")
+                        ? "bg-green-900/40 text-green-300 border border-green-800"
+                        : "bg-blue-900/40 text-blue-300 border border-blue-800"
+                    )}
+                    onClick={() => handleCellClick(hand)}
+                    title="Click to remove"
+                  >
+                    {hand}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -491,6 +849,57 @@ export default function RangeExplorerPage() {
             activeBoard={board}
             onSelect={setBoard}
           />
+
+          {/* Equity Calculator */}
+          <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-4">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-3">
+              Equity Calculator
+            </h3>
+            <p className="text-[10px] text-gray-500 mb-3">
+              Select hands on the grid and a board, then calculate equity.
+            </p>
+            <button
+              onClick={handleEquityCalc}
+              disabled={equityLoading || selectedHands.size === 0 || board === "preflop"}
+              className={cn(
+                "w-full px-3 py-2 rounded text-xs font-semibold transition-colors",
+                equityLoading || selectedHands.size === 0 || board === "preflop"
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-green-700 text-white hover:bg-green-600 border border-green-600"
+              )}
+            >
+              {equityLoading
+                ? "Calculating..."
+                : selectedHands.size === 0
+                ? "Select hands first"
+                : board === "preflop"
+                ? "Select a board first"
+                : `Calculate Equity (${Math.min(selectedHands.size, 6)} hands)`}
+            </button>
+
+            {/* Equity results */}
+            {equityResult && (
+              <div className="mt-3 space-y-1.5">
+                <div className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">
+                  Board: {equityResult.board}
+                </div>
+                {equityResult.hands.map((hand, i) => (
+                  <div key={hand} className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-white w-8">{hand}</span>
+                    <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full transition-all"
+                        style={{ width: `${equityResult.equities[i]}%` }}
+                      />
+                    </div>
+                    <span className="text-[11px] text-green-400 font-mono w-10 text-right">
+                      {equityResult.equities[i].toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* API response info */}
           {lastResult && (
@@ -551,7 +960,7 @@ export default function RangeExplorerPage() {
               Select a position and stack depth to see the recommended range. Choose
               a board texture to see how ranges change postflop. Toggle between
               Equity and Action modes to view hand strength or recommended play.
-              Use &quot;Fetch from API&quot; to load real solver data.
+              Click grid cells to build your own range, or type range notation directly.
             </p>
           </div>
           <div>
@@ -564,12 +973,12 @@ export default function RangeExplorerPage() {
             </p>
           </div>
           <div>
-            <h3 className="font-medium text-white mb-2">Board Textures</h3>
+            <h3 className="font-medium text-white mb-2">Range Builder</h3>
             <p className="text-xs sm:text-sm">
-              Board cards dramatically affect hand equities. A paired board like
-              &quot;QhQd4c&quot; strengthens pocket pairs and trips draws. A
-              coordinated board like &quot;JdTd9c&quot; favors suited connectors
-              and straight draws. Experiment with different textures.
+              Click any cell in the grid to toggle it in/out of your custom range.
+              Or type range notation like <code className="text-poker-gold">AA, AKs, 77+</code> in the
+              Range input. Use the Equity Calculator to see how your selected hands
+              perform against a specific board texture.
             </p>
           </div>
         </div>

@@ -61,12 +61,12 @@
     "study-page-postflop-visual-polish",
     "update-features-yaml-hand-history",
     "e2e-test-coverage-expansion",
-    "study-page-mobile-responsive"
+    "study-page-mobile-responsive",
+    "push-fold-page-functional"
   ],
-  "current_task": "push-fold-page-functional",
-  "next": "push-fold-page-functional",
+  "current_task": "range-explorer-page-functional",
+  "next": "range-explorer-page-functional",
   "backlog": [
-    "push-fold-page-functional",
     "range-explorer-page-functional",
     "study-postflop-board-display",
     "study-postflop-action-buttons",
@@ -75,19 +75,44 @@
     "study-postflop-pot-and-history"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "a8b4692",
+  "last_sha": "f330e1c",
   "blocker": null,
   "spec_gaps": [
-    {"item": "postflop-board-display on /study", "type": "missing_component", "priority": 1, "evidence": "FEATURES.yaml marks 11 postflop study components as missing"},
-    {"item": "action-buttons on /study postflop", "type": "missing_component", "priority": 1, "evidence": "CHECK/BET/FOLD/CALL/RAISE/ALLIN buttons not implemented for postflop"},
-    {"item": "street-navigation on /study postflop", "type": "missing_component", "priority": 1, "evidence": "PREFLOP->FLOP->TURN->RIVER breadcrumb not implemented"},
-    {"item": "gto-comparison-overlay on /study postflop", "type": "missing_component", "priority": 1, "evidence": "Post-action GTO feedback overlay not implemented"},
-    {"item": "pot-size-tracker on /study postflop", "type": "missing_component", "priority": 2, "evidence": "Pot size display not implemented for postflop mode"}
+    {
+      "item": "postflop-board-display on /study",
+      "type": "missing_component",
+      "priority": 1,
+      "evidence": "FEATURES.yaml marks 11 postflop study components as missing"
+    },
+    {
+      "item": "action-buttons on /study postflop",
+      "type": "missing_component",
+      "priority": 1,
+      "evidence": "CHECK/BET/FOLD/CALL/RAISE/ALLIN buttons not implemented for postflop"
+    },
+    {
+      "item": "street-navigation on /study postflop",
+      "type": "missing_component",
+      "priority": 1,
+      "evidence": "PREFLOP->FLOP->TURN->RIVER breadcrumb not implemented"
+    },
+    {
+      "item": "gto-comparison-overlay on /study postflop",
+      "type": "missing_component",
+      "priority": 1,
+      "evidence": "Post-action GTO feedback overlay not implemented"
+    },
+    {
+      "item": "pot-size-tracker on /study postflop",
+      "type": "missing_component",
+      "priority": 2,
+      "evidence": "Pot size display not implemented for postflop mode"
+    }
   ],
   "coach_review": {
-    "last_reviewed_sha": "a8b4692",
-    "last_reviewed_at": "2026-06-20T01:37:00Z",
-    "verdict": "approved",
-    "notes": "Checkpoint-only commit approved. Generated 5 new postflop study tasks from FEATURES.yaml gap detection. All 368 unit tests pass."
+    "last_reviewed_sha": "f330e1c",
+    "last_reviewed_at": "2026-06-20T01:50:00Z",
+    "verdict": "pending",
+    "notes": "Fixed expandHands range expansion logic. All 368 tests pass. Live returns 200."
   }
 }
