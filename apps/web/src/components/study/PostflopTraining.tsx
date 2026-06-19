@@ -15,7 +15,7 @@ const TEXT_DIM = '#999'
 const TEXT_BRIGHT = '#ddd'
 
 const SUIT_SYMBOL: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
-const SUIT_COLOR: Record<string, string> = { s: '#fff', h: RED, d: '#FF6B35', c: '#fff' }
+const SUIT_COLOR: Record<string, string> = { s: '#fff', h: RED, d: RED, c: '#fff' }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
@@ -154,13 +154,15 @@ function actionColor(action: string): string {
 // ── Card Display Component ───────────────────────────────
 function CardDisplay({ rank, suit, small }: { rank: string; suit: string; small?: boolean }) {
   const size = small ? 36 : 48
+  const isRed = suit === 'h' || suit === 'd'
   return (
     <div style={{
       width: size, height: size * 1.4, borderRadius: 6,
-      background: '#0a0a0a', border: '1px solid #333',
+      background: '#f5f5f0', border: '1px solid #ccc',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', fontSize: small ? 11 : 14,
-      fontWeight: 700, color: SUIT_COLOR[suit] || '#fff',
+      fontWeight: 700, color: isRed ? RED : '#111',
+      boxShadow: '0 1px 3px rgba(0,0,0,.3)',
     }}>
       <span>{rank}</span>
       <span style={{ fontSize: small ? 10 : 12, marginTop: -2 }}>{SUIT_SYMBOL[suit] || suit}</span>

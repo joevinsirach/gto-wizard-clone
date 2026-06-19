@@ -109,7 +109,7 @@ const MATRIX_HANDS: string[][] = [
 ]
 
 const SUIT_SYM: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
-const SUIT_COLOR: Record<string, string> = { s: '#fff', h: '#E53935', d: '#FF6B35', c: '#fff' }
+const SUIT_COLOR: Record<string, string> = { s: '#fff', h: '#E53935', d: '#E53935', c: '#fff' }
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
 type HandData = { hand: string; action: string; frequency: number; equity: number }
@@ -1068,20 +1068,23 @@ export default function StudyPage() {
             <span style={{ fontSize: 10, color: '#7CFC7C', fontWeight: 600, marginRight: 4, textTransform: 'uppercase' }}>
               {boardStreet === 'preflop' ? 'PREFLOP' : boardStreet.toUpperCase()}
             </span>
-            {boardCards.map((card, i) => (
-              <div key={i} style={{
-                width: 32, height: 46, borderRadius: 6,
-                background: '#0a0a0a', border: `1px solid ${SUIT_COLOR[card.suit] || '#333'}44`,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 700,
-                color: SUIT_COLOR[card.suit] || '#fff',
-                boxShadow: `0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 ${SUIT_COLOR[card.suit] || '#fff'}11`,
-                flexShrink: 0,
-              }}>
-                <span style={{ lineHeight: 1 }}>{card.rank}</span>
-                <span style={{ fontSize: 11, marginTop: -2, lineHeight: 1 }}>{SUIT_SYM[card.suit] || card.suit}</span>
-              </div>
-            ))}
+            {boardCards.map((card, i) => {
+              const isRed = card.suit === 'h' || card.suit === 'd'
+              return (
+                <div key={i} style={{
+                  width: 32, height: 46, borderRadius: 6,
+                  background: '#f5f5f0', border: '1px solid #ccc',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700,
+                  color: isRed ? '#E53935' : '#111',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  flexShrink: 0,
+                }}>
+                  <span style={{ lineHeight: 1 }}>{card.rank}</span>
+                  <span style={{ fontSize: 11, marginTop: -2, lineHeight: 1 }}>{SUIT_SYM[card.suit] || card.suit}</span>
+                </div>
+              )
+            })}
             {boardStreet === 'preflop' && (
               <>
                 {[0,1,2,3,4].map(i => (
