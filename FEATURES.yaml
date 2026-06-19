@@ -7,7 +7,7 @@
 #   reference: optional path to reference screenshot
 #   evidence: how to verify (auto-populated by coach on audit)
 version: 1
-last_audited: null
+last_audited: 2026-06-19
 reference_base: docs/
 references:
   - page: /
@@ -87,7 +87,7 @@ pages:
       - endpoint: POST /api/v1/solver/preflop-range
         status: present
       - endpoint: POST /api/v1/solver/postflop-strategy
-        status: missing
+        status: present
   - route: /quiz
     title: Quiz Training
     status: present
@@ -184,16 +184,16 @@ pages:
         status: present
   - route: /hand-history
     title: Hand History
-    status: missing
+    status: present
     components:
       - name: hand-table
-        status: missing
+        status: present
       - name: batch-import
-        status: missing
+        status: present
       - name: hand-viewer
-        status: missing
+        status: present
       - name: search-filter
-        status: missing
+        status: present
     apis:
       - endpoint: GET /api/v1/hh/hands
         status: present
