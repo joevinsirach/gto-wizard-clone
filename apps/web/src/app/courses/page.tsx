@@ -66,9 +66,9 @@ interface CourseDetail extends Course {
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  beginner: "bg-green-500/20 text-green-400 border-green-500/30",
-  intermediate: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  advanced: "bg-red-500/20 text-red-400 border-red-500/30",
+  beginner: "bg-[#aafbb2]/20 text-[#6d9c72] border-[#aafbb2]/40",
+  intermediate: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  advanced: "bg-red-100 text-red-700 border-red-300",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -232,7 +232,7 @@ export default function CoursesPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-poker-gold">Pre-Built Courses</h1>
+          <h1 className="text-3xl font-bold text-[#aafbb2]">Pre-Built Courses</h1>
           <p className="text-gray-400 mt-1">Structured learning paths to master GTO poker</p>
         </div>
         <Link
@@ -245,34 +245,34 @@ export default function CoursesPage() {
 
       {/* Stats Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-poker-gold">{courses.length}</div>
-          <div className="text-sm text-gray-400">Available Courses</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-gray-900">{courses.length}</div>
+          <div className="text-sm text-gray-500">Available Courses</div>
         </div>
-        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-400">{totalLessons}</div>
-          <div className="text-sm text-gray-400">Total Lessons</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-[#6d9c72]">{totalLessons}</div>
+          <div className="text-sm text-gray-500">Total Lessons</div>
         </div>
-        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-400">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-gray-900">
             {formatDuration(totalDurationMinutes)}
           </div>
-          <div className="text-sm text-gray-400">Total Content</div>
+          <div className="text-sm text-gray-500">Total Content</div>
         </div>
-        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-400">0%</div>
-          <div className="text-sm text-gray-400">Overall Progress</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-[#6d9c72]">0%</div>
+          <div className="text-sm text-gray-500">Overall Progress</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-8 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+      <div className="flex flex-wrap gap-4 mb-8 p-4 bg-white border border-gray-200 rounded-xl">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Difficulty</label>
+          <label className="text-xs font-medium text-gray-500">Difficulty</label>
           <select
             value={filterDifficulty}
             onChange={(e) => setFilterDifficulty(e.target.value as Difficulty | "all")}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm"
           >
             <option value="all">All Levels</option>
             <option value="beginner">Beginner</option>
@@ -282,11 +282,11 @@ export default function CoursesPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Category</label>
+          <label className="text-xs font-medium text-gray-500">Category</label>
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm"
           >
             <option value="all">All Categories</option>
             {availableCategories.map((cat) => (
@@ -324,37 +324,50 @@ export default function CoursesPage() {
                     key={course.id}
                     href={`/courses/${course.id}`}
                     className={cn(
-                      "p-5 rounded-lg border bg-gray-900/50 text-left transition-all hover:scale-[1.02]",
+                      "flex gap-4 p-4 rounded-xl border bg-white text-left transition-all hover:shadow-md hover:scale-[1.02]",
                       selectedCourse?.id === course.id
-                        ? "border-poker-gold"
-                        : "border-gray-800 hover:border-gray-700"
+                        ? "border-[#aafbb2] ring-2 ring-[#aafbb2]/30"
+                        : "border-gray-200 hover:border-gray-300"
                     )}
                   >
-                    <div className="flex items-start gap-3 mb-3">
-                      <span className="text-3xl">{course.image}</span>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-white">{course.title}</h3>
-                        <p className="text-sm text-gray-400 mt-1 line-clamp-2">{course.description}</p>
+                    {/* Thumbnail / Icon area */}
+                    <div className={cn(
+                      "flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center text-2xl",
+                      course.difficulty === "beginner" ? "bg-[#aafbb2]/30" :
+                      course.difficulty === "intermediate" ? "bg-yellow-100" :
+                      "bg-red-100"
+                    )}>
+                      {course.image}
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate">{course.title}</h3>
+                      <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{course.description}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize",
+                            DIFFICULTY_COLORS[course.difficulty]
+                          )}
+                        >
+                          {course.difficulty}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          {CATEGORY_LABELS[course.category] || course.category}
+                        </span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded text-xs border capitalize",
-                          DIFFICULTY_COLORS[course.difficulty]
-                        )}
-                      >
-                        {course.difficulty}
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400">
-                        {CATEGORY_LABELS[course.category] || course.category}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">
-                        {course.lessons} lessons · {course.duration}
-                      </span>
-                      <span className="text-poker-gold font-medium">{course.progress}%</span>
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                        <span>{course.lessons} lessons · {course.duration}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#aafbb2] rounded-full"
+                              style={{ width: `${course.progress}%` }}
+                            />
+                          </div>
+                          <span className="font-medium text-gray-700">{course.progress}%</span>
+                        </div>
+                      </div>
                     </div>
                   </Link>
                 ))
