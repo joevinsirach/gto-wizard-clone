@@ -63,9 +63,10 @@
     "e2e-test-coverage-expansion",
     "study-page-mobile-responsive",
     "push-fold-page-functional",
-    "range-explorer-page-functional"
+    "range-explorer-page-functional",
+    "fix-equity-calculator-timeout"
   ],
-  "current_task": "fix-equity-calculator-timeout",
+  "current_task": "fix-e2e-test-runner",
   "next": "fix-e2e-test-runner",
   "backlog": [
     "fix-e2e-test-runner",
@@ -78,12 +79,6 @@
   "blocker": null,
   "spec_gaps": [
     {
-      "item": "POST /api/v1/equity/calculate timeout",
-      "type": "broken_endpoint",
-      "priority": 1,
-      "evidence": "API returns 500/timeout on equity calc — synchronous Monte Carlo blocks event loop"
-    },
-    {
       "item": "E2E test runner broken — vitest/Playwright globals conflict",
       "type": "broken_tests",
       "priority": 1,
@@ -94,18 +89,12 @@
       "type": "missing_feature",
       "priority": 2,
       "evidence": "No ARIA labels or keyboard navigation on study page — violates WCAG"
-    },
-    {
-      "item": "API response time — equity calc times out at 15s+",
-      "type": "performance",
-      "priority": 2,
-      "evidence": "Monte Carlo equity calc runs synchronously, blocking API"
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "0918cf1fd592d10e47501024eaa3e1f72b341191",
-    "last_reviewed_at": "2026-06-20T06:00:00Z",
+    "last_reviewed_sha": "ea30fbfa9f291e0366d25ea83596203e2c064730",
+    "last_reviewed_at": "2026-06-20T06:45:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 2 unreviewed commits: 7a6fd99 (checkpoint update — marked range-explorer complete, cleared stale backlog, updated FEATURES.yaml postflop components to present) and 0918cf1 (coach recovery — added 5 new tasks to AGENTS.md). Both are maintenance/bookkeeping commits with no code changes. All 368 tests pass. API health 200. Live site 200. All commits pushed. FEATURES.yaml: 79 present, 0 missing/stub/broken. 5 tasks in pipeline — healthy backlog."
+    "notes": "Reviewed 2 unreviewed commits: 802e1b9 (fix(equity): prevent Monte Carlo from blocking API event loop — wrapped equity_vs_range and equity_vs_range_multiway in asyncio.to_thread(), fixed GET /calculate to use proper Query params instead of Pydantic body model) and ea30fbf (checkpoint update). POST /calculate returns in 10ms (was 15s+ timeout). GET /calculate returns in 7ms. Response structure correct: equity/wins/ties/total/ev_per_hand. All 368 tests pass. All commits pushed. current_task advanced to fix-e2e-test-runner."
   }
 }
