@@ -74,9 +74,9 @@
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "f5fe04b",
-    "last_reviewed_at": "2026-06-19T22:00:00Z",
+    "last_reviewed_sha": "d7e7d4a",
+    "last_reviewed_at": "2026-06-19T22:30:00Z",
     "verdict": "approved",
-    "notes": "Reviewed f5fe04b (checkpoint sync meta-commit, no code changes). API healthy. All pages 200. 368 tests pass. Player has uncommitted work on study-page-postflop-visual-polish (ActionsTable.tsx 113 lines + SpotSelector.tsx 210 lines). Generated 5 new tasks to prevent loop stall."
+    "notes": "Reviewed 2 unreviewed commits (f5fe04b, d7e7d4a) — both human meta-commits (checkpoint sync + task additions), no player code changes. API healthy (200). All live pages 200. 368 unit tests pass. Playwright smoke tests pass (6/6). Solver/study-postflop E2E tests fail as expected (features not deployed — player has uncommitted work). Player uncommitted: ActionsTable.tsx (113 lines) + SpotSelector.tsx (210 lines) + study/page.tsx refactor for study-page-postflop-visual-polish. Solver postflop-strategy returns 200 with deduplicated actions (minor: duplicate action types remain but functional)."
   }
 }
