@@ -13,7 +13,7 @@
     "Check-vs-GTO-with-sizing-comparison",
     "Phase-1a-Action-frequency-progress-bars",
     "Phase-1b-Board-card-entry-hand-simulator",
-    "Phase-1c-Strategy-Ranges-Breakdown-tab-content",
+    "Phase-1c-Strategy-Ranges-Breakdown-tabs-content",
     "Phase-1d-Postflop-training-mode",
     "study-preflop-action-feedback-flow",
     "study-postflop-gto-comparison-overlay",
@@ -53,21 +53,20 @@
     "equity-variant-stud8-page",
     "analyze-leaks-functional-page",
     "trainer-functional-page",
-    "equity-razz-functional-page"
+    "equity-razz-functional-page",
+    "practice-page-enhancement"
   ],
   "current": "practice-page-enhancement",
   "next": null,
-  "backlog": [
-    "practice-page-enhancement"
-  ],
+  "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "8a1a24f",
+  "last_sha": "541d76b",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "702d588",
-    "last_reviewed_at": "2026-06-19T15:38:00Z",
+    "last_reviewed_sha": "541d76b",
+    "last_reviewed_at": "2026-06-19T17:40:00Z",
     "verdict": "approved",
-    "notes": "trainer-functional-page: 528-line /trainer page with Timed Drill (60s), Practice (no clock), Assessment (10 questions) modes. Reuses QuizCard component and useQuizApi hook. Demo question fallback when API unavailable. Session summary with accuracy, streaks, EV loss, avg time. Page returns 200. 368 tests pass."
+    "notes": "practice-page-enhancement: Added SessionHistory interface, ProgressRing SVG component, renderHand/renderBoard styled card rendering, timer with elapsed state, bestStreak tracking, DIFFICULTY_COLOR mapping, endSession cleanup. /practice returns 200. Build artifacts (sw.js, turbo-build.log, tsbuildinfo) are auto-generated noise."
   }
 }
