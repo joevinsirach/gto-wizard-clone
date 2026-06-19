@@ -28,6 +28,8 @@ export interface PlayerICM {
   chips: number;
   equity: number;
   prizeEquity: number;
+  ev: number | null;
+  chipEquity: number | null;
   cashProbability: number;
 }
 
@@ -40,12 +42,12 @@ export interface ICMResultsProps {
 }
 
 const MOCK_ICM_RESULTS: PlayerICM[] = [
-  { id: "1", name: "Player 1", chips: 2000, equity: 28.5, prizeEquity: 285, cashProbability: 85 },
-  { id: "2", name: "Player 2", chips: 1500, equity: 22.3, prizeEquity: 223, cashProbability: 72 },
-  { id: "3", name: "Player 3", chips: 3000, equity: 35.2, prizeEquity: 352, cashProbability: 94 },
-  { id: "4", name: "Player 4", chips: 1200, equity: 18.1, prizeEquity: 181, cashProbability: 58 },
-  { id: "5", name: "Player 5", chips: 1500, equity: 22.3, prizeEquity: 223, cashProbability: 71 },
-  { id: "6", name: "Player 6", chips: 800, equity: 8.6, prizeEquity: 86, cashProbability: 22 },
+  { id: "1", name: "Player 1", chips: 2000, equity: 28.5, prizeEquity: 285, ev: 290, chipEquity: 2400, cashProbability: 85 },
+  { id: "2", name: "Player 2", chips: 1500, equity: 22.3, prizeEquity: 223, ev: 228, chipEquity: 1350, cashProbability: 72 },
+  { id: "3", name: "Player 3", chips: 3000, equity: 35.2, prizeEquity: 352, ev: 358, chipEquity: 2800, cashProbability: 94 },
+  { id: "4", name: "Player 4", chips: 1200, equity: 18.1, prizeEquity: 181, ev: 185, chipEquity: 1050, cashProbability: 58 },
+  { id: "5", name: "Player 5", chips: 1500, equity: 22.3, prizeEquity: 223, ev: 228, chipEquity: 1350, cashProbability: 71 },
+  { id: "6", name: "Player 6", chips: 800, equity: 8.6, prizeEquity: 86, ev: 88, chipEquity: 720, cashProbability: 22 },
 ];
 
 function convertApiToPlayerICM(
@@ -76,6 +78,8 @@ function convertApiToPlayerICM(
       chips,
       equity: prizeEquity,
       prizeEquity: r.equity,
+      ev: r.ev ?? null,
+      chipEquity: r.chip_equity ?? null,
       cashProbability,
     };
   });
@@ -172,7 +176,7 @@ export function ICMResults({
 
       {/* Results Table - Horizontal scroll on mobile */}
       <div className="overflow-x-auto rounded-lg border border-gray-800 -mx-2 sm:mx-0">
-        <table className="w-full text-sm min-w-[500px]">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-gray-800/50">
             <tr>
               <th className="px-2 sm:px-3 py-2 text-left font-medium text-muted-foreground">Rank</th>
@@ -180,6 +184,8 @@ export function ICMResults({
               <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Chips</th>
               <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">ICM %</th>
               <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Prize $</th>
+              <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">$EV</th>
+              <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Chip EV</th>
               <th className="px-2 sm:px-3 py-2 text-right font-medium text-muted-foreground">Cash%</th>
             </tr>
           </thead>
@@ -219,6 +225,12 @@ export function ICMResults({
                 </td>
                 <td className="px-2 sm:px-3 py-2 text-right font-mono text-green-400 text-xs sm:text-sm">
                   ${player.prizeEquity.toLocaleString()}
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-right font-mono text-poker-gold text-xs sm:text-sm">
+                  ${player.ev != null ? player.ev.toLocaleString(undefined, { maximumFractionDigits: 0 }) : player.prizeEquity.toLocaleString()}
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-right font-mono text-blue-300 text-xs sm:text-sm">
+                  {player.chipEquity != null ? player.chipEquity.toLocaleString(undefined, { maximumFractionDigits: 0 }) : player.chips.toLocaleString()}
                 </td>
                 <td className="px-2 sm:px-3 py-2 text-right">
                   <div className="flex items-center justify-end gap-1 sm:gap-2">
