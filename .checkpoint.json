@@ -127,7 +127,7 @@
       "sha": "65d4c7b",
       "date": "2026-06-20",
       "summary": "Add dollar-EV and Chip EV columns to ICM results table \u2014 API already returned ev/chip_equity, now displayed in frontend with gold/blue styling",
-      "coach": "pending"
+      "coach": "approved"
     }
   ],
   "current_task": "fix-quiz-spots-table-missing",
@@ -139,7 +139,6 @@
   "remaining_agents_md_tasks": [
     "fix-quiz-spots-table-missing",
     "fix-community-spots-table-missing",
-    "icm-page-visual-match-reference",
     "solutions-page-visual-match-reference",
     "fix-e2e-test-runner",
     "fix-solver-docker-build",
@@ -196,9 +195,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "6e49048",
-    "last_reviewed_at": "2026-06-20T17:06:00Z",
+    "last_reviewed_sha": "364abf2eff911a868e9aa459aca083b78a683876",
+    "last_reviewed_at": "2026-06-20T17:12:00Z",
     "verdict": "approved",
-    "notes": "No new player commits since last review (c3fc6d2). Live site 200, API healthy, 368 unit tests pass. Found 2 new spec gaps: quiz_spots and community_spots tables missing from PostgreSQL. E2E tests still broken (known). Backlog nearly exhausted \u2014 2 new tasks generated."
+    "notes": "Reviewed icm-page-visual-match-reference (65d4c7b): added $EV and Chip EV columns to ICM results table. Clean single-file change, API fields already existed. All success criteria met."
   }
 }
