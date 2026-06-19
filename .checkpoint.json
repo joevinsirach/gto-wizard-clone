@@ -50,19 +50,34 @@
     "equity-variant-plo5-page"
   ],
   "current": "analyze-viewer-functional-page",
-  "next": "tbd",
+  "next": "equity-variant-omaha8-page",
   "backlog": [
-    "analyze-viewer-functional-page"
+    "analyze-viewer-functional-page",
+    "equity-variant-omaha8-page",
+    "equity-variant-stud8-page",
+    "analyze-leaks-functional-page"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "2609ba8",
+  "last_sha": "ebcfaf9",
   "blocker": null,
   "spec_gaps": [
     {
-      "item": "GET /analyze/viewer returns 39-line stub",
+      "item": "GET /equity/omaha returns VariantStubPage (11 lines)",
       "type": "stub_page",
       "priority": 2,
-      "evidence": "page.tsx is 39 lines with no real functionality"
+      "evidence": "page.tsx is 11 lines using VariantStubPage component"
+    },
+    {
+      "item": "GET /equity/stud8 returns VariantStubPage (11 lines)",
+      "type": "stub_page",
+      "priority": 2,
+      "evidence": "page.tsx is 11 lines using VariantStubPage component"
     }
-  ]
+  ],
+  "coach_review": {
+    "last_reviewed_sha": "2609ba8",
+    "last_reviewed_at": "2026-06-19T11:05:00Z",
+    "verdict": "approved",
+    "notes": "equity-variant-plo5-page: full 468-line PLO5 equity calculator replacing stub. All success criteria met. Added 3 new tasks to backlog."
+  }
 }

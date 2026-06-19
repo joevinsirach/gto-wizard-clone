@@ -633,3 +633,37 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Load `/analyze/viewer`, paste a sample hand history, verify it parses and displays
   - Check for console errors
   - Verify the page design matches the analyze section style
+
+### Task: equity-variant-omaha8-page
+- **Description**: Replace the stub at `apps/web/src/app/equity/omaha/page.tsx` with a functional Omaha Hi-Lo 8-or-Better equity calculator. The existing `/equity/plo5/page.tsx` can serve as a reference for the general equity calculator layout. Build a proper calculator that accepts two Omaha hands (4 cards each) and a board, and displays equity % for each hand (with hi/lo split display).
+- **Success criteria**:
+  - `curl http://localhost:3000/equity/omaha` returns 200 with a functional calculator UI
+  - Users can input two Omaha hands and see equity results
+  - No "under development" stub text
+  - Hi/lo equity split is displayed
+- **Coach checks**:
+  - Load `/equity/omaha`, input two hands, verify equity calculation works
+  - Check for console errors
+  - Verify the page follows the same design pattern as other equity pages
+
+### Task: equity-variant-stud8-page
+- **Description**: Replace the stub at `apps/web/src/app/equity/stud8/page.tsx` with a functional Seven Card Stud Hi-Lo equity calculator. Reference the existing equity calculator pages for layout. Build a calculator that accepts two Stud hands and displays equity % with hi/lo split.
+- **Success criteria**:
+  - `curl http://localhost:3000/equity/stud8` returns 200 with a functional calculator UI
+  - Users can input two Stud hands and see equity results
+  - No "under development" stub text
+- **Coach checks**:
+  - Load `/equity/stud8`, input two hands, verify equity calculation works
+  - Check for console errors
+  - Verify the page follows the same design pattern as other equity pages
+
+### Task: analyze-leaks-functional-page
+- **Description**: The `/analyze/leaks` page exists but may have limited functionality. Review the page at `apps/web/src/app/analyze/leaks/page.tsx` and enhance it to provide meaningful leak detection analysis. Features: (1) connect to the analyze API to identify common leaks, (2) display leak categories with severity indicators, (3) show specific hand examples where leaks occurred, (4) provide actionable improvement suggestions. Reference the existing analyze section design patterns.
+- **Success criteria**:
+  - `curl http://localhost:3000/analyze/leaks` returns 200 with functional leak analysis UI
+  - Page displays leak categories with severity indicators
+  - Users can see specific examples and improvement suggestions
+- **Coach checks**:
+  - Load `/analyze/leaks`, verify leak categories render
+  - Check for console errors
+  - Verify the page design matches the analyze section style
