@@ -75,39 +75,39 @@
     "course-lesson-content-management"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "58e6a5e",
+  "last_sha": "2093c80",
   "blocker": null,
   "spec_gaps": [
     {
       "item": "POST /api/v1/equity/calculate timeout",
       "type": "broken_endpoint",
       "priority": 1,
-      "evidence": "FIXED \u2014 asyncio.wait_for + reduced default iterations"
+      "evidence": "FIXED — asyncio.wait_for + reduced default iterations"
     },
     {
-      "item": "E2E test runner broken \u2014 vitest/Playwright globals conflict",
+      "item": "E2E test runner broken — vitest/Playwright globals conflict",
       "type": "broken_tests",
       "priority": 1,
-      "evidence": "FIXED \u2014 all 118 E2E tests pass (separate e2e/ config)",
+      "evidence": "FIXED — all 118 E2E tests pass (separate e2e/ config)",
       "status": "fixed"
     },
     {
       "item": "study-page accessibility audit (keyboard nav, ARIA labels, screen reader)",
       "type": "missing_feature",
       "priority": 2,
-      "evidence": "No ARIA labels or keyboard navigation on study page \u2014 violates WCAG"
+      "evidence": "No ARIA labels or keyboard navigation on study page — violates WCAG"
     },
     {
-      "item": "API response time \u2014 equity calc times out at 15s+",
+      "item": "API response time — equity calc times out at 15s+",
       "type": "performance",
       "priority": 2,
-      "evidence": "FIXED \u2014 reduced to 10k iterations + 5s timeout guard"
+      "evidence": "FIXED — reduced to 10k iterations + 5s timeout guard"
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "d11c01f0525f257edf71f8e6aded6aaba5ad47e2",
-    "last_reviewed_at": "2026-06-20T08:00:00Z",
+    "last_reviewed_sha": "2093c804414034908a2e5596db35999a18af75a2",
+    "last_reviewed_at": "2026-06-20T10:05:00Z",
     "verdict": "approved",
-    "notes": "No new code commits since last review. 2 checkpoint-only commits (cc66399, d11c01f) — no code changes. Live site healthy: API 200, Frontend 200. All 118 Playwright E2E tests pass when run with correct config (--config=apps/web/playwright.config.ts). Vitest run still fails on e2e files (fix-e2e-test-runner task pending). current_task: fix-e2e-test-runner. Backlog: 4 tasks remaining — healthy."
+    "notes": "Reviewed 3 unreviewed commits (58e6a5e, a898001, 2093c80). Only 58e6a5e has code: fix(e2e) changed 'Board Textures' to 'Range Builder' in range-explorer test — correct fix, page has 'Range Builder' heading. All 118 Playwright E2E tests pass. Live site 200. API healthy. current_task: study-page-accessibility-audit. Backlog: 3 tasks remaining — healthy."
   }
 }
