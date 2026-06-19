@@ -52,16 +52,16 @@
     "equity-variant-omaha8-page",
     "equity-variant-stud8-page",
     "analyze-leaks-functional-page",
-    "trainer-functional-page"
+    "trainer-functional-page",
+    "equity-razz-functional-page"
   ],
-  "current": "equity-razz-functional-page",
-  "next": "practice-page-enhancement",
+  "current": "practice-page-enhancement",
+  "next": null,
   "backlog": [
-    "equity-razz-functional-page",
     "practice-page-enhancement"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "da0c2d0",
+  "last_sha": "8a1a24f",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {

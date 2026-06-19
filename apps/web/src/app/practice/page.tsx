@@ -1,28 +1,136 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 const CATEGORIES = ['All', '3-bet pot', 'Open-raise pot', 'Overcard board', 'Monoboard', 'Paired board', 'Wet board']
 const DIFFICULTIES = ['All', 'Beginner', 'Intermediate', 'Advanced']
 
-interface Spot { category: string; difficulty: string; position: string; hero_hand: string; board: string | null; pot_size: number; stack_depth: number; gto_action: string; gto_frequency: number; gto_ev: number; options: { action: string; frequency: number; ev: number; is_gto: boolean }[] }
+interface Spot {
+  category: string
+  difficulty: string
+  position: string
+  hero_hand: string
+  board: string | null
+  pot_size: number
+  stack_depth: number
+  gto_action: string
+  gto_frequency: number
+  gto_ev: number
+  options: { action: string; frequency: number; ev: number; is_gto: boolean }[]
+}
+
+interface SessionHistory {
+  category: string
+  difficulty: string
+  position: string
+  hero_hand: string
+  correct: boolean
+  gtoAction: string
+  selectedAction: string
+}
 
 function mockSpot(): Spot {
-  const cats = CATEGORIES.slice(1); const diffs = DIFFICULTIES.slice(1); const actions = ['Fold', 'Call', 'Raise', 'All-in']
+  const cats = CATEGORIES.slice(1)
+  const diffs = DIFFICULTIES.slice(1)
+  const actions = ['Fold', 'Call', 'Raise', 'All-in']
   const gtoIdx = Math.floor(Math.random() * 4)
   return {
-    category: cats[Math.floor(Math.random() * cats.length)], difficulty: diffs[Math.floor(Math.random() * diffs.length)],
+    category: cats[Math.floor(Math.random() * cats.length)],
+    difficulty: diffs[Math.floor(Math.random() * diffs.length)],
     position: ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'][Math.floor(Math.random() * 6)],
     hero_hand: ['AKs', 'AA', 'KK', 'QQ', 'AQs', 'JJ', 'TT', 'AKo', 'KQs', 'AJs'][Math.floor(Math.random() * 10)],
     board: Math.random() > 0.3 ? 'Kd7h2c' : null,
-    pot_size: Math.floor(Math.random() * 80) + 15, stack_depth: [50, 75, 100, 125, 150, 200][Math.floor(Math.random() * 6)],
-    gto_action: actions[gtoIdx], gto_frequency: Math.round(30 + Math.random() * 50), gto_ev: Math.round((Math.random() * 4 - 0.5) * 100) / 100,
-    options: actions.map((a, i) => ({ action: a, frequency: Math.round(Math.random() * 60 + 5), ev: Math.round((Math.random() * 5 - 1) * 100) / 100, is_gto: i === gtoIdx })),
+    pot_size: Math.floor(Math.random() * 80) + 15,
+    stack_depth: [50, 75, 100, 125, 150, 200][Math.floor(Math.random() * 6)],
+    gto_action: actions[gtoIdx],
+    gto_frequency: Math.round(30 + Math.random() * 50),
+    gto_ev: Math.round((Math.random() * 4 - 0.5) * 100) / 100,
+    options: actions.map((a, i) => ({
+      action: a,
+      frequency: Math.round(Math.random() * 60 + 5),
+      ev: Math.round((Math.random() * 5 - 1) * 100) / 100,
+      is_gto: i === gtoIdx,
+    })),
   }
 }
 
 const SUIT_SYM: Record<string, string> = { h: '♥', d: '♦', c: '♣', s: '♠' }
+const SUIT_COLOR: Record<string, string> = { h: '#c41e3a', d: '#c41e3a', c: '#2a2a2a', s: '#2a2a2a' }
+
+const DIFFICULTY_COLOR: Record<string, string> = {
+  Beginner: '#00a98f',
+  Intermediate: '#e09b3d',
+  Advanced: '#e05a5a',
+}
+
+function renderHand(hand: string) {
+  // Parse hand like "AKs" or "AA" into styled cards
+  const chars = hand.split('')
+  const cards: { r: string; s: string }[] = []
+  if (chars.length === 2) {
+    cards.push({ r: chars[0], s: '' })
+    cards.push({ r: chars[1], s: '' })
+  } else if (chars.length === 3) {
+    cards.push({ r: chars[0], s: '' })
+    cards.push({ r: chars[1], s: chars[2] })
+  }
+  return (
+    <div style={{ display: 'inline-flex', gap: 4 }}>
+      {cards.map((c, i) => (
+        <div key={i} style={{
+          width: 36, height: 50, background: '#fff', borderRadius: 6,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          fontWeight: 700, fontSize: 15, boxShadow: '0 2px 8px rgba(0,0,0,.35)',
+          color: c.s && (c.s === 'h' || c.s === 'd') ? '#c41e3a' : '#1a1a1a',
+          border: '1px solid #ddd',
+        }}>
+          <div>{c.r}</div>
+          {c.s && <div style={{ fontSize: 16, lineHeight: 1 }}>{SUIT_SYM[c.s] || ''}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function renderBoard(board: string | null) {
+  if (!board) return null
+  const cards: { r: string; s: string }[] = []
+  for (let i = 0; i < board.length; i += 2) {
+    cards.push({ r: board[i], s: board[i + 1]?.toLowerCase() || '' })
+  }
+  return (
+    <div style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '12px 0' }}>
+      {cards.map((c, i) => (
+        <div key={i} style={{
+          width: 44, height: 62, background: '#fff', borderRadius: 6,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          fontWeight: 700, fontSize: 16, boxShadow: '0 2px 8px rgba(0,0,0,.35)',
+          color: (c.s === 'h' || c.s === 'd') ? '#c41e3a' : '#1a1a1a',
+          border: '1px solid #ddd',
+        }}>
+          <div>{c.r}</div>
+          <div style={{ fontSize: 18, lineHeight: 1 }}>{SUIT_SYM[c.s] || ''}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ProgressRing({ value, max, size = 56, stroke = 5, color = '#00a98f' }: { value: number; max: number; size?: number; stroke?: number; color?: string }) {
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const pct = max > 0 ? value / max : 0
+  const offset = circumference * (1 - pct)
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#1a1e23" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset .4s ease' }} />
+    </svg>
+  )
+}
 
 export default function PracticePage() {
   const [category, setCategory] = useState('All')
@@ -31,117 +139,317 @@ export default function PracticePage() {
   const [spot, setSpot] = useState<Spot | null>(null)
   const [answered, setAnswered] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
-  const [stats, setStats] = useState({ total: 0, correct: 0, streak: 0 })
+  const [stats, setStats] = useState({ total: 0, correct: 0, streak: 0, bestStreak: 0 })
+  const [history, setHistory] = useState<SessionHistory[]>([])
+  const [elapsed, setElapsed] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchSpot = useCallback(async () => {
-    setAnswered(false); setSelectedAction(null)
+    setAnswered(false)
+    setSelectedAction(null)
     try {
       const params = new URLSearchParams()
       if (category !== 'All') params.set('category', category)
       if (difficulty !== 'All') params.set('difficulty', difficulty.toLowerCase())
       const res = await fetch(`${API_BASE}/quiz/random?${params.toString()}`)
-      if (res.ok) { const d = await res.json(); if (d?.options) { setSpot(d); return } }
-    } catch { /* fallback */ }
+      if (res.ok) {
+        const d = await res.json()
+        if (d?.options) {
+          setSpot(d)
+          return
+        }
+      }
+    } catch {
+      /* fallback */
+    }
     setSpot(mockSpot())
   }, [category, difficulty])
 
-  const startSession = () => { setSessionActive(true); setStats({ total: 0, correct: 0, streak: 0 }); fetchSpot() }
+  const startSession = () => {
+    setSessionActive(true)
+    setStats({ total: 0, correct: 0, streak: 0, bestStreak: 0 })
+    setHistory([])
+    setElapsed(0)
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
+    fetchSpot()
+  }
+
+  const endSession = () => {
+    setSessionActive(false)
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
 
   const handleAnswer = (actionName: string) => {
     if (answered || !spot) return
-    setSelectedAction(actionName); setAnswered(true)
+    setSelectedAction(actionName)
+    setAnswered(true)
     const isCorrect = spot.options.find(o => o.action === actionName)?.is_gto ?? false
-    setStats(prev => ({ total: prev.total + 1, correct: prev.correct + (isCorrect ? 1 : 0), streak: isCorrect ? prev.streak + 1 : 0 }))
+    setStats(prev => ({
+      total: prev.total + 1,
+      correct: prev.correct + (isCorrect ? 1 : 0),
+      streak: isCorrect ? prev.streak + 1 : 0,
+      bestStreak: isCorrect ? Math.max(prev.bestStreak, prev.streak + 1) : prev.bestStreak,
+    }))
+    setHistory(prev => [...prev, {
+      category: spot.category,
+      difficulty: spot.difficulty,
+      position: spot.position,
+      hero_hand: spot.hero_hand,
+      correct: isCorrect,
+      gtoAction: spot.gto_action,
+      selectedAction: actionName,
+    }])
   }
 
-  const renderBoard = (board: string | null) => {
-    if (!board) return null
-    const cards = []
-    for (let i = 0; i < board.length; i += 2) cards.push({ r: board[i], s: board[i + 1]?.toLowerCase() || '' })
-    return <div style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '10px 0' }}>
-      {cards.map((c, i) => (
-        <div key={i} style={{ width: 44, height: 62, background: '#fff', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, boxShadow: '0 2px 6px rgba(0,0,0,.3)', color: (c.s === 'h' || c.s === 'd') ? '#c41e3a' : '#111' }}>
-          <div>{c.r}</div><div style={{ fontSize: 18 }}>{SUIT_SYM[c.s] || ''}</div>
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
+
+  const accuracy = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0
+
+  // --- Session Summary Screen ---
+  if (!sessionActive && history.length > 0) {
+    const byCategory: Record<string, { total: number; correct: number }> = {}
+    const byDifficulty: Record<string, { total: number; correct: number }> = {}
+    const byPosition: Record<string, { total: number; correct: number }> = {}
+    history.forEach(h => {
+      byCategory[h.category] = byCategory[h.category] || { total: 0, correct: 0 }
+      byCategory[h.category].total++
+      if (h.correct) byCategory[h.category].correct++
+      byDifficulty[h.difficulty] = byDifficulty[h.difficulty] || { total: 0, correct: 0 }
+      byDifficulty[h.difficulty].total++
+      if (h.correct) byDifficulty[h.difficulty].correct++
+      byPosition[h.position] = byPosition[h.position] || { total: 0, correct: 0 }
+      byPosition[h.position].total++
+      if (h.correct) byPosition[h.position].correct++
+    })
+
+    return (
+      <div style={{ minHeight: '100vh', background: '#0b0d0f', padding: 24 }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>📊</div>
+            <h2 style={{ margin: '0 0 6px', color: '#d1d7df', fontSize: 24, fontWeight: 700 }}>Session Complete</h2>
+            <div style={{ color: '#6b7585', fontSize: 13 }}>Time: {formatTime(elapsed)}</div>
+          </div>
+
+          {/* Main stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+            {[
+              { label: 'Spots', value: stats.total, color: '#d1d7df' },
+              { label: 'Accuracy', value: `${accuracy}%`, color: accuracy >= 70 ? '#00a98f' : accuracy >= 50 ? '#e09b3d' : '#e05a5a' },
+              { label: 'Best Streak', value: stats.bestStreak, color: stats.bestStreak >= 5 ? '#00a98f' : '#d1d7df' },
+              { label: 'Correct', value: `${stats.correct}/${stats.total}`, color: '#00a98f' },
+            ].map(s => (
+              <div key={s.label} style={{
+                background: '#14171b', borderRadius: 10, padding: '16px 12px', textAlign: 'center',
+                border: '1px solid #252b32',
+              }}>
+                <div style={{ fontSize: 11, color: '#6b7585', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Accuracy ring */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ProgressRing value={stats.correct} max={stats.total} size={100} stroke={8} color={accuracy >= 70 ? '#00a98f' : accuracy >= 50 ? '#e09b3d' : '#e05a5a'} />
+              <div style={{ position: 'absolute', textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: accuracy >= 70 ? '#00a98f' : accuracy >= 50 ? '#e09b3d' : '#e05a5a' }}>{accuracy}%</div>
+                <div style={{ fontSize: 10, color: '#6b7585' }}>accuracy</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Breakdown by category */}
+          <div style={{ background: '#14171b', borderRadius: 10, padding: 16, border: '1px solid #252b32', marginBottom: 16 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 13, color: '#8a94a6', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>By Category</h3>
+            {Object.entries(byCategory).map(([cat, d]) => (
+              <div key={cat} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                  <span style={{ color: '#d1d7df' }}>{cat}</span>
+                  <span style={{ color: d.correct / d.total >= 0.6 ? '#00a98f' : '#e09b3d' }}>{d.correct}/{d.total}</span>
+                </div>
+                <div style={{ height: 4, background: '#1a1e23', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ width: `${d.correct / d.total * 100}%`, height: '100%', background: d.correct / d.total >= 0.6 ? '#00a98f' : '#e09b3d', borderRadius: 2, transition: 'width .3s' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Breakdown by difficulty */}
+          <div style={{ background: '#14171b', borderRadius: 10, padding: 16, border: '1px solid #252b32', marginBottom: 16 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 13, color: '#8a94a6', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>By Difficulty</h3>
+            {Object.entries(byDifficulty).map(([diff, d]) => (
+              <div key={diff} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                  <span style={{ color: '#d1d7df' }}>{diff}</span>
+                  <span style={{ color: d.correct / d.total >= 0.6 ? '#00a98f' : '#e09b3d' }}>{d.correct}/{d.total}</span>
+                </div>
+                <div style={{ height: 4, background: '#1a1e23', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ width: `${d.correct / d.total * 100}%`, height: '100%', background: d.correct / d.total >= 0.6 ? '#00a98f' : '#e09b3d', borderRadius: 2, transition: 'width .3s' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Breakdown by position */}
+          <div style={{ background: '#14171b', borderRadius: 10, padding: 16, border: '1px solid #252b32', marginBottom: 24 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 13, color: '#8a94a6', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>By Position</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {Object.entries(byPosition).map(([pos, d]) => (
+                <div key={pos} style={{ background: '#1a1e23', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#d1d7df', marginBottom: 2 }}>{pos}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: d.correct / d.total >= 0.6 ? '#00a98f' : '#e09b3d' }}>
+                    {d.correct}/{d.total}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={() => { endSession(); startSession() }}
+              style={{ background: '#00a98f', color: '#02110e', border: 'none', padding: '12px 28px', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+              New Session
+            </button>
+            <button onClick={endSession}
+              style={{ background: '#1a1e23', color: '#8a94a6', border: '1px solid #252b32', padding: '12px 28px', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+              Back to Setup
+            </button>
+          </div>
         </div>
-      ))}
-    </div>
+      </div>
+    )
   }
 
+  // --- Setup Screen ---
   if (!sessionActive) return (
     <div style={{ minHeight: '100vh', background: '#0b0d0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 20 }}>
       <div style={{ fontSize: 48, opacity: 0.5 }}>📚</div>
-      <h2 style={{ margin: 0, color: '#d1d7df', fontSize: 22 }}>Ready to practice?</h2>
-      <p style={{ margin: 0, color: '#8a94a6', fontSize: 14, maxWidth: 360, textAlign: 'center' }}>Select filters and start a practice session to test your GTO knowledge.</p>
+      <h2 style={{ margin: 0, color: '#d1d7df', fontSize: 22 }}>Practice Session</h2>
+      <p style={{ margin: 0, color: '#8a94a6', fontSize: 14, maxWidth: 360, textAlign: 'center' }}>
+        Test your GTO knowledge with spaced repetition. Select filters and start a session.
+      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 8 }}>
         {[
           { label: 'Category', options: CATEGORIES, sel: category, set: setCategory },
           { label: 'Difficulty', options: DIFFICULTIES, sel: difficulty, set: setDifficulty },
         ].map(g => (
           <div key={g.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#6b7585', marginBottom: 4, fontWeight: 500 }}>{g.label}</div>
+            <div style={{ fontSize: 11, color: '#6b7585', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>{g.label}</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {g.options.map(o => (
                 <button key={o} onClick={() => g.set(o)}
-                  style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: g.sel === o ? '#00a98f' : '#1a1e23', color: g.sel === o ? '#02110e' : '#8a94a6', border: `1px solid ${g.sel === o ? '#00a98f' : '#252b32'}`, fontWeight: g.sel === o ? 600 : 400 }}>{o}</button>
+                  style={{
+                    padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                    background: g.sel === o ? '#00a98f' : '#1a1e23',
+                    color: g.sel === o ? '#02110e' : '#8a94a6',
+                    border: `1px solid ${g.sel === o ? '#00a98f' : '#252b32'}`,
+                    fontWeight: g.sel === o ? 600 : 400,
+                  }}>{o}</button>
               ))}
             </div>
           </div>
         ))}
       </div>
-      <button onClick={startSession} style={{ marginTop: 16, background: '#00a98f', color: '#02110e', border: 'none', padding: '12px 32px', borderRadius: 10, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Start Practice Session</button>
+      <button onClick={startSession}
+        style={{ marginTop: 16, background: '#00a98f', color: '#02110e', border: 'none', padding: '12px 32px', borderRadius: 10, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
+        Start Practice Session
+      </button>
     </div>
   )
 
+  // --- Active Session Screen ---
   return (
     <div style={{ minHeight: '100vh', background: '#0b0d0f', display: 'flex', flexDirection: 'column' }}>
+      {/* Top bar */}
       <div style={{ height: 52, background: '#14171b', borderBottom: '1px solid #252b32', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16 }}>
-        <span style={{ fontWeight: 700, fontSize: 15 }}>Practice</span>
+        <span style={{ fontWeight: 700, fontSize: 15, color: '#d1d7df' }}>Practice</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, fontSize: 12, color: '#8a94a6' }}>
           <span>Spots: <b style={{ color: '#d1d7df' }}>{stats.total}</b></span>
-          <span>Correct: <b style={{ color: stats.total > 0 && stats.correct / stats.total >= 0.6 ? '#00a67e' : '#e09b3d' }}>{stats.total ? Math.round(stats.correct / stats.total * 100) : 0}%</b></span>
+          <span>Accuracy: <b style={{ color: accuracy >= 60 ? '#00a67e' : '#e09b3d' }}>{accuracy}%</b></span>
           <span>Streak: <b style={{ color: stats.streak >= 3 ? '#00a67e' : '#d1d7df' }}>{stats.streak}</b></span>
+          <span>Time: <b style={{ color: '#d1d7df' }}>{formatTime(elapsed)}</b></span>
         </div>
-        <button onClick={() => setSessionActive(false)} style={{ background: '#1a1e23', border: '1px solid #252b32', color: '#8a94a6', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>End</button>
+        <button onClick={endSession}
+          style={{ background: '#1a1e23', border: '1px solid #252b32', color: '#8a94a6', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
+          End
+        </button>
       </div>
+
+      {/* Main content */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.3fr 1fr' }} className="practice-grid">
+        {/* Left: Spot display */}
         <div style={{ padding: 24, borderRight: '1px solid #252b32' }}>
           {spot && (
             <>
+              {/* Tags */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
                 <span style={{ background: '#1a1e23', color: '#00a98f', padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{spot.category}</span>
-                <span style={{ background: '#1a1e23', color: '#e09b3d', padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{spot.difficulty}</span>
+                <span style={{ background: '#1a1e23', color: DIFFICULTY_COLOR[spot.difficulty] || '#e09b3d', padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{spot.difficulty}</span>
                 <span style={{ background: '#1a1e23', color: '#8a94a6', padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{spot.position}</span>
               </div>
+
+              {/* Hand display */}
               <div style={{ textAlign: 'center', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: '#8a94a6', marginBottom: 6 }}>Your Hand</div>
-                <div style={{ display: 'inline-flex', background: '#1a1e23', border: '1px solid #252b32', borderRadius: 10, padding: '10px 24px' }}>
-                  <span style={{ fontSize: 28, fontWeight: 700, color: '#d1d7df', letterSpacing: 2 }}>{spot.hero_hand}</span>
-                </div>
+                <div style={{ fontSize: 12, color: '#8a94a6', marginBottom: 8 }}>Your Hand</div>
+                {renderHand(spot.hero_hand)}
               </div>
+
+              {/* Board */}
               {renderBoard(spot.board)}
+
+              {/* Spot info */}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 20, margin: '10px 0 18px', fontSize: 13, color: '#8a94a6' }}>
                 <span>Pot: <b style={{ color: '#d1d7df' }}>{spot.pot_size}bb</b></span>
                 <span>Stack: <b style={{ color: '#d1d7df' }}>{spot.stack_depth}bb</b></span>
                 <span>Position: <b style={{ color: '#d1d7df' }}>{spot.position}</b></span>
               </div>
+
+              {/* Question */}
               <div style={{ fontSize: 15, fontWeight: 600, color: '#d1d7df', marginBottom: 12 }}>What&apos;s the GTO play?</div>
+
+              {/* Action buttons */}
               {spot.options.map(opt => {
                 const isSelected = selectedAction === opt.action
                 const isCorrect = opt.is_gto
+                const actionColor = opt.action === 'Fold' ? '#6b7585' : opt.action === 'Call' ? '#3A6EA5' : '#E53935'
                 return (
                   <button key={opt.action} onClick={() => handleAnswer(opt.action)} disabled={answered}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%',
-                      padding: '12px 16px', marginBottom: 8, borderRadius: 10, cursor: answered ? 'default' : 'pointer',
+                      padding: '12px 16px', marginBottom: 8, borderRadius: 10,
+                      cursor: answered ? 'default' : 'pointer',
                       background: isSelected ? (isCorrect ? 'rgba(0,169,143,.12)' : 'rgba(224,90,90,.12)') : '#1a1e23',
                       border: `1px solid ${isSelected ? (isCorrect ? '#00a98f' : '#e05a5a') : '#252b32'}`,
-                      color: '#d1d7df', opacity: answered && !isSelected && !isCorrect ? 0.4 : 1,
-                      outline: answered && isCorrect ? '2px solid #00a98f' : 'none', outlineOffset: -2,
+                      color: '#d1d7df',
+                      opacity: answered && !isSelected && !isCorrect ? 0.4 : 1,
+                      outline: answered && isCorrect ? '2px solid #00a98f' : 'none',
+                      outlineOffset: -2,
+                      transition: 'all .15s ease',
                     }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {answered && isCorrect && <span style={{ color: '#00a67e' }}>✓</span>}
-                      {answered && isSelected && !isCorrect && <span style={{ color: '#e05a5a' }}>✗</span>}
-                      <span style={{ fontWeight: 600, fontSize: 14 }}>{opt.action}</span>
+                      {answered && isCorrect && <span style={{ color: '#00a67e', fontSize: 16 }}>✓</span>}
+                      {answered && isSelected && !isCorrect && <span style={{ color: '#e05a5a', fontSize: 16 }}>✗</span>}
+                      <span style={{
+                        fontWeight: 600, fontSize: 14,
+                        color: !answered ? actionColor : undefined,
+                      }}>{opt.action}</span>
                     </div>
                     {answered
                       ? <span style={{ fontSize: 12, color: '#8a94a6' }}>EV: <b style={{ color: opt.ev >= 0 ? '#00a67e' : '#e05a5a' }}>{opt.ev >= 0 ? '+' : ''}{opt.ev.toFixed(2)}</b></span>
@@ -149,24 +457,37 @@ export default function PracticePage() {
                   </button>
                 )
               })}
+
+              {/* Feedback + Next */}
               {answered && (
                 <div style={{ marginTop: 16, textAlign: 'center' }}>
-                  <div style={{ fontSize: 14, color: selectedAction === spot.options.find(o => o.is_gto)?.action ? '#00a67e' : '#e05a5a', fontWeight: 600, marginBottom: 10 }}>
-                    {selectedAction === spot.options.find(o => o.is_gto)?.action ? '✓ Correct!' : `✗ GTO: ${spot.gto_action}`}
+                  <div style={{
+                    fontSize: 14, fontWeight: 600, marginBottom: 10,
+                    color: selectedAction === spot.options.find(o => o.is_gto)?.action ? '#00a67e' : '#e05a5a',
+                  }}>
+                    {selectedAction === spot.options.find(o => o.is_gto)?.action ? '✓ Correct!' : `✗ GTO: ${spot.gto_action} (${spot.gto_frequency}%)`}
                   </div>
-                  <button onClick={fetchSpot} style={{ background: '#00a98f', color: '#02110e', border: 'none', padding: '10px 24px', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Next</button>
+                  <button onClick={fetchSpot}
+                    style={{ background: '#00a98f', color: '#02110e', border: 'none', padding: '10px 24px', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                    Next Spot →
+                  </button>
                 </div>
               )}
             </>
           )}
         </div>
+
+        {/* Right: Session panel */}
         <div style={{ background: '#0f1317', padding: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#d1d7df' }}>Session</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#d1d7df', fontWeight: 600 }}>Session</h3>
+
+          {/* Stats grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             {[
               { l: 'Spots', v: stats.total },
-              { l: 'Correct', v: `${stats.total ? Math.round(stats.correct / stats.total * 100) : 0}%`, c: stats.total && stats.correct / stats.total >= 0.6 ? '#00a67e' : '#e09b3d' },
+              { l: 'Accuracy', v: `${accuracy}%`, c: accuracy >= 60 ? '#00a67e' : '#e09b3d' },
               { l: 'Streak', v: stats.streak, c: stats.streak >= 3 ? '#00a67e' : '#d1d7df' },
+              { l: 'Best Streak', v: stats.bestStreak, c: stats.bestStreak >= 5 ? '#00a67e' : '#d1d7df' },
             ].map(s => (
               <div key={s.l} style={{ background: '#1a1e23', borderRadius: 8, padding: 10, textAlign: 'center', border: '1px solid #252b32' }}>
                 <div style={{ fontSize: 11, color: '#8a94a6', marginBottom: 4 }}>{s.l}</div>
@@ -174,12 +495,36 @@ export default function PracticePage() {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8a94a6', marginBottom: 4 }}><span>Accuracy</span><span>{stats.total ? Math.round(stats.correct / stats.total * 100) : 0}%</span></div>
+
+          {/* Accuracy bar */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8a94a6', marginBottom: 4 }}>
+              <span>Accuracy</span><span>{accuracy}%</span>
+            </div>
             <div style={{ height: 6, background: '#1a1e23', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${stats.total ? stats.correct / stats.total * 100 : 0}%`, height: '100%', background: '#00a98f', borderRadius: 3, transition: 'width .3s' }} />
+              <div style={{ width: `${accuracy}%`, height: '100%', background: accuracy >= 60 ? '#00a98f' : '#e09b3d', borderRadius: 3, transition: 'width .3s' }} />
             </div>
           </div>
+
+          {/* Recent history */}
+          {history.length > 0 && (
+            <>
+              <h4 style={{ margin: '0 0 8px', fontSize: 12, color: '#6b7585', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Recent</h4>
+              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                {history.slice().reverse().slice(0, 10).map((h, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                    borderBottom: '1px solid #1a1e23', fontSize: 12,
+                  }}>
+                    <span style={{ color: h.correct ? '#00a67e' : '#e05a5a', fontWeight: 700, fontSize: 14 }}>{h.correct ? '✓' : '✗'}</span>
+                    <span style={{ color: '#d1d7df' }}>{h.hero_hand}</span>
+                    <span style={{ color: '#6b7585' }}>{h.position}</span>
+                    {!h.correct && <span style={{ color: '#6b7585', fontSize: 11 }}>→ {h.gtoAction}</span>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
       <style>{`@media (max-width: 1100px) { .practice-grid { grid-template-columns: 1fr !important; } }`}</style>
