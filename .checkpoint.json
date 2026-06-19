@@ -100,13 +100,20 @@
       "date": "2026-06-20",
       "summary": "Lessons table schema already in sync. All columns (video_url, quiz_data, etc.) exist. Verified via API.",
       "coach": "approved"
+    },
+    {
+      "task": "study-postflop-visual-match-reference",
+      "sha": "4cf93aa",
+      "date": "2026-06-20",
+      "summary": "Style board cards as white playing cards with red diamonds — fix card background from dark to cream, diamond color from orange to red",
+      "coach": "approved"
     }
   ],
-  "current_task": "study-postflop-visual-match-reference",
+  "current_task": "courses-page-visual-match-reference",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "44e5ff8",
+  "last_sha": "4cf93aa",
   "blocker": null,
   "spec_gaps": [
     {
