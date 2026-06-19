@@ -964,3 +964,48 @@ Ordered by priority. Each task is one unit of work for one player tick.
   - Navigate to `/courses` and compare card layout against reference
   - Click a course and verify detail page layout
   - Check difficulty badge colors match spec
+
+### Task: fix-icm-api-route-prefix
+- **Description**: The ICM API router is mounted at `/icm` but the frontend calls `/api/v1/icm/calculate`. The router in `apps/api/routers/icm.py` has `prefix="/icm"` but needs `prefix="/api/v1/icm"` to match the frontend's `useICMCalculator.ts` which calls `/api/v1/icm/calculate`. Other routers (equity, solver, etc.) include `/api/v1` in their prefix — ICM is the outlier.
+- **Success criteria**:
+  - `curl -X POST http://localhost:8000/api/v1/icm/calculate -H "Content-Type: application/json" -d '{"prizes":[1000,600,400],"stacks":[10000,8000,7000,5000]}'` returns a valid ICM calculation response (not 404)
+  - The `/icm` page on the live site can call the API without 404
+- **Coach checks**:
+  - Verify the route prefix is `/api/v1/icm` in `apps/api/routers/icm.py`
+  - Test the calculate endpoint returns ICM results
+  - Confirm no other routes broke (check equity, solver still work)
+
+### Task: icm-page-visual-match-reference
+- **Description**: Compare the live `/icm` page against `docs/reference-icm.png`. The reference shows: prize pool panel, chip stack display, bubble pressure indicator, ICM results table with $EV and chip EV columns. Identify gaps and fix them.
+- **Success criteria**:
+  - Prize pool panel matches reference layout
+  - ICM results table shows $EV and chip EV columns
+  - Bubble pressure indicator renders correctly
+  - Page is responsive on mobile
+- **Coach checks**:
+  - Navigate to `/icm` and compare against reference
+  - Verify ICM calculation works end-to-end (API + frontend)
+  - Check results table formatting
+
+### Task: fix-e2e-test-runner
+- **Description**: All 16 Playwright E2E test files fail with `Playwright Test did not expect test.describe() to be called here` — a vitest/Playwright globals conflict. The E2E test files import `describe`, `it`, `expect` from vitest instead of Playwright's test runner. Fix the test setup so E2E tests can actually run.
+- **Success criteria**:
+  - `npx playwright test --reporter=list` runs without crashing
+  - At least the basic smoke tests pass (home page loads, study page loads)
+  - E2E test files use Playwright's `test.describe`/`test` not vitest's `describe`/`it`
+- **Coach checks**:
+  - Run `npx playwright test --reporter=list` and verify tests execute
+  - Check that test files import from `@playwright/test` not `vitest`
+  - Verify at least 3 tests pass
+
+### Task: solutions-page-visual-match-reference
+- **Description**: Compare the live `/solutions` page against `docs/reference-solutions.png`. The reference shows: solution cards with board display, position badge, stack depth, spot category, and GTO action breakdown. Identify gaps and fix them.
+- **Success criteria**:
+  - Solution cards match reference layout (board display, position badge, stack depth)
+  - Spot category filters work
+  - GTO action breakdown shows frequencies
+  - Search functionality works
+- **Coach checks**:
+  - Navigate to `/solutions` and compare against reference
+  - Test search and filter functionality
+  - Verify GTO action breakdown renders correctly
