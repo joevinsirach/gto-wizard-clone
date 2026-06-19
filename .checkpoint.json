@@ -47,37 +47,24 @@
     "solutions-frontend-page",
     "equity-variant-2-7td-page",
     "equity-variant-2-7sd-page",
-    "equity-variant-plo5-page"
-  ],
-  "current": "analyze-viewer-functional-page",
-  "next": "equity-variant-omaha8-page",
-  "backlog": [
+    "equity-variant-plo5-page",
     "analyze-viewer-functional-page",
-    "equity-variant-omaha8-page",
+    "equity-variant-omaha8-page"
+  ],
+  "current": "equity-variant-stud8-page",
+  "next": "analyze-leaks-functional-page",
+  "backlog": [
     "equity-variant-stud8-page",
     "analyze-leaks-functional-page"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "ebcfaf9",
+  "last_sha": "843e0da",
   "blocker": null,
-  "spec_gaps": [
-    {
-      "item": "GET /equity/omaha returns VariantStubPage (11 lines)",
-      "type": "stub_page",
-      "priority": 2,
-      "evidence": "page.tsx is 11 lines using VariantStubPage component"
-    },
-    {
-      "item": "GET /equity/stud8 returns VariantStubPage (11 lines)",
-      "type": "stub_page",
-      "priority": 2,
-      "evidence": "page.tsx is 11 lines using VariantStubPage component"
-    }
-  ],
+  "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "2609ba8",
-    "last_reviewed_at": "2026-06-19T11:05:00Z",
+    "last_reviewed_sha": "843e0da",
+    "last_reviewed_at": "2026-06-19T14:30:00Z",
     "verdict": "approved",
-    "notes": "equity-variant-plo5-page: full 468-line PLO5 equity calculator replacing stub. All success criteria met. Added 3 new tasks to backlog."
+    "notes": "Multi-task commit: equity-variant-omaha8-page (624-line Omaha Hi-Lo calculator, replaces 11-line stub, API returns hi/lo/scoop equity) + analyze-viewer-functional-page (406-line hand history viewer with PokerStars parser, HandViewer component integration). All success criteria met for both tasks. 368 tests pass. Both pages return 200."
   }
 }
