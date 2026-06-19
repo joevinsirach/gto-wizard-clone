@@ -128,17 +128,29 @@
       "date": "2026-06-20",
       "summary": "Add dollar-EV and Chip EV columns to ICM results table \u2014 API already returned ev/chip_equity, now displayed in frontend with gold/blue styling",
       "coach": "approved"
+    },
+    {
+      "task": "fix-quiz-spots-table-missing",
+      "sha": "71ff5ac",
+      "date": "2026-06-20",
+      "summary": "Community spots seeded (3 rows), quiz_spots already had 10 rows. Fixed seed.py empty CREATE TABLE bug. All endpoints return 200.",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-community-spots-table-missing",
+      "sha": "71ff5ac",
+      "date": "2026-06-20",
+      "summary": "Created seed_community_spots.py with 3 sample spots. Fixed seed.py empty CREATE TABLE bug. /api/v1/spots returns 200 with 3 community spots. Spot detail endpoint works.",
+      "coach": "approved"
     }
   ],
-  "current_task": "fix-quiz-spots-table-missing",
+  "current_task": "solutions-page-visual-match-reference",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "65d4c7b",
+  "last_sha": "71ff5ac",
   "blocker": null,
   "remaining_agents_md_tasks": [
-    "fix-quiz-spots-table-missing",
-    "fix-community-spots-table-missing",
     "solutions-page-visual-match-reference",
     "fix-e2e-test-runner",
     "fix-solver-docker-build",
@@ -146,20 +158,6 @@
   ],
   "note": "Remaining AGENTS.md tasks verified: most are implemented under different names (e.g., Phase-1d covers interactive-postflop-study-buttons+board-display+action-buttons+street-navigation+pot-and-history; Makefile covers automate-seed-on-deploy; Seed Data section covers document-seed-script; postflop-strategy endpoint exists). Visual polish tasks (icm/solutions) require vision analysis. Infrastructure tasks (solver docker build/protobuf) are environment-specific.",
   "spec_gaps": [
-    {
-      "item": "quiz_spots table missing from PostgreSQL database",
-      "type": "missing_table",
-      "priority": 1,
-      "evidence": "asyncpg.exceptions.UndefinedTableError: relation 'quiz_spots' does not exist. Causes 500 on GET /api/v1/quiz/random, /api/v1/quiz/categories, /api/v1/spots. fix_tables.py uses SQLite (wrong DB). seed.py creates quiz_spots with empty parentheses (no columns).",
-      "status": "new"
-    },
-    {
-      "item": "community_spots table missing from PostgreSQL database",
-      "type": "missing_table",
-      "priority": 1,
-      "evidence": "fix_tables.py does not include community_spots table. Causes 500 on GET /api/v1/spots. Model exists at apps/api/models/spots.py but table never created in PostgreSQL.",
-      "status": "new"
-    },
     {
       "item": "POST /api/v1/equity/calculate timeout",
       "type": "broken_endpoint",
@@ -195,9 +193,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "1e775bbc95a2c02d77f2b7d4b6906c0584eacf8a",
-    "last_reviewed_at": "2026-06-20T18:05:00Z",
+    "last_reviewed_sha": "71ff5acb7deebe31f5241b43dada5f6f0d19a95f",
+    "last_reviewed_at": "2026-06-20T18:35:00Z",
     "verdict": "approved",
-    "notes": "No new player commits since last review. Live site healthy: home page renders, API health 200, quiz/random returns valid JSON, quiz/categories returns 6 categories, spots returns empty array (no 500). 368 Python tests pass. E2E tests still broken (known pre-existing vitest/Playwright globals conflict). Backlog: 6 tasks remaining including fix-quiz-spots-table-missing (current_task)."
+    "notes": "Approved fix-quiz-spots-table-missing + fix-community-spots-table-missing (71ff5ac). seed.py CREATE TABLE bug fixed, 3 community spots seeded, /api/v1/spots returns 200, spot detail endpoint works. 368 tests pass. Live site healthy (HTTP 200)."
   }
 }
