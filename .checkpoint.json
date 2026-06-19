@@ -46,24 +46,18 @@
     "visual-study-preflop-match-reference",
     "solutions-frontend-page",
     "equity-variant-2-7td-page",
-    "equity-variant-2-7sd-page"
+    "equity-variant-2-7sd-page",
+    "equity-variant-plo5-page"
   ],
-  "current": "equity-variant-plo5-page",
-  "next": "analyze-viewer-functional-page",
+  "current": "analyze-viewer-functional-page",
+  "next": "tbd",
   "backlog": [
-    "equity-variant-plo5-page",
     "analyze-viewer-functional-page"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "702d481",
+  "last_sha": "2609ba8",
   "blocker": null,
   "spec_gaps": [
-    {
-      "item": "GET /equity/plo5 returns stub page",
-      "type": "stub_page",
-      "priority": 2,
-      "evidence": "page.tsx imports VariantStubPage, shows 'under development'"
-    },
     {
       "item": "GET /analyze/viewer returns 39-line stub",
       "type": "stub_page",
