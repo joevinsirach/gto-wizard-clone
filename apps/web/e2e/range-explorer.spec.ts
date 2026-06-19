@@ -128,7 +128,7 @@ test.describe("Range Explorer Page", () => {
     await expect(page.locator("text=What is Range Explorer?")).toBeVisible();
     await expect(page.locator("text=How to Use")).toBeVisible();
     await expect(page.locator("text=Understanding the Colors")).toBeVisible();
-    await expect(page.locator("text=Board Textures")).toBeVisible();
+    await expect(page.locator("text=Range Builder")).toBeVisible();
   });
 
   test("11. Active position highlights when clicked", async ({ page }) => {
