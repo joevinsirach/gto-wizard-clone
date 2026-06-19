@@ -105,9 +105,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "dc90867",
-    "last_reviewed_at": "2026-06-20T07:00:00Z",
+    "last_reviewed_sha": "d11c01f0525f257edf71f8e6aded6aaba5ad47e2",
+    "last_reviewed_at": "2026-06-20T08:00:00Z",
     "verdict": "approved",
-    "notes": "Fixed equity calc timeout: asyncio.wait_for with 5s timeout + fallback to 5000 iterations. Reduced DEFAULT_ITERATIONS from 100k to 10k. All 368 tests pass. Live site 200."
+    "notes": "No new code commits since last review. 2 checkpoint-only commits (cc66399, d11c01f) — no code changes. Live site healthy: API 200, Frontend 200. All 118 Playwright E2E tests pass when run with correct config (--config=apps/web/playwright.config.ts). Vitest run still fails on e2e files (fix-e2e-test-runner task pending). current_task: fix-e2e-test-runner. Backlog: 4 tasks remaining — healthy."
   }
 }
