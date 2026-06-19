@@ -22,42 +22,42 @@ from apps.api.services.icm_storage import get_scenario_storage
 from gto_poker.icm import icm_calculate, calculate_bubble_factor
 
 
-router = APIRouter(prefix="/icm", tags=["ICM"])
+router = APIRouter(prefix="/api/v1/icm", tags=["ICM"])
 
 
 @router.post("/calculate", response_model=ICMCalculationResponse)
 async def calculate_icm(request: ICMCalculationRequest) -> ICMCalculationResponse:
     """Calculate ICM equity for a tournament scenario.
-    
+
     Computes equity for each player based on chip stacks and prize structure
     using Monte Carlo simulation with the Malmoud-Harville formula.
-    
+
     Args:
         request: ICM calculation request with stacks, prizes, and player info.
-    
+
     Returns:
         ICM equity results for each player including bubble factors.
-    
+
     Raises:
         HTTPException: If input validation fails or calculation error occurs.
     """
     try:
         # Generate player names if not provided
         n_players = len(request.stacks)
-        players = request.players or [f"Player_{i+1}" for i in range(n_players)]
-        
+        players = request.players or [f"Player_{i + 1}" for i in range(n_players)]
+
         if len(players) != n_players:
             raise HTTPException(
                 status_code=400,
                 detail=f"Number of players ({len(players)}) must match number of stacks ({n_players})",
             )
-        
+
         # Ensure prizes match player count
         if len(request.prizes) < n_players:
             prizes = list(request.prizes) + [0.0] * (n_players - len(request.prizes))
         else:
             prizes = request.prizes[:n_players]
-        
+
         # Calculate ICM
         results = icm_calculate(
             stacks=request.stacks,
@@ -66,7 +66,7 @@ async def calculate_icm(request: ICMCalculationRequest) -> ICMCalculationRespons
             n_simulations=request.n_simulations,
             seed=request.seed,
         )
-        
+
         # Convert to response format
         icm_results = [
             ICMResult(
@@ -78,13 +78,13 @@ async def calculate_icm(request: ICMCalculationRequest) -> ICMCalculationRespons
             )
             for r in results
         ]
-        
+
         return ICMCalculationResponse(
             results=icm_results,
             total_prize_pool=sum(prizes),
             total_chips=sum(request.stacks),
         )
-    
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -100,17 +100,17 @@ async def get_bubble_factor(
     seed: Optional[int] = None,
 ) -> dict:
     """Calculate bubble factor for a specific player.
-    
+
     The bubble factor indicates how valuable each chip is compared to
     raw chip equity (1.0 = fair value, >1.0 = more valuable).
-    
+
     Args:
         stacks: List of chip stacks.
         prizes: Prize amounts per place.
         player_idx: Index of player to calculate bubble factor for.
         n_simulations: Number of Monte Carlo simulations.
         seed: Optional random seed.
-    
+
     Returns:
         Bubble factor for the specified player.
     """
@@ -133,11 +133,11 @@ async def list_scenarios(
     offset: int = Query(0, ge=0),
 ) -> TournamentScenarioList:
     """List all stored tournament scenarios.
-    
+
     Args:
         limit: Maximum number of scenarios to return.
         offset: Number of scenarios to skip.
-    
+
     Returns:
         List of tournament scenarios.
     """
@@ -150,12 +150,12 @@ async def create_scenario(
     request: TournamentScenarioCreate,
 ) -> TournamentScenario:
     """Create a new tournament scenario.
-    
+
     Stores a tournament scenario for later use in training or analysis.
-    
+
     Args:
         request: Scenario data.
-    
+
     Returns:
         Created scenario with ID.
     """
@@ -166,7 +166,7 @@ async def create_scenario(
         prizes=request.prizes,
         street=request.street,
     )
-    
+
     storage = get_scenario_storage()
     return await storage.create_scenario(scenario)
 
@@ -174,22 +174,22 @@ async def create_scenario(
 @router.get("/scenarios/{scenario_id}", response_model=TournamentScenario)
 async def get_scenario(scenario_id: str) -> TournamentScenario:
     """Get a specific tournament scenario by ID.
-    
+
     Args:
         scenario_id: UUID of the scenario.
-    
+
     Returns:
         Tournament scenario.
-    
+
     Raises:
         HTTPException: If scenario not found.
     """
     storage = get_scenario_storage()
     scenario = await storage.get_scenario(scenario_id)
-    
+
     if scenario is None:
         raise HTTPException(status_code=404, detail="Scenario not found")
-    
+
     return scenario
 
 
@@ -199,43 +199,43 @@ async def update_scenario(
     scenario: TournamentScenario,
 ) -> TournamentScenario:
     """Update an existing tournament scenario.
-    
+
     Args:
         scenario_id: UUID of scenario to update.
         scenario: New scenario data.
-    
+
     Returns:
         Updated scenario.
-    
+
     Raises:
         HTTPException: If scenario not found.
     """
     storage = get_scenario_storage()
     updated = await storage.update_scenario(scenario_id, scenario)
-    
+
     if updated is None:
         raise HTTPException(status_code=404, detail="Scenario not found")
-    
+
     return updated
 
 
 @router.delete("/scenarios/{scenario_id}")
 async def delete_scenario(scenario_id: str) -> dict:
     """Delete a tournament scenario.
-    
+
     Args:
         scenario_id: UUID of scenario to delete.
-    
+
     Returns:
         Confirmation message.
-    
+
     Raises:
         HTTPException: If scenario not found.
     """
     storage = get_scenario_storage()
     deleted = await storage.delete_scenario(scenario_id)
-    
+
     if not deleted:
         raise HTTPException(status_code=404, detail="Scenario not found")
-    
+
     return {"message": "Scenario deleted", "id": scenario_id}
