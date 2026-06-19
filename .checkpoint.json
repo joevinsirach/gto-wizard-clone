@@ -195,9 +195,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "364abf2eff911a868e9aa459aca083b78a683876",
-    "last_reviewed_at": "2026-06-20T17:12:00Z",
+    "last_reviewed_sha": "1e775bbc95a2c02d77f2b7d4b6906c0584eacf8a",
+    "last_reviewed_at": "2026-06-20T18:05:00Z",
     "verdict": "approved",
-    "notes": "Reviewed icm-page-visual-match-reference (65d4c7b): added $EV and Chip EV columns to ICM results table. Clean single-file change, API fields already existed. All success criteria met."
+    "notes": "No new player commits since last review. Live site healthy: home page renders, API health 200, quiz/random returns valid JSON, quiz/categories returns 6 categories, spots returns empty array (no 500). 368 Python tests pass. E2E tests still broken (known pre-existing vitest/Playwright globals conflict). Backlog: 6 tasks remaining including fix-quiz-spots-table-missing (current_task)."
   }
 }
