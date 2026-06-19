@@ -48,8 +48,8 @@
     "equity-variant-2-7td-page",
     "equity-variant-2-7sd-page"
   ],
-  "current": "equity-variant-2-7sd-page",
-  "next": "equity-variant-plo5-page",
+  "current": "equity-variant-plo5-page",
+  "next": "analyze-viewer-functional-page",
   "backlog": [
     "equity-variant-plo5-page",
     "analyze-viewer-functional-page"
