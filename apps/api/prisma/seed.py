@@ -6,6 +6,7 @@ Run with: python -m apps.api.prisma.seed
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from apps.api.services.database import engine, Base
@@ -116,7 +117,6 @@ SEED_SPOTS = [
         "explanation": "JTs in a 3-bet pot vs BTN opens - suited connectors have good implied odds but need to be selective. Calling is often best to realize equity.",
         "street": "preflop",
     },
-
     # === PREFLOP: OPEN-RAISE POTS ===
     {
         "game_type": "nlh",
@@ -218,7 +218,6 @@ SEED_SPOTS = [
         "explanation": "A5s from SB vs BTN open - the BTN range is strong so we need to be selective. Sometimes it's a fold, sometimes a call.",
         "street": "preflop",
     },
-
     # === FLOP: OVERCARD ON BOARD ===
     {
         "game_type": "nlh",
@@ -300,7 +299,6 @@ SEED_SPOTS = [
         "explanation": "JJ on AQ-high board - pocket jacks are vulnerable but we have showdown value. Calling is often best to see turn cards that might help.",
         "street": "flop",
     },
-
     # === FLOP: MONOBOARD ===
     {
         "game_type": "nlh",
@@ -342,7 +340,6 @@ SEED_SPOTS = [
         "explanation": "Nuts flush draw on monotone board - checking/calling is standard to realize equity. Raising folds out better hands but we want to see cards cheaply.",
         "street": "flop",
     },
-
     # === FLOP: PAIRED BOARD ===
     {
         "game_type": "nlh",
@@ -384,7 +381,6 @@ SEED_SPOTS = [
         "explanation": "Top set on paired Queen board - absolute monster. Raise for value to thin the field and build the pot.",
         "street": "flop",
     },
-
     # === FLOP: WET BOARD ===
     {
         "game_type": "nlh",
@@ -426,7 +422,6 @@ SEED_SPOTS = [
         "explanation": "Gutshot straight draw on a very wet coordinated board. Facing aggression, our hand is often dominated and we should fold.",
         "street": "flop",
     },
-
     # === TURN: OVERCARD ===
     {
         "game_type": "nlh",
@@ -470,7 +465,6 @@ SEED_SPOTS = [
         "explanation": "QQ faces an Ace on the turn on K-Q-high board. Top pair but very scary card. Checking/calling is often best.",
         "street": "turn",
     },
-
     # === TURN: STRAIGHT COMPLETED ===
     {
         "game_type": "nlh",
@@ -514,7 +508,6 @@ SEED_SPOTS = [
         "explanation": "Broadway straight on a Q-J-high board, King completes. Facing a bet, we need to be careful of boats and better straights.",
         "street": "turn",
     },
-
     # === TURN: FLUSH COMPLETED ===
     {
         "game_type": "nlh",
@@ -558,7 +551,6 @@ SEED_SPOTS = [
         "explanation": "Flush completed but middle flush facing a large bet on a board that could also give opponents a full house. Be cautious.",
         "street": "turn",
     },
-
     # === RIVER: VALUE ===
     {
         "game_type": "nlh",
@@ -604,7 +596,6 @@ SEED_SPOTS = [
         "explanation": "Full house on river - the absolute nuts in most scenarios. Value bet BIG.",
         "street": "river",
     },
-
     # === RIVER: BLUFF CATCHING ===
     {
         "game_type": "nlh",
@@ -650,7 +641,6 @@ SEED_SPOTS = [
         "explanation": "Middle set on a very coordinated board - opponent's range is weighted toward value. Bluff catching is often the best option.",
         "street": "river",
     },
-
     # === RIVER: FACING BET ===
     {
         "game_type": "nlh",
@@ -718,7 +708,6 @@ SEED_SPOTS = [
         "explanation": "Two pair on a scary board - facing a bet, we're often beat by better two pair, straights, or sets. Folding is often correct.",
         "street": "river",
     },
-
     # === DEEP STACK ===
     {
         "game_type": "nlh",
@@ -760,7 +749,6 @@ SEED_SPOTS = [
         "explanation": "Deep stack with JJ on Ace-high board. With so many stacks behind, slowplaying with Calling is often best to keep opponents in the hand.",
         "street": "flop",
     },
-
     # === SHORT STACK (SPR < 3) ===
     {
         "game_type": "nlh",
@@ -802,7 +790,6 @@ SEED_SPOTS = [
         "explanation": "Short stack scenario with Ace-Ten on King-Queen-high board. With low SPR, going all-in is often the best play to maximize fold equity and value.",
         "street": "flop",
     },
-
     # === HEADS-UP POTS ===
     {
         "game_type": "nlh",
@@ -844,7 +831,6 @@ SEED_SPOTS = [
         "explanation": "Heads-up defense with middle pair on a Jack-ten-high board. Checking/calling is standard to realize equity.",
         "street": "flop",
     },
-
     # === MULTIWAY POTS ===
     {
         "game_type": "nlh",
@@ -886,7 +872,6 @@ SEED_SPOTS = [
         "explanation": "Multiway with trips Jacks on a very coordinated board. Be careful of better hands. Checking/calling is often best in multiway.",
         "street": "flop",
     },
-
     # === 3-BET POTS (POSTFLOP) ===
     {
         "game_type": "nlh",
@@ -928,7 +913,6 @@ SEED_SPOTS = [
         "explanation": "3-bet pot with middle pair facing a c-bet on Ace-high board. We're dominated by Ace-x and should often fold.",
         "street": "flop",
     },
-
     # === IP VS OOP ===
     {
         "game_type": "nlh",
@@ -976,18 +960,25 @@ SEED_SPOTS = [
 async def seed_quiz_spots():
     """Seed the database with quiz spots."""
     async with AsyncSession(engine) as session:
-        # Create tables if they don't exist
+        # Create tables if they don't exist (use proper schema from model)
         async with engine.begin() as conn:
-            await conn.execute(text("CREATE TABLE IF NOT EXISTS quiz_spots ()"))
-        
+            from apps.api.services.quiz_models import QuizSpot, Base as QuizBase
+            from sqlalchemy import MetaData
+
+            # Try to create quiz_spots with proper columns
+            try:
+                await conn.run_sync(QuizSpot.metadata.create_all, checkfirst=True)
+            except Exception:
+                pass
+
         # Check if spots already exist
         result = await session.execute(text("SELECT COUNT(*) FROM quiz_spots"))
         count = result.scalar()
-        
+
         if count > 0:
             print(f"Quiz spots already exist ({count} spots). Skipping seed.")
             return
-        
+
         # Insert seed spots
         for spot_data in SEED_SPOTS:
             spot = QuizSpot(
@@ -1009,11 +1000,12 @@ async def seed_quiz_spots():
                 street=spot_data["street"],
             )
             session.add(spot)
-        
+
         await session.commit()
         print(f"Seeded {len(SEED_SPOTS)} quiz spots.")
 
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(seed_quiz_spots())
