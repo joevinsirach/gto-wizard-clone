@@ -855,4 +855,63 @@ Ordered by priority. Each task is one unit of work for one player tick.
 - **Coach checks**:
   - Verify pot size updates correctly after each action
   - Check action history shows correct sequence with proper formatting
+
+### Task: fix-equity-calculator-timeout
+- **Description**: The `POST /api/v1/equity/calculate` and `GET /api/v1/equity/calculate` endpoints time out (15s+) because the Monte Carlo equity calculation runs synchronously, blocking the FastAPI event loop. Fix by making the equity calculation async (using `asyncio.to_thread` or `run_in_executor`) so the API responds within a reasonable time (<5s).
+- **Success criteria**:
+  - `curl -X POST http://localhost:8000/api/v1/equity/calculate -H "Content-Type: application/json" -d '{"hero":"AhKh","villain":"JJ,AKs","board":""}'` returns a valid JSON response within 5 seconds
+  - `curl "http://localhost:8000/api/v1/equity/calculate?hero=AhKh&villain=JJ,AKs"` returns within 5 seconds
+  - Response contains `equity`, `wins`, `ties`, `total` fields
+- **Coach checks**:
+  - Time the curl command: should complete in <5s
+  - Verify response structure matches EquityResponse schema
+  - Check that concurrent requests don't block each other
+
+### Task: fix-e2e-test-runner
+- **Description**: All 16 Playwright E2E test files fail with "Playwright Test did not expect test.describe() to be called here" because the test files import vitest globals (`describe`, `it`, `expect`) which conflict with Playwright's runner. Fix by separating the Playwright test configuration from vitest, ensuring Playwright tests use `@playwright/test` imports only.
+- **Success criteria**:
+  - `npx playwright test --reporter=list` runs without the `test.describe()` error
+  - At least the study page E2E test passes (navigates to /study, interacts with the page)
+  - `npx vitest run` still works for any unit tests
+- **Coach checks**:
+  - Run `npx playwright test --reporter=list` and verify no `test.describe()` errors
+  - Check that Playwright test files import from `@playwright/test` not `vitest`
+  - Verify vitest config excludes e2e directory
+
+### Task: study-page-accessibility-audit
+- **Description**: The study page (/study) has no accessibility features — no ARIA labels, no keyboard navigation, no screen reader support. Add proper ARIA attributes to all interactive elements (position buttons, hand matrix cells, action buttons, street breadcrumb), implement keyboard navigation (Tab/Enter/Space to interact), and ensure focus indicators are visible.
+- **Success criteria**:
+  - All interactive elements have descriptive `aria-label` or `aria-labelledby`
+  - Hand matrix cells are navigable with arrow keys, selectable with Enter/Space
+  - Action buttons reachable via Tab key, with visible focus ring
+  - Street breadcrumb has `role="navigation"` and `aria-label="Street navigation"`
+  - No new console errors
+- **Coach checks**:
+  - Tab through the study page — verify all interactive elements are reachable
+  - Check aria-labels on position buttons, action buttons, hand cells
+  - Verify keyboard can select a hand and choose an action
+
+### Task: api-response-time-optimization
+- **Description**: Several API endpoints are slow due to synchronous computation. Profile the slowest endpoints (equity calc, solver, strategy lookup) and optimize: add Redis caching for repeated queries, use connection pooling for database queries, and ensure all I/O-bound operations are async. Target: all GET endpoints respond <200ms for cached data.
+- **Success criteria**:
+  - `GET /api/v1/strategy-lookup` responds <200ms (cached)
+  - `GET /api/v1/courses` responds <100ms
+  - `GET /api/v1/quiz/random` responds <100ms
+  - Redis caching is configured and working (verify with repeated queries)
+- **Coach checks**:
+  - Time repeated calls to strategy-lookup (second call should be faster)
+  - Check Redis is running and caching keys exist
+  - Verify no regression in response correctness
+
+### Task: course-lesson-content-management
+- **Description**: The courses page shows course listings but clicking a course doesn't show lesson content. Build the course detail view: when a user clicks a course card, navigate to `/courses/{id}` which shows the course overview, lesson list with progress indicators, and a "Start Lesson" button. Each lesson should have a simple content view (text + embedded quiz spot from the quiz API).
+- **Success criteria**:
+  - `/courses/{id}` page exists and shows course details + lesson list
+  - Lessons show completion status (from UserProgress API)
+  - Clicking "Start Lesson" shows lesson content (can be text/markdown placeholder)
+  - Progress updates when user completes a lesson
+- **Coach checks**:
+  - Navigate to `/courses` → click a course → verify detail page loads
+  - Check lesson list shows correct count matching API data
+  - Verify progress tracking works (complete a lesson, check progress updates)
   - Verify layout doesn't overflow on standard desktop viewport (1280px+)
