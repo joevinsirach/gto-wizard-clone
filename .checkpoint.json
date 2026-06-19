@@ -59,24 +59,24 @@
     "fix-solver-postflop-response-dedup",
     "update-features-yaml-to-match-reality",
     "study-page-postflop-visual-polish",
-    "update-features-yaml-hand-history"
+    "update-features-yaml-hand-history",
+    "e2e-test-coverage-expansion"
   ],
-  "current_task": "e2e-test-coverage-expansion",
-  "next": "e2e-test-coverage-expansion",
+  "current_task": "study-page-mobile-responsive",
+  "next": "study-page-mobile-responsive",
   "backlog": [
-    "e2e-test-coverage-expansion",
     "study-page-mobile-responsive",
     "push-fold-page-functional",
-    "range-explorer.page-functional"
+    "range-explorer-page-functional"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "d79ff14",
+  "last_sha": "bb1a3f1",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "d79ff14",
-    "last_reviewed_at": "2026-06-19T23:37:00Z",
+    "last_reviewed_sha": "bb1a3f1",
+    "last_reviewed_at": "2026-06-20T01:00:00Z",
     "verdict": "approved",
-    "notes": "Reviewed commit d79ff14 — meta-commit updating FEATURES.yaml status markers for /hand-history and postflop-strategy. All success criteria met: /hand-history=present, 4 components=present, postflop-strategy=present, last_audited=2026-06-19. Live /hand-history returns 200. 368 unit tests pass. No code changes beyond status markers."
+    "notes": "Added 3 new E2E test files (hand-history, quiz, study-preflop-flow) with 7 tests total. All pass. No regressions in existing 111 tests."
   }
 }
