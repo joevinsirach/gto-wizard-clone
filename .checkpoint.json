@@ -86,13 +86,27 @@
       "date": "2026-06-20",
       "summary": "Dedicated /courses/[id] page with lesson viewer, progress tracking, markdown content rendering, Mark Complete button",
       "coach": "approved"
+    },
+    {
+      "task": "fix-course-detail-api-500",
+      "sha": "8257cfc",
+      "date": "2026-06-20",
+      "summary": "Course detail API already working with UUID-based endpoints. 3 courses seeded with 24 lessons. Verified via curl.",
+      "coach": "approved"
+    },
+    {
+      "task": "fix-lessons-table-schema",
+      "sha": "8257cfc",
+      "date": "2026-06-20",
+      "summary": "Lessons table schema already in sync. All columns (video_url, quiz_data, etc.) exist. Verified via API.",
+      "coach": "approved"
     }
   ],
-  "current_task": "fix-course-detail-api-500",
+  "current_task": "study-postflop-visual-match-reference",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "8257cfc",
+  "last_sha": "44e5ff8",
   "blocker": null,
   "spec_gaps": [
     {
@@ -105,14 +119,14 @@
       "item": "E2E test runner broken — vitest/Playwright globals conflict",
       "type": "broken_tests",
       "priority": 1,
-      "evidence": "FIXED — all 118 E2E tests pass (separate e2e/ config)",
-      "status": "fixed"
+      "evidence": "16 E2E test files still failing with Playwright/vitest globals conflict — pre-existing, not caused by recent commits",
+      "status": "known"
     },
     {
       "item": "study-page accessibility audit (keyboard nav, ARIA labels, screen reader)",
       "type": "missing_feature",
       "priority": 2,
-      "evidence": "No ARIA labels or keyboard navigation on study page — violates WCAG",
+      "evidence": "FIXED — ARIA labels, keyboard nav, focus indicators added",
       "status": "fixed"
     },
     {
@@ -123,9 +137,9 @@
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "8257cfc1ff272c2aa154ad2969b11f9736cd6de9",
-    "last_reviewed_at": "2026-06-20T10:30:00Z",
-    "verdict": "approved",
-    "notes": "Reviewed 3 unreviewed commits (af80ae7, 6c153fc, 8257cfc). af80ae7: accessibility audit adds ARIA labels, keyboard nav, focus indicators — all criteria met. 6c153fc: checkpoint-only, no code. 8257cfc: /courses/[id] page with lesson viewer, progress tracking, Mark Complete — build passes, error handling present. Known: GET /api/v1/courses/{id} returns 500 due to pre-existing DB schema bug (missing video_url column) — not caused by this commit. All 3 approved. Backlog: 0 tasks remaining — generating new tasks."
+    "last_reviewed_sha": "44e5ff83e235a6661c4b682c3c24a783671ba1b4",
+    "last_reviewed_at": "2026-06-20T12:00:00Z",
+    "verdict": "revert",
+    "notes": "Reviewed 1 player commit (1bd1d7b) since last review. 9baca92 is own coach commit — skipped. 1bd1d7b claimed to add DATABASE_URL, create tables, seed data, install packages — but diff only shows sw.js hash change (1 line). Commit message is misleading/fabricated. REVERTED. Also verified fix-course-detail-api-500 and fix-lessons-table-schema are already resolved (API works with UUIDs, data seeded). Set current_task to study-postflop-visual-match-reference. E2E tests still broken (16 files, pre-existing)."
   }
 }
