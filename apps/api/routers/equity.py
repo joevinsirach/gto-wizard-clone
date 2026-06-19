@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/v1/equity", tags=["equity"])
 _redis_client = None
 
 CACHE_TTL_SECONDS = 3600  # 1 hour
-DEFAULT_ITERATIONS = 100000
+DEFAULT_ITERATIONS = 10000
 MAX_ITERATIONS = 1000000
 
 # All 169 preflop hands in standard grid order for heatmap
@@ -275,7 +275,37 @@ async def _calculate_equity_impl(
             total = iterations
         return wins, ties, total, equity
 
-    wins, ties, total, equity = await asyncio.to_thread(_compute)
+    # Run computation with a timeout — fall back to fewer iterations if needed
+    try:
+        wins, ties, total, equity = await asyncio.wait_for(asyncio.to_thread(_compute), timeout=5.0)
+    except asyncio.TimeoutError:
+        logger.warning(f"Equity calc timed out for {hero} vs {villain_str}, reducing iterations")
+        # Fallback: recompute with minimal iterations
+        fallback_iter = 5000
+        if len(villain_ranges) == 1:
+            result = calc.equity_vs_range(
+                hero_cards=hero_cards,
+                villain_range=villain_ranges,
+                board=board_cards,
+                iterations=fallback_iter,
+                n_threads=4,
+            )
+            wins = int(result * fallback_iter)
+            ties = 0
+            total = fallback_iter
+            equity = result
+        else:
+            villain_range_lists = [vr.split(",") for vr in villain_ranges]
+            equity = calc.equity_vs_range_multiway(
+                hero_cards=hero_cards,
+                villain_ranges=villain_range_lists,
+                board=board_cards,
+                iterations=fallback_iter,
+                n_threads=4,
+            )
+            wins = int(equity * fallback_iter)
+            ties = 0
+            total = fallback_iter
 
     ev_per_hand = equity  # For basic equity, EV = equity
 
