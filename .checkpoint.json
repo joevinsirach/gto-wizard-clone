@@ -54,19 +54,22 @@
     "analyze-leaks-functional-page",
     "trainer-functional-page",
     "equity-razz-functional-page",
-    "practice-page-enhancement"
+    "practice-page-enhancement",
+    "fix-solver-postflop-response-dedup",
+    "update-features-yaml-to-match-reality",
+    "study-page-postflop-visual-polish"
   ],
-  "current": "practice-page-enhancement",
+  "current": "study-page-postflop-visual-polish",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "541d76b",
+  "last_sha": "444933c",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "541d76b",
-    "last_reviewed_at": "2026-06-19T17:40:00Z",
+    "last_reviewed_sha": "444933c",
+    "last_reviewed_at": "2026-06-19T21:37:00Z",
     "verdict": "approved",
-    "notes": "practice-page-enhancement: Added SessionHistory interface, ProgressRing SVG component, renderHand/renderBoard styled card rendering, timer with elapsed state, bestStreak tracking, DIFFICULTY_COLOR mapping, endSession cleanup. /practice returns 200. Build artifacts (sw.js, turbo-build.log, tsbuildinfo) are auto-generated noise."
+    "notes": "Reviewed 3 unreviewed commits (541d76b..444933c): 8a1a24f razz-slotselector — switched CardSelectorGrid to SlotSelector with downCount={3} for proper stud-style card input. /equity/razz returns 200. 08f8020 coach-checkpoint-update — meta-commit. 444933c add-tasks — added 3 well-formed tasks to AGENTS.md. All 368 poker-core tests pass. Solver postflop-strategy returns 6 unique actions (dedup already effective). Live site healthy (200 on /, /study, /practice, /equity/razz). E2E tests still broken (known playwright/vitest globals conflict)."
   }
 }
