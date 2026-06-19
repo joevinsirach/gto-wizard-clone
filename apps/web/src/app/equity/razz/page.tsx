@@ -5,10 +5,10 @@ import { variantApi } from "@/lib/api";
 import type { VariantInfo, EquityResult } from "@/lib/api";
 import { StudHandDisplay, makeDefaultStudHand } from "@/components/stud";
 import type { StudPlayerData } from "@/components/stud";
-import { CardSelectorGrid, selectedCardsToRange, cardsToHandDisplay } from "@/components/CardSelector";
+import { SlotSelector, selectedCardsToRange, cardsToHandDisplay } from "@/components/CardSelector";
 import type { CardSelection } from "@/components/CardSelector";
 
-const MAX_RAZZ_CARDS = 7;
+const MAX_RAZZ_CARDS = 7; // 3 down + up to 4 up
 
 export default function RazzEquityPage() {
   const [variant, setVariant] = useState<VariantInfo | null>(null);
@@ -23,6 +23,7 @@ export default function RazzEquityPage() {
 
   useEffect(() => { variantApi.get("razz").then(setVariant); }, []);
 
+  // Build range string from selected cards, or use text input
   const getHeroRange = useCallback(() => {
     if (useRangeInput) return heroRangeText;
     return selectedCardsToRange(heroCards) || "A2,A3";
@@ -45,7 +46,7 @@ export default function RazzEquityPage() {
     finally { setLoading(false); }
   }, [getHeroRange, getVillainRange]);
 
-  // Build stud hand display from selected cards
+  // Build stud hand from selected cards
   const handDisplayCards = cardsToHandDisplay(heroCards);
   const heroHand: StudPlayerData | null = handDisplayCards.length >= 3 && result
     ? makeDefaultStudHand(handDisplayCards, result.hero_equity, "Hero", true)
@@ -67,7 +68,7 @@ export default function RazzEquityPage() {
             <span className="text-[11px] text-green-500 font-semibold">7 cards · no board</span>
           </div>
           <h1 className="text-2xl font-bold">Razz</h1>
-          <p className="text-sm text-gray-400 mt-1">Ace-to-five lowball stud. Select up to 7 cards per player.</p>
+          <p className="text-sm text-gray-400 mt-1">Ace-to-five lowball stud. Select cards for each player.</p>
         </div>
 
         {/* Visual Hand Display */}
@@ -77,19 +78,23 @@ export default function RazzEquityPage() {
           </div>
         )}
 
-        {/* Card selectors */}
+        {/* Hero / Villain card selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <CardSelectorGrid
+          <SlotSelector
             maxCards={MAX_RAZZ_CARDS}
             selected={heroCards}
             onChange={setHeroCards}
-            label="Hero Cards (up to 7)"
+            label="Hero Cards (3 down + up to 4 up)"
+            downCount={3}
+            variantName="Razz"
           />
-          <CardSelectorGrid
+          <SlotSelector
             maxCards={MAX_RAZZ_CARDS}
             selected={villainCards}
             onChange={setVillainCards}
-            label="Villain Cards (up to 7)"
+            label="Villain Cards (3 down + up to 4 up)"
+            downCount={3}
+            variantName="Razz"
           />
         </div>
 
@@ -103,25 +108,38 @@ export default function RazzEquityPage() {
           </button>
         </div>
 
+        {/* Manual range input (shown when toggled) */}
         {useRangeInput && (
           <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-5">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1.5">Hero Range</label>
-                <input className="w-full px-3 py-2.5 rounded-md border border-gray-700 bg-[#16213e] text-white text-sm font-mono outline-none focus:border-green-500 transition-colors"
-                  placeholder="A2,A3" value={heroRangeText} onChange={e => setHeroRangeText(e.target.value)} />
+                <input
+                  className="w-full px-3 py-2.5 rounded-md border border-gray-700 bg-[#16213e] text-white text-sm font-mono outline-none focus:border-green-500 transition-colors"
+                  placeholder="A2,A3"
+                  value={heroRangeText}
+                  onChange={e => setHeroRangeText(e.target.value)}
+                />
               </div>
               <div>
                 <label className="block text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1.5">Villain Range</label>
-                <input className="w-full px-3 py-2.5 rounded-md border border-gray-700 bg-[#16213e] text-white text-sm font-mono outline-none focus:border-green-500 transition-colors"
-                  placeholder="KQ,JT" value={villainRangeText} onChange={e => setVillainRangeText(e.target.value)} />
+                <input
+                  className="w-full px-3 py-2.5 rounded-md border border-gray-700 bg-[#16213e] text-white text-sm font-mono outline-none focus:border-green-500 transition-colors"
+                  placeholder="KQ,JT"
+                  value={villainRangeText}
+                  onChange={e => setVillainRangeText(e.target.value)}
+                />
               </div>
             </div>
           </div>
         )}
 
-        <button className="px-6 py-2.5 rounded-md border-none font-bold text-sm cursor-pointer bg-green-500 text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-400 transition-colors"
-          onClick={calculate} disabled={loading || (!useRangeInput && heroCards.length < 2 && villainCards.length < 2)}>
+        {/* Calculate button */}
+        <button
+          className="px-6 py-2.5 rounded-md border-none font-bold text-sm cursor-pointer bg-green-500 text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-400 transition-colors"
+          onClick={calculate}
+          disabled={loading || (!useRangeInput && heroCards.length < 2 && villainCards.length < 2)}
+        >
           {loading ? "Calculating..." : "Calculate Equity"}
         </button>
 
@@ -145,6 +163,7 @@ export default function RazzEquityPage() {
             </div>
           </div>
         )}
+
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
     </div>
