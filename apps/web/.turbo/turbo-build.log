@@ -11,7 +11,7 @@
  ○ (pwa) Service worker: /home/sc/repos/gto-wizard-clone/apps/web/public/sw.js
  ○ (pwa)   URL: /sw.js
  ○ (pwa)   Scope: /
- ✓ Compiled successfully in 6.4s
+ ✓ Compiled successfully in 54s
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/39) ...
@@ -21,50 +21,3 @@
  ✓ Generating static pages (39/39)
    Finalizing page optimization ...
    Collecting build traces ...
-
-Route (app)                                 Size  First Load JS
-┌ ○ /                                      166 B         109 kB
-├ ○ /_not-found                            997 B         106 kB
-├ ○ /analyze                             2.11 kB         216 kB
-├ ○ /analyze/hands                       2.87 kB         220 kB
-├ ○ /analyze/leaks                       2.58 kB         220 kB
-├ ○ /analyze/viewer                        127 B         105 kB
-├ ○ /bomb-pot                            2.58 kB         108 kB
-├ ○ /courses                             3.81 kB         113 kB
-├ ○ /double-board                        2.33 kB         108 kB
-├ ○ /equity                              6.35 kB         112 kB
-├ ○ /equity/2-7sd                        3.53 kB         109 kB
-├ ○ /equity/2-7td                        3.54 kB         109 kB
-├ ○ /equity/badugi                       4.78 kB         110 kB
-├ ○ /equity/omaha                          846 B         110 kB
-├ ○ /equity/plo                          2.49 kB         108 kB
-├ ○ /equity/plo5                         3.41 kB         109 kB
-├ ○ /equity/razz                         1.62 kB         111 kB
-├ ○ /equity/stud                         1.66 kB         111 kB
-├ ○ /equity/stud8                          846 B         110 kB
-├ ○ /hand-history                        7.63 kB         116 kB
-├ ○ /icm                                 7.09 kB         112 kB
-├ ○ /omaha                               2.84 kB         108 kB
-├ ○ /play                                2.75 kB         108 kB
-├ ○ /plo                                 1.97 kB         107 kB
-├ ○ /plo4                                1.97 kB         107 kB
-├ ○ /practice                            3.11 kB         108 kB
-├ ○ /push-fold                           5.95 kB         111 kB
-├ ○ /quiz                                4.91 kB         110 kB
-├ ○ /range-explorer                      6.49 kB         112 kB
-├ ○ /solutions                           4.66 kB         110 kB
-├ ○ /spots                               4.39 kB         115 kB
-├ ○ /strategies                          7.13 kB         112 kB
-├ ○ /strategy                            4.09 kB         115 kB
-├ ○ /study                               12.8 kB         118 kB
-├ ○ /train                               11.2 kB         220 kB
-├ ○ /train/review                        2.76 kB         114 kB
-└ ○ /variants                            2.96 kB         112 kB
-+ First Load JS shared by all             105 kB
-  ├ chunks/8626-0ea4eb006a76f4ba.js        49 kB
-  ├ chunks/87c73c54-09e1ba5c70e60a51.js  54.2 kB
-  └ other shared chunks (total)          2.09 kB
-
-
-○  (Static)  prerendered as static content
-
