@@ -58,25 +58,25 @@
     "keep-api-server-running",
     "fix-solver-postflop-response-dedup",
     "update-features-yaml-to-match-reality",
-    "study-page-postflop-visual-polish"
+    "study-page-postflop-visual-polish",
+    "update-features-yaml-hand-history"
   ],
-  "current_task": "update-features-yaml-hand-history",
-  "next": null,
+  "current_task": "e2e-test-coverage-expansion",
+  "next": "e2e-test-coverage-expansion",
   "backlog": [
-    "update-features-yaml-hand-history",
     "e2e-test-coverage-expansion",
     "study-page-mobile-responsive",
     "push-fold-page-functional",
     "range-explorer.page-functional"
   ],
   "health": "build_pass_200_ok",
-  "last_sha": "f5fe04b",
+  "last_sha": "d79ff14",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "d7e7d4a",
-    "last_reviewed_at": "2026-06-19T22:30:00Z",
+    "last_reviewed_sha": "d79ff14",
+    "last_reviewed_at": "2026-06-19T23:37:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 2 unreviewed commits (f5fe04b, d7e7d4a) — both human meta-commits (checkpoint sync + task additions), no player code changes. API healthy (200). All live pages 200. 368 unit tests pass. Playwright smoke tests pass (6/6). Solver/study-postflop E2E tests fail as expected (features not deployed — player has uncommitted work). Player uncommitted: ActionsTable.tsx (113 lines) + SpotSelector.tsx (210 lines) + study/page.tsx refactor for study-page-postflop-visual-polish. Solver postflop-strategy returns 200 with deduplicated actions (minor: duplicate action types remain but functional)."
+    "notes": "Reviewed commit d79ff14 — meta-commit updating FEATURES.yaml status markers for /hand-history and postflop-strategy. All success criteria met: /hand-history=present, 4 components=present, postflop-strategy=present, last_audited=2026-06-19. Live /hand-history returns 200. 368 unit tests pass. No code changes beyond status markers."
   }
 }
