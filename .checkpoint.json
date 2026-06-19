@@ -114,13 +114,20 @@
       "date": "2026-06-20",
       "summary": "Visual match to reference: white card backgrounds, mint-green #aafbb2 accents, thumbnail icons, progress bars, light-theme filters and stats",
       "coach": "approved"
+    },
+    {
+      "task": "fix-icm-api-route-prefix",
+      "sha": "c3fc6d2",
+      "date": "2026-06-20",
+      "summary": "Change ICM router prefix from /icm to /api/v1/icm — frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404'd. Now returns valid ICM calculation response.",
+      "coach": "approved"
     }
   ],
-  "current_task": "fix-icm-api-route-prefix",
+  "current_task": "tbd",
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "c98b6f7",
+  "last_sha": "c3fc6d2",
   "blocker": null,
   "spec_gaps": [
     {
@@ -154,13 +161,13 @@
       "type": "broken_endpoint",
       "priority": 1,
       "evidence": "apps/api/routers/icm.py has prefix='/icm' but all other routers include /api/v1. Frontend useICMCalculator.ts calls /api/v1/icm/calculate which 404s. Fix: change prefix to '/api/v1/icm'",
-      "status": "open"
+      "status": "fixed"
     }
   ],
   "coach_review": {
-    "last_reviewed_sha": "756b713",
-    "last_reviewed_at": "2026-06-20T14:00:00Z",
+    "last_reviewed_sha": "c3fc6d2",
+    "last_reviewed_at": "2026-06-20T16:00:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 2 player commits since last review. (1) 4cf93aa: study card styling — diamond color fixed to red, cream bg, proper text colors. APPROVE. (2) c98b6f7: courses page visual overhaul — white cards, mint-green accents, thumbnails, progress bars, light filters. APPROVE. Also discovered ICM API route prefix bug (router at /icm but frontend calls /api/v1/icm) — generated fix-icm-api-route-prefix task. Generated 4 new tasks to prevent stall. E2E tests still broken (pre-existing). Set current_task to fix-icm-api-route-prefix."
+    "notes": "fix-icm-api-route-prefix: Changed prefix from /icm to /api/v1/icm. Verified POST /api/v1/icm/calculate returns valid ICM results. 368 tests pass."
   }
 }
