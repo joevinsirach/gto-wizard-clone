@@ -45,10 +45,11 @@
     "study-page-console-error-audit",
     "visual-study-preflop-match-reference",
     "solutions-frontend-page",
-    "equity-variant-2-7td-page"
+    "equity-variant-2-7td-page",
+    "equity-variant-2-7sd-page"
   ],
-  "current": "equity-variant-2-7td-page",
-  "next": "equity-variant-2-7sd-page",
+  "current": "equity-variant-2-7sd-page",
+  "next": "equity-variant-plo5-page",
   "backlog": [
     "equity-variant-2-7sd-page",
     "equity-variant-plo5-page",
