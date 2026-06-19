@@ -63,13 +63,13 @@
   "next": null,
   "backlog": [],
   "health": "build_pass_200_ok",
-  "last_sha": "444933c",
+  "last_sha": "49ee8d1",
   "blocker": null,
   "spec_gaps": [],
   "coach_review": {
-    "last_reviewed_sha": "444933c",
-    "last_reviewed_at": "2026-06-19T21:37:00Z",
+    "last_reviewed_sha": "49ee8d1",
+    "last_reviewed_at": "2026-06-19T21:43:00Z",
     "verdict": "approved",
-    "notes": "Reviewed 3 unreviewed commits (541d76b..444933c): 8a1a24f razz-slotselector — switched CardSelectorGrid to SlotSelector with downCount={3} for proper stud-style card input. /equity/razz returns 200. 08f8020 coach-checkpoint-update — meta-commit. 444933c add-tasks — added 3 well-formed tasks to AGENTS.md. All 368 poker-core tests pass. Solver postflop-strategy returns 6 unique actions (dedup already effective). Live site healthy (200 on /, /study, /practice, /equity/razz). E2E tests still broken (known playwright/vitest globals conflict)."
+    "notes": "Reviewed 3 unreviewed commits (541d76b..444933c): 8a1a24f razz-slotselector APPROVED — switched CardSelectorGrid to SlotSelector with downCount={3}. /equity/razz returns 200. 08f8020 coach-checkpoint-update — meta-commit. 444933c add-tasks — added 3 well-formed tasks. Fixed systemd gto-api.service crash loop (port 8000 conflict with stale background process PID 125909). Killed stale process, service now active (running). All 368 poker-core tests pass. Solver returns 6 unique actions. Player has uncommitted work: ActionsTable.tsx (113 lines) + SpotSelector.tsx (210 lines) for study-page-postflop-visual-polish."
   }
 }
