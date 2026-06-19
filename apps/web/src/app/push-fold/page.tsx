@@ -143,66 +143,41 @@ function expandHands(expressions: string[]): Set<string> {
     const isPair = r1 === r2;
 
     if (isPlus) {
-      // Range like "22+", "K9s+", "ATo+"
       if (isPair) {
-        // All pairs from this one up to AA
-        const ranks = RANKS;
-        let started = false;
-        for (const rank of ranks) {
-          if (rank === r1) started = true;
-          if (started) {
-            result.add(`${rank}${rank}`);
-          }
+        // "22+" → all pocket pairs from 22 up to AA
+        const startIdx = (RANKS as readonly string[]).indexOf(r1);
+        if (startIdx === -1) continue;
+        for (let i = startIdx; i < RANKS.length; i++) {
+          result.add(`${RANKS[i] as string}${RANKS[i] as string}`);
         }
       } else if (isSuited) {
-        // For suited "K9s+": K9s, KTs, KJs, KQs, AKs
-        const ranks = RANKS;
-        const idx1 = ranks.indexOf(r1 as any);
-        const idx2 = ranks.indexOf(r2 as any);
+        // "K9s+" → K9s, KTs, KJs, KQs, plus ALL suited hands with a higher first rank
+        // (A9s, ATs, AJs, AQs, AKs, A8s, ..., A2s)
+        // Standard poker ordering: AKs > AQs > ... > A2s > KQs > KJs > KTs > K9s > ...
+        const idx1 = (RANKS as readonly string[]).indexOf(r1);
+        const idx2 = (RANKS as readonly string[]).indexOf(r2);
         if (idx1 === -1 || idx2 === -1) continue;
 
-        // If first rank is higher than second (e.g., K9), range goes:
-        // K9s, KTs, KJs, KQs, AKs (moving second rank up)
-        // Actually for suited connectors: lower rank goes up
-        // K9s+ means: K9s, KTs, KJs, KQs, AKs (but AKs has different structure)
-        // Better: enumerate all combos that are ">= this combo" in the grid
-        
-        // For suited hands where r1 > r2 (e.g., K9s): include all hands with same first rank and higher second rank
-        // Also include hands with higher first rank where second is appropriate
-        for (const rank1 of ranks.slice(0, ranks.indexOf(r1 as any) + 1)) {
-          for (const rank2 of ranks) {
-            if (rank1 === rank2) continue; // not suited
-            const suitIdx1 = ranks.indexOf(rank1 as any);
-            const suitIdx2 = ranks.indexOf(rank2 as any);
-            // For suited, we need (rank1 > rank2) = suited hand in grid
-            if (suitIdx1 < suitIdx2) {
-              const hand = `${rank1}${rank2}s`;
-              // Compare with base: is this >= base?
-              if (suitIdx1 <= idx1 && suitIdx2 >= idx2) {
-                result.add(hand);
-              }
-            }
+        // Same first rank: K9s, KTs, KJs, KQs (second rank >= 9, but < K)
+        for (let j = idx2; j < idx1; j++) {
+          result.add(`${r1}${RANKS[j] as string}s`);
+        }
+        // Higher first rank: all suited combos with rank > r1 (e.g., Axs when r1=K)
+        for (let i = 0; i < idx1; i++) {
+          for (let j = 0; j < i; j++) {
+            result.add(`${RANKS[i] as string}${RANKS[j] as string}s`);
           }
         }
       } else if (isOffsuit) {
-        // Similar for offsuit
-        for (const rank1 of RANKS) {
-          for (const rank2 of RANKS) {
-            if (rank1 === rank2) continue;
-            const idxA = RANKS.indexOf(rank1 as any);
-            const idxB = RANKS.indexOf(rank2 as any);
-            // Offsuit: rank1 appears above rank2 in grid => offsuit
-            if (idxA > idxB) {
-              const hand = `${rank1}${rank2}o`;
-              // Include if it's >= base
-              const bIdx1 = RANKS.indexOf(r1 as any);
-              const bIdx2 = RANKS.indexOf(r2 as any);
-              // Simple heuristic: if this combo is in the top-left of the base combo
-              if (idxA <= bIdx1 || (idxA === bIdx1 && idxB <= bIdx2)) {
-                result.add(hand);
-              }
-            }
-          }
+        // "ATo+" → ATo, AJo, AQo, AKo
+        // Same first rank, second rank goes UP (T → J → Q → K)
+        // Because AKo is "stronger" than ATo
+        const idx1 = (RANKS as readonly string[]).indexOf(r1);
+        const idx2 = (RANKS as readonly string[]).indexOf(r2);
+        if (idx1 === -1 || idx2 === -1) continue;
+
+        for (let j = idx2; j < idx1; j++) {
+          result.add(`${r1}${RANKS[j] as string}o`);
         }
       }
     } else {
