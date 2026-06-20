@@ -13,12 +13,16 @@ from sqlalchemy.orm import DeclarativeBase
 
 logger = logging.getLogger(__name__)
 
+from services.db_url import asyncpg_url, get_database_url, sqlalchemy_url
+
 # Try PostgreSQL first, fall back to SQLite
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-if not DATABASE_URL:
+_raw_database_url = get_database_url()
+if not _raw_database_url:
     _sqlite_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "gto_wizard.db")
     DATABASE_URL = f"sqlite+aiosqlite:///{os.path.abspath(_sqlite_path)}"
     logger.info(f"No DATABASE_URL set, using SQLite: {_sqlite_path}")
+else:
+    DATABASE_URL = sqlalchemy_url(_raw_database_url)
 
 
 class Base(DeclarativeBase):

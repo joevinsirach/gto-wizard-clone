@@ -44,15 +44,24 @@ packages/
 | Solver | Python 3.12, NumPy, Numba, MCCFR |
 | PLO4/Omaha | PokerHandEvaluator (C++/Python) |
 | Database | PostgreSQL (Neon serverless) |
-| Cache | Redis |
+| Cache | Redis (optionnel — fakeredis en dev local) |
 
-## Quick Start
+## Quick Start (sans Docker)
 
 ```bash
 git clone https://github.com/ChonSong/gto-wizard-clone.git
 cd gto-wizard-clone
-docker compose up
+cp .env.example .env          # adapter PGUSER / PGPASSWORD
+make install                  # dépendances Node + Python
+make setup-db                 # crée la base gto_wizard
+make seed-all                 # stratégies GTO
+make dev                      # API :8000 + frontend :3000
 ```
+
+Ouvrir **http://localhost:3000**.
+
+> **PostgreSQL** : le projet utilise une base dédiée `gto_wizard` — vos autres bases ne sont pas affectées.  
+> **Redis** : optionnel en dev — laisser `REDIS_URL` vide dans `.env` pour un cache en mémoire (fakeredis).
 
 ## Development Phases
 

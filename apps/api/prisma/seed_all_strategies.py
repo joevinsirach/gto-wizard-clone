@@ -19,10 +19,10 @@ import sys
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/gto_wizard",
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from services.db_url import asyncpg_url, get_database_url
+
+DATABASE_URL = asyncpg_url(get_database_url()) or "postgresql://postgres:postgres@localhost:5432/gto_wizard"
 
 
 async def run():

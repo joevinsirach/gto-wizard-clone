@@ -58,10 +58,9 @@ async def _auto_seed_strategies():
     try:
         from prisma.seed_preflop_strategies import seed_strategies as seed_preflop
 
-        db_url = os.environ.get(
-            "DATABASE_URL",
-            "postgresql://postgres:***@localhost:5432/gto_wizard",
-        ).replace(":***@", ":postgres@")
+        from services.db_url import asyncpg_url, get_database_url
+
+        db_url = asyncpg_url(get_database_url()) or "postgresql://postgres:postgres@localhost:5432/gto_wizard"
 
         # Short delay to let DB connections settle after startup
         await asyncio.sleep(2)
@@ -106,7 +105,7 @@ async def startup_event():
     init_redis()
     # Try to init database, but don't fail if models have import issues
     try:
-        from apps.api.services.database import init_db
+        from services.database import init_db
         await init_db()
         logger.info("Database initialized")
     except Exception as e:

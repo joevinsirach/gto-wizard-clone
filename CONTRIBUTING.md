@@ -1,56 +1,59 @@
 # Contributing to GTO Wizard Clone
 
-## Getting Started
+## Getting Started (sans Docker)
+
+### Prérequis
+
+- **Node.js** 18+
+- **Python** 3.12+
+- **uv** ou **Python 3.12+** avec venv
+- **PostgreSQL** 16+ installé localement
+- **Redis** — optionnel (fakeredis utilisé si `REDIS_URL` est vide)
+
+### Installation
 
 ```bash
 git clone https://github.com/ChonSong/gto-wizard-clone.git
 cd gto-wizard-clone
 cp .env.example .env
-docker compose up
+# Éditez .env : PGUSER, PGPASSWORD, DATABASE_URL
+
+make install       # npm + uv + poker-core
+make setup-db      # crée la base gto_wizard (isolée de vos autres projets)
+make seed-all      # peuple les stratégies GTO
+make dev           # démarre API (:8000) + frontend (:3000)
+```
+
+Ouvrir **http://localhost:3000** — l'API est sur **http://localhost:8000**.
+
+### Terminaux séparés (alternative)
+
+```bash
+# Terminal 1 — API
+make api
+
+# Terminal 2 — Frontend
+make web
+```
+
+### Solver gRPC (optionnel)
+
+Pour le solving live postflop :
+
+```bash
+cd apps/solver && uv run python server.py
 ```
 
 ## Development
 
-### Prerequisites
-- Node.js 18+
-- Python 3.12+
-- Docker + Docker Compose
-- PostgreSQL 16+ (or use Docker)
-- Redis 7+ (or use Docker)
-
-### Local Setup
-
-```bash
-# Install Node dependencies
-npm install
-
-# Install Python dependencies
-uv sync
-
-# Start infrastructure services
-docker compose up -d redis postgres
-
-# Run API (terminal 1)
-cd apps/api && uvicorn main:app --reload --port 8000
-
-# Run Web UI (terminal 2)
-cd apps/web && npm run dev
-
-# Run solver (terminal 3)
-cd apps/solver && python server.py
-```
-
 ### Running Tests
 
 ```bash
-# All Python tests
-PYTHONPATH=/tmp/gto-wizard-clone /app/venv/bin/pytest packages/poker-core/tests/ apps/solver/tests/ apps/api/tests/ -v
+# Tests Python
+uv run pytest packages/poker-core/tests/ apps/api/tests/ -v
 
-# Specific module
-/app/venv/bin/pytest packages/poker-core/tests/test_plo4.py -v
-
-# E2E tests (requires running app)
-npx playwright test apps/web/e2e/
+# E2E Playwright (API + web doivent tourner)
+cd apps/web && npx playwright test
 ```
 
 ## Code Style
@@ -58,37 +61,20 @@ npx playwright test apps/web/e2e/
 ### Python
 - Follow PEP 8
 - Use type hints
-- Write tests before implementation (TDD)
 - Use `uv` for dependency management
 
 ### TypeScript/React
-- Use functional components with hooks
-- Prefer TypeScript strict mode
-- Use Tailwind CSS for styling
-- Follow existing component patterns
+- Functional components with hooks
+- Tailwind CSS for styling
 
 ## Pull Request Process
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch
 3. Write tests for your changes
-4. Ensure all tests pass
-5. Update documentation if needed
-6. Commit with conventional commits (`feat:`, `fix:`, `docs:`, etc.)
-7. Push and open a PR
+4. Commit with conventional commits (`feat:`, `fix:`, `docs:`, etc.)
+5. Push and open a PR
 
-## Project Structure
+## Docker (optionnel)
 
-```
-apps/web/        Next.js 15 frontend
-apps/api/        FastAPI backend
-apps/solver/     Python MCCFR engine (gRPC)
-packages/
-  poker-core/    Shared poker math
-  types/         Shared TypeScript types
-  ui-components/ React component library
-```
-
-## License
-
-MIT
+Des fichiers `docker-compose.yml` existent pour ceux qui préfèrent les conteneurs, mais ne sont **pas requis** pour le développement local.

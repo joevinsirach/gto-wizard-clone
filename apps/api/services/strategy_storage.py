@@ -25,11 +25,10 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-# Database configuration from environment
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/gto_wizard"
-)
+from services.db_url import asyncpg_url, get_database_url
+
+# Database configuration from environment (asyncpg format)
+DATABASE_URL = asyncpg_url(get_database_url()) or "postgresql://postgres:postgres@localhost:5432/gto_wizard"
 
 # Redis configuration
 REDIS_URL = os.environ.get(
