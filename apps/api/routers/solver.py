@@ -16,7 +16,7 @@ for p in [_solver_dir, _poker_dir]:
         sys.path.insert(0, p)
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 
 logger = logging.getLogger(__name__)
@@ -93,6 +93,13 @@ class PreflopRangeRequest(BaseModel):
     position: str = "UTG"
     stack_depth: int = 100
     game_type: str = "nlh"
+
+    @field_validator("stack_depth", mode="before")
+    @classmethod
+    def coerce_stack_depth(cls, v: object) -> int:
+        if v is None:
+            return 100
+        return int(round(float(v)))
 
 
 class HandCell(BaseModel):

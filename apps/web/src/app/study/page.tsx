@@ -249,7 +249,7 @@ export default function StudyPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             position: activePosition,
-            stack_depth: positions.find(p => p.id === activePosition)?.stack || stackDepth,
+            stack_depth: stackDepth,
           }),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)

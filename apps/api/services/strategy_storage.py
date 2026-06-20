@@ -30,11 +30,8 @@ from services.db_url import asyncpg_url, get_database_url
 # Database configuration from environment (asyncpg format)
 DATABASE_URL = asyncpg_url(get_database_url()) or "postgresql://postgres:postgres@localhost:5432/gto_wizard"
 
-# Redis configuration
-REDIS_URL = os.environ.get(
-    "REDIS_URL",
-    "redis://localhost:6379/0"
-)
+# Redis configuration (vide = pas de cache Redis, PostgreSQL seulement)
+REDIS_URL = os.environ.get("REDIS_URL", "").strip() or None
 
 # Cache TTL settings
 STRATEGY_CACHE_TTL = int(os.environ.get("STRATEGY_CACHE_TTL", "604800"))  # 7 days
@@ -193,6 +190,8 @@ class StrategyStorageService:
     
     def _get_redis_client(self):
         """Get or create Redis client."""
+        if not self.redis_url:
+            return None
         if self._redis_client is None:
             try:
                 import redis.asyncio as aioredis

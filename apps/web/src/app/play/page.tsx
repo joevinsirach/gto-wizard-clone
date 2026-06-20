@@ -125,8 +125,12 @@ export default function PlayPage() {
                 <button key={i} onClick={() => handleAction(i)} disabled={answered}
                   style={{
                     background: selectedAction === i ? 'rgba(0,169,143,.08)' : '#1a1e23',
-                    border: `1px solid ${selectedAction === i ? '#00a98f' : '#252b32'}`,
-                    borderLeft: `3px solid ${typeColor(a.type)}`, borderRadius: 10,
+                    borderWidth: 1,
+                    borderStyle: 'solid',
+                    borderColor: selectedAction === i ? '#00a98f' : '#252b32',
+                    borderLeftWidth: 3,
+                    borderLeftColor: typeColor(a.type),
+                    borderRadius: 10,
                     padding: '12px 14px', display: 'flex', justifyContent: 'space-between',
                     cursor: answered ? 'default' : 'pointer', width: '100%', color: '#d1d7df',
                     opacity: answered && i !== solution.bestIdx && i !== selectedAction ? 0.4 : 1,

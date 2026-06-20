@@ -15,12 +15,12 @@ setup-db:       ## Créer la base gto_wizard sur PostgreSQL local
 	bash scripts/setup-local-postgres.sh
 
 seed-preflop:   ## Peupler les stratégies preflop (idempotent)
-	PYTHONPATH=apps/api bash -c '\
+	set -a && . ./.env && set +a && PYTHONPATH=apps/api bash -c '\
 		if command -v uv >/dev/null 2>&1; then uv run python apps/api/prisma/seed_preflop_strategies.py; \
 		else .venv/bin/python apps/api/prisma/seed_preflop_strategies.py; fi'
 
 seed-all:       ## Peupler toutes les stratégies preflop + flop (idempotent)
-	PYTHONPATH=apps/api bash -c '\
+	set -a && . ./.env && set +a && PYTHONPATH=apps/api bash -c '\
 		if command -v uv >/dev/null 2>&1; then uv run python apps/api/prisma/seed_all_strategies.py; \
 		else .venv/bin/python apps/api/prisma/seed_all_strategies.py; fi'
 

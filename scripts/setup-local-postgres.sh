@@ -54,6 +54,10 @@ else
   echo "✓ Base '${DB_NAME}' créée."
 fi
 
+echo "→ Activation de l'extension pgcrypto (gen_random_uuid)..."
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "${DB_NAME}" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+echo "✓ Extension pgcrypto activée."
+
 echo ""
 echo "Prochaines étapes:"
 echo "  1. Vérifiez DATABASE_URL dans .env"

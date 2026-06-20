@@ -10,6 +10,10 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from services.db_url import _load_dotenv
+
+_load_dotenv()  # charge .env avant init_redis / DATABASE_URL
+
 from routers import equity, solver, auth, hh, strategy, quiz, analyze_leaks
 from routers import plo4_equity, plo4_ranges, omaha
 from routers import double_board, bomb_pot, spots, courses, icm

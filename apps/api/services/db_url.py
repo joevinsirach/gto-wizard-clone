@@ -10,8 +10,8 @@ def _load_dotenv() -> None:
         from dotenv import load_dotenv
     except ImportError:
         return
-    # Repo root: apps/api/services -> ../../../../
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+    # Repo root: apps/api/services -> ../../../
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     load_dotenv(os.path.join(repo_root, ".env"))
 
 
